@@ -55,9 +55,9 @@ export default function Home() {
                 className="group bg-ink text-paper font-mono uppercase tracking-[0.15em] text-sm px-7 py-4 flex items-center gap-3 hover:bg-comicred transition-colors">
                 Explorer le stock <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link to="/shop?category=VF" data-testid="hero-vf-btn"
+              <Link to="/shop?series=Spider-Man" data-testid="hero-vf-btn"
                 className="border-2 border-ink font-mono uppercase tracking-[0.15em] text-sm px-7 py-4 hover:bg-comicyellow transition-colors">
-                Les vieux Strange
+                Les Spider-Man
               </Link>
             </motion.div>
           </div>
