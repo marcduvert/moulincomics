@@ -5,10 +5,12 @@ import os
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import logging
+import uuid
+import requests
 from pydantic import BaseModel, Field, BeforeValidator, ConfigDict
 from typing import List, Optional, Annotated, Any
 from datetime import datetime, timezone, timedelta
@@ -21,6 +23,47 @@ import stripe
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+# ---------- Object storage ----------
+STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
+STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
+EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
+APP_NAME = "moulin-comics"
+_storage_key = None
+
+def init_storage(force: bool = False):
+    global _storage_key
+    if _storage_key and not force:
+        return _storage_key
+    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
+    resp.raise_for_status()
+    _storage_key = resp.json()["storage_key"]
+    return _storage_key
+
+def put_object(path: str, data: bytes, content_type: str) -> dict:
+    key = init_storage()
+    resp = requests.put(f"{STORAGE_URL}/objects/{path}",
+                        headers={"X-Storage-Key": key, "Content-Type": content_type},
+                        data=data, timeout=120)
+    if resp.status_code == 404:
+        key = init_storage(force=True)
+        resp = requests.put(f"{STORAGE_URL}/objects/{path}",
+                            headers={"X-Storage-Key": key, "Content-Type": content_type},
+                            data=data, timeout=120)
+    resp.raise_for_status()
+    return resp.json()
+
+def get_object(path: str):
+    key = init_storage()
+    resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
+    if resp.status_code == 404:
+        key = init_storage(force=True)
+        resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
+    resp.raise_for_status()
+    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+
+MIME_TYPES = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
+              "gif": "image/gif", "webp": "image/webp"}
 
 # ---------- Stripe ----------
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY") or "sk_test_emergent"
@@ -206,6 +249,34 @@ async def delete_product(product_id: str, admin: dict = Depends(get_current_admi
     await db.products.delete_one({"_id": ObjectId(product_id)})
     return {"ok": True}
 
+@api.post("/admin/upload")
+async def upload_cover(file: UploadFile = File(...), admin: dict = Depends(get_current_admin)):
+    ext = (file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "bin")
+    if ext not in MIME_TYPES:
+        raise HTTPException(400, "Format non supporté (jpg, png, gif, webp)")
+    data = await file.read()
+    if len(data) > 8 * 1024 * 1024:
+        raise HTTPException(400, "Image trop lourde (max 8 Mo)")
+    path = f"{APP_NAME}/covers/{uuid.uuid4()}.{ext}"
+    content_type = file.content_type or MIME_TYPES[ext]
+    result = put_object(path, data, content_type)
+    await db.files.insert_one({
+        "storage_path": result["path"], "original_filename": file.filename,
+        "content_type": content_type, "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"path": result["path"], "url": f"/api/files/{result['path']}"}
+
+@api.get("/files/{path:path}")
+async def serve_file(path: str):
+    record = await db.files.find_one({"storage_path": path})
+    try:
+        data, content_type = get_object(path)
+    except Exception:
+        raise HTTPException(404, "Fichier introuvable")
+    ct = record.get("content_type", content_type) if record else content_type
+    return Response(content=data, media_type=ct,
+                    headers={"Cache-Control": "public, max-age=31536000"})
+
 @api.get("/admin/orders")
 async def list_orders(admin: dict = Depends(get_current_admin)):
     docs = await db.payment_transactions.find().sort("created_at", -1).to_list(500)
@@ -376,6 +447,11 @@ async def startup():
     await db.users.create_index("email", unique=True)
     await seed_admin()
     await seed_products()
+    try:
+        init_storage()
+        logger.info("Storage initialized")
+    except Exception as e:
+        logger.error(f"Storage init failed: {e}")
 
 @app.on_event("shutdown")
 async def shutdown():

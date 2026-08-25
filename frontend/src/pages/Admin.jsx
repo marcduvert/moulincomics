@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, LogOut, Package, Receipt } from "lucide-react";
-import { api, fmtPrice } from "../lib/api";
+import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2 } from "lucide-react";
+import { api, fmtPrice, API } from "../lib/api";
 
 const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
   condition: "Très bon état", year: "", issue: "", description: "", cover_image: "", featured: false };
@@ -14,6 +14,20 @@ export default function Admin() {
   const [orders, setOrders] = useState([]);
   const [form, setForm] = useState(null);
   const [ready, setReady] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const uploadCover = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const { data } = await api.post("/admin/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      setForm((f) => ({ ...f, cover_image: `${API}/files/${data.path}` }));
+      toast.success("Image chargée");
+    } catch (e) { toast.error(e.response?.data?.detail || "Échec de l'upload"); }
+    finally { setUploading(false); }
+  };
 
   const load = useCallback(() => {
     api.get("/products").then((r) => setProducts(r.data));
@@ -180,7 +194,7 @@ export default function Admin() {
             <div className="grid grid-cols-2 gap-3 font-mono text-sm">
               {[["title", "Titre", "col-span-2"], ["author", "Auteur", "col-span-2"], ["series", "Série"], ["publisher", "Éditeur"],
                 ["issue", "N°"], ["year", "Année"], ["price", "Prix €"], ["stock", "Stock"],
-                ["condition", "État"], ["cover_image", "URL image", "col-span-2"]].map(([k, l, cls]) => (
+                ["condition", "État", "col-span-2"]].map(([k, l, cls]) => (
                 <div key={k} className={cls || ""}>
                   <label className="text-[10px] uppercase tracking-widest text-inksoft">{l}</label>
                   <input data-testid={`field-${k}`} required={k === "title" || k === "price"} type={k === "price" || k === "stock" ? "number" : "text"} step="0.01"
@@ -188,6 +202,23 @@ export default function Admin() {
                     className="w-full border-2 border-ink px-2 py-2 mt-1 bg-papersoft outline-none rounded-md" />
                 </div>
               ))}
+              <div className="col-span-2">
+                <label className="text-[10px] uppercase tracking-widest text-inksoft">Image de couverture</label>
+                <div className="flex items-center gap-3 mt-1">
+                  <div className="w-16 h-20 border-2 border-ink bg-papersoft shrink-0 overflow-hidden flex items-center justify-center">
+                    {form.cover_image ? <img src={form.cover_image} alt="" className="w-full h-full object-cover" />
+                      : <span className="text-[9px] text-inksoft text-center px-1">Aucune</span>}
+                  </div>
+                  <label data-testid="upload-cover-btn"
+                    className="flex-1 cursor-pointer border-2 border-dashed border-ink rounded-md px-3 py-4 flex items-center justify-center gap-2 hover:bg-papersoft transition-colors text-xs uppercase tracking-widest">
+                    {uploading ? <><Loader2 size={14} className="animate-spin" /> Chargement…</>
+                      : <><Upload size={14} /> Charger depuis l'ordinateur</>}
+                    <input data-testid="cover-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden"
+                      disabled={uploading} onChange={(e) => uploadCover(e.target.files?.[0])} />
+                  </label>
+                </div>
+                <p className="text-[10px] text-inksoft mt-1">JPG, PNG, GIF ou WEBP · 8 Mo max</p>
+              </div>
               <div className="col-span-2">
                 <label className="text-[10px] uppercase tracking-widest text-inksoft">Catégorie</label>
                 <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
