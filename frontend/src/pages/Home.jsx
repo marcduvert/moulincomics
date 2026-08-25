@@ -47,7 +47,7 @@ export default function Home() {
             <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }}
               className="font-mono text-sm sm:text-base text-inksoft max-w-md mt-8 leading-relaxed">
               Moulin Comics — spécialiste de la VO et gardien d'un large stock de mensuels VF :
-              Strange, Nova, Titans. Chinez, réservez, collectionnez.
+              Strange, Nova, Titans. Chinez, réservez, collectionnez. Livraison en Europe disponible.
             </motion.p>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.05 }}
               className="flex flex-wrap gap-3 mt-10">
