@@ -16,8 +16,8 @@ export const Header = () => {
   return (
     <header className="sticky top-0 z-50 bg-paper border-b-2 border-ink">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        <Link to="/" data-testid="logo-link" className="flex items-center gap-2 shrink-0">
-          <span className="bg-ink text-paper font-anton text-lg px-2 py-0.5 leading-none">MC</span>
+        <Link to="/" data-testid="logo-link" className="flex items-center gap-2.5 shrink-0">
+          <img src="/logo.png" alt="Moulin Comics" className="h-11 w-auto object-contain" />
           <span className="font-display font-black tracking-tighter text-lg hidden sm:block">MOULIN COMICS</span>
         </Link>
         <nav className="hidden md:flex items-center gap-8 font-mono text-xs uppercase tracking-[0.15em]">
