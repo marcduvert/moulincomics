@@ -79,6 +79,7 @@ class Product(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     id: Optional[PyObjectId] = Field(default=None, alias="_id")
     title: str
+    author: Optional[str] = ""          # scénariste / dessinateur
     series: Optional[str] = ""          # Strange, Nova, Titans, or serie VO
     publisher: Optional[str] = ""       # Marvel, DC, Lug/Semic...
     category: str = "VO"                # "VO" or "VF"
@@ -100,6 +101,7 @@ class Product(BaseModel):
 
 class ProductCreate(BaseModel):
     title: str
+    author: Optional[str] = ""
     series: Optional[str] = ""
     publisher: Optional[str] = ""
     category: str = "VO"
@@ -210,12 +212,29 @@ async def list_orders(admin: dict = Depends(get_current_admin)):
     out = []
     for d in docs:
         d.pop("_id", None)
+        d.setdefault("fulfillment_status", "en_attente")
         if isinstance(d.get("created_at"), datetime):
             d["created_at"] = d["created_at"].isoformat()
         if isinstance(d.get("updated_at"), datetime):
             d["updated_at"] = d["updated_at"].isoformat()
         out.append(d)
     return out
+
+class FulfillmentUpdate(BaseModel):
+    fulfillment_status: str
+
+@api.put("/admin/orders/{session_id}/status")
+async def update_order_status(session_id: str, body: FulfillmentUpdate,
+                              admin: dict = Depends(get_current_admin)):
+    if body.fulfillment_status not in {"en_attente", "expediee", "livree"}:
+        raise HTTPException(400, "Statut invalide")
+    res = await db.payment_transactions.update_one(
+        {"session_id": session_id},
+        {"$set": {"fulfillment_status": body.fulfillment_status,
+                  "updated_at": datetime.now(timezone.utc)}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Commande introuvable")
+    return {"ok": True, "fulfillment_status": body.fulfillment_status}
 
 # ----- Payments (Stripe) -----
 @api.post("/payments/checkout")
@@ -260,6 +279,7 @@ async def create_checkout(req: CheckoutRequest):
     await db.payment_transactions.insert_one({
         "session_id": session.id, "items": summary, "amount": total, "currency": "eur",
         "status": "initiated", "payment_status": "pending",
+        "fulfillment_status": "en_attente",
         "created_at": datetime.now(timezone.utc), "updated_at": datetime.now(timezone.utc),
     })
     return {"checkout_url": session.url, "session_id": session.id}

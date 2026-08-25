@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, LogOut, Package, Receipt } from "lucide-react";
 import { api, fmtPrice } from "../lib/api";
 
-const EMPTY = { title: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
+const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
   condition: "Très bon état", year: "", issue: "", description: "", cover_image: "", featured: false };
 
 export default function Admin() {
@@ -42,6 +42,14 @@ export default function Admin() {
     if (!window.confirm("Supprimer cette référence ?")) return;
     await api.delete(`/admin/products/${id}`);
     toast.success("Supprimé"); load();
+  };
+
+  const updateStatus = async (sessionId, status) => {
+    try {
+      await api.put(`/admin/orders/${sessionId}/status`, { fulfillment_status: status });
+      setOrders((prev) => prev.map((o) => (o.session_id === sessionId ? { ...o, fulfillment_status: status } : o)));
+      toast.success("Statut mis à jour");
+    } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
   };
 
   if (!ready) return <div className="min-h-screen bg-ink text-paper flex items-center justify-center font-mono text-sm">Chargement…</div>;
@@ -115,28 +123,52 @@ export default function Admin() {
         )}
 
         {tab === "orders" && (
-          <div className="bg-paper border-2 border-ink rounded-md overflow-x-auto">
-            <table className="w-full font-mono text-sm min-w-[640px]">
-              <thead className="bg-ink text-paper text-[11px] uppercase tracking-widest">
-                <tr><th className="text-left p-3">Session</th><th className="text-left p-3">Articles</th><th className="text-right p-3">Montant</th><th className="text-left p-3">Statut</th></tr>
-              </thead>
-              <tbody>
-                {orders.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-inksoft">Aucune commande.</td></tr>}
-                {orders.map((o) => (
-                  <tr key={o.session_id} className="border-b border-ink/15">
-                    <td className="p-3 text-xs text-inksoft">{o.session_id?.slice(-10)}</td>
-                    <td className="p-3 text-xs">{(o.items || []).map((i) => `${i.title} ×${i.quantity}`).join(", ")}</td>
-                    <td className="p-3 text-right">{fmtPrice(o.amount || 0)}</td>
-                    <td className="p-3">
-                      <span className={`text-[10px] uppercase px-2 py-1 border ${o.payment_status === "paid" ? "bg-comicyellow border-ink" : "border-ink/30 text-inksoft"}`}>
-                        {o.payment_status}
-                      </span>
-                    </td>
+          <>
+            <h1 className="font-display font-black tracking-tighter text-2xl mb-4">Commandes reçues</h1>
+            <div className="bg-paper border-2 border-ink rounded-md overflow-x-auto">
+              <table className="w-full font-mono text-sm min-w-[820px]">
+                <thead className="bg-ink text-paper text-[11px] uppercase tracking-widest">
+                  <tr>
+                    <th className="text-left p-3">Réf.</th><th className="text-left p-3">Articles</th>
+                    <th className="text-right p-3">Montant</th><th className="text-left p-3">Paiement</th>
+                    <th className="text-left p-3">Traitement</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {orders.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-inksoft">Aucune commande.</td></tr>}
+                  {orders.map((o) => {
+                    const fs = o.fulfillment_status || "en_attente";
+                    const badge = { en_attente: "border-ink/30 text-inksoft", expediee: "bg-comicblue text-paper border-ink", livree: "bg-comicyellow border-ink" }[fs];
+                    return (
+                    <tr key={o.session_id} className="border-b border-ink/15" data-testid={`order-${o.session_id}`}>
+                      <td className="p-3 text-xs text-inksoft">{o.session_id?.slice(-10)}</td>
+                      <td className="p-3 text-xs max-w-[240px]">{(o.items || []).map((i) => `${i.title} ×${i.quantity}`).join(", ")}</td>
+                      <td className="p-3 text-right">{fmtPrice(o.amount || 0)}</td>
+                      <td className="p-3">
+                        <span className={`text-[10px] uppercase px-2 py-1 border ${o.payment_status === "paid" ? "bg-green-200 border-ink" : "border-ink/30 text-inksoft"}`}>
+                          {o.payment_status === "paid" ? "payé" : o.payment_status}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] uppercase px-2 py-1 border ${badge}`}>
+                            {{ en_attente: "En attente", expediee: "Expédiée", livree: "Livrée" }[fs]}
+                          </span>
+                          <select data-testid={`order-status-${o.session_id}`} value={fs}
+                            onChange={(e) => updateStatus(o.session_id, e.target.value)}
+                            className="border-2 border-ink rounded-md px-2 py-1 text-xs bg-papersoft">
+                            <option value="en_attente">En attente</option>
+                            <option value="expediee">Expédiée</option>
+                            <option value="livree">Livrée</option>
+                          </select>
+                        </div>
+                      </td>
+                    </tr>
+                  ); })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -146,7 +178,7 @@ export default function Admin() {
             className="bg-paper border-2 border-ink rounded-md w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
             <h2 className="font-display font-black text-xl mb-5">{form.id ? "Modifier" : "Nouvelle BD"}</h2>
             <div className="grid grid-cols-2 gap-3 font-mono text-sm">
-              {[["title", "Titre", "col-span-2"], ["series", "Série"], ["publisher", "Éditeur"],
+              {[["title", "Titre", "col-span-2"], ["author", "Auteur", "col-span-2"], ["series", "Série"], ["publisher", "Éditeur"],
                 ["issue", "N°"], ["year", "Année"], ["price", "Prix €"], ["stock", "Stock"],
                 ["condition", "État"], ["cover_image", "URL image", "col-span-2"]].map(([k, l, cls]) => (
                 <div key={k} className={cls || ""}>

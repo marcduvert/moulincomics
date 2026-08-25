@@ -43,6 +43,7 @@ export default function ProductDetail() {
             {p.series && <span className="border border-ink font-mono text-[10px] uppercase px-2 py-1">{p.series}</span>}
           </div>
           <h1 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl leading-[0.95]">{p.title}</h1>
+          {p.author && <p className="font-mono text-sm text-ink mt-2 uppercase tracking-wide">par {p.author}</p>}
           <p className="font-mono text-sm text-inksoft mt-3">
             {p.publisher}{p.issue ? ` · #${p.issue}` : ""}{p.year ? ` · ${p.year}` : ""}
           </p>
