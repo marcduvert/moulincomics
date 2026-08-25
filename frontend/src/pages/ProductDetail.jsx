@@ -9,7 +9,7 @@ import { ProductCard } from "../components/ProductCard";
 
 export default function ProductDetail() {
   const { id } = useParams();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [p, setP] = useState(null);
   const [related, setRelated] = useState([]);
   const { add } = useCart();
@@ -24,6 +24,10 @@ export default function ProductDetail() {
   }, [id]);
 
   if (!p) return <div className="min-h-[60vh] flex items-center justify-center font-mono text-sm">{t.shop.loading}</div>;
+
+  const localizedDesc = (lang === "en" && p.description_en) ? p.description_en
+    : (lang === "es" && p.description_es) ? p.description_es
+    : p.description;
 
   return (
     <div>
@@ -58,7 +62,7 @@ export default function ProductDetail() {
             <div className="bg-paper p-3"><span className="text-inksoft text-[10px] uppercase block">{t.product.year}</span>{p.year || "—"}</div>
           </div>
 
-          <p className="font-mono text-sm leading-relaxed text-inksoft mt-8">{p.description}</p>
+          <p className="font-mono text-sm leading-relaxed text-inksoft mt-8">{localizedDesc}</p>
 
           <button data-testid="add-to-cart-button" disabled={p.stock <= 0} onClick={() => add(p)}
             className="w-full mt-8 bg-comicred text-paper font-mono uppercase tracking-[0.2em] text-sm py-5 border-2 border-ink flex items-center justify-center gap-3 hover:bg-ink transition-colors disabled:opacity-40">

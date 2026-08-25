@@ -131,7 +131,9 @@ class Product(BaseModel):
     condition: str = "Très bon état"
     year: Optional[str] = ""
     issue: Optional[str] = ""           # numero
-    description: Optional[str] = ""
+    description: Optional[str] = ""       # FR / défaut
+    description_en: Optional[str] = ""
+    description_es: Optional[str] = ""
     cover_image: str = ""
     featured: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -154,6 +156,8 @@ class ProductCreate(BaseModel):
     year: Optional[str] = ""
     issue: Optional[str] = ""
     description: Optional[str] = ""
+    description_en: Optional[str] = ""
+    description_es: Optional[str] = ""
     cover_image: str = ""
     featured: bool = False
 

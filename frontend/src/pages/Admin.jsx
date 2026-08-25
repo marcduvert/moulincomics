@@ -5,7 +5,7 @@ import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, 
 import { api, fmtPrice, API } from "../lib/api";
 
 const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
-  condition: "Très bon état", year: "", issue: "", description: "", cover_image: "", featured: false };
+  condition: "Très bon état", year: "", issue: "", description: "", description_en: "", description_es: "", cover_image: "", featured: false };
 
 export default function Admin() {
   const nav = useNavigate();
@@ -397,8 +397,20 @@ export default function Admin() {
                 <p className="text-[10px] text-inksoft mt-1">Gérez la liste dans l'onglet « Séries ».</p>
               </div>
               <div className="col-span-2">
-                <label className="text-[10px] uppercase tracking-widest text-inksoft">Description</label>
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3}
+                <label className="text-[10px] uppercase tracking-widest text-inksoft">Description (FR)</label>
+                <textarea data-testid="field-description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3}
+                  className="w-full border-2 border-ink px-2 py-2 mt-1 bg-papersoft outline-none rounded-md" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] uppercase tracking-widest text-inksoft">Description (EN)</label>
+                <textarea data-testid="field-description-en" value={form.description_en || ""} onChange={(e) => setForm({ ...form, description_en: e.target.value })} rows={3}
+                  placeholder="English description (optionnel)"
+                  className="w-full border-2 border-ink px-2 py-2 mt-1 bg-papersoft outline-none rounded-md" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] uppercase tracking-widest text-inksoft">Description (ES)</label>
+                <textarea data-testid="field-description-es" value={form.description_es || ""} onChange={(e) => setForm({ ...form, description_es: e.target.value })} rows={3}
+                  placeholder="Descripción en español (opcional)"
                   className="w-full border-2 border-ink px-2 py-2 mt-1 bg-papersoft outline-none rounded-md" />
               </div>
               <label className="col-span-2 flex items-center gap-2 cursor-pointer">
