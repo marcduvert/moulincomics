@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { fmtPrice } from "../lib/api";
+import { useLang } from "../context/LanguageContext";
 
-export const ProductCard = ({ product, index = 0 }) => (
+export const ProductCard = ({ product, index = 0 }) => {
+  const { t } = useLang();
+  return (
   <motion.div
     initial={{ opacity: 0, y: 30 }}
     whileInView={{ opacity: 1, y: 0 }}
@@ -19,7 +22,7 @@ export const ProductCard = ({ product, index = 0 }) => (
         </span>
         {product.stock <= 1 && (
           <span className="absolute top-0 right-0 bg-comicred text-paper font-mono text-[10px] uppercase px-2 py-1">
-            Dernier ex.
+            {t.card.lastCopy}
           </span>
         )}
       </div>
@@ -35,4 +38,5 @@ export const ProductCard = ({ product, index = 0 }) => (
       </div>
     </Link>
   </motion.div>
-);
+  );
+};

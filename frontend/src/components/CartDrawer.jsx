@@ -2,11 +2,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X, Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { api, fmtPrice } from "../lib/api";
+import { useLang } from "../context/LanguageContext";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export const CartDrawer = () => {
   const { items, open, setOpen, remove, setQty, total, count } = useCart();
+  const { t } = useLang();
   const [loading, setLoading] = useState(false);
 
   const checkout = async () => {
@@ -34,12 +36,12 @@ export const CartDrawer = () => {
             initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
             <div className="flex items-center justify-between p-5 border-b-2 border-ink">
-              <h2 className="font-anton text-2xl uppercase">Panier · {count}</h2>
+              <h2 className="font-anton text-2xl uppercase">{t.cart.title} · {count}</h2>
               <button onClick={() => setOpen(false)} data-testid="cart-close"><X /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {items.length === 0 && (
-                <p className="font-mono text-sm text-inksoft mt-10 text-center">Votre panier est vide.</p>
+                <p className="font-mono text-sm text-inksoft mt-10 text-center">{t.cart.empty}</p>
               )}
               {items.map((i) => (
                 <div key={i.product_id} className="flex gap-3 border-2 border-ink p-2 bg-papersoft">
@@ -63,13 +65,13 @@ export const CartDrawer = () => {
             </div>
             <div className="border-t-2 border-ink p-5">
               <div className="flex justify-between font-anton text-2xl mb-4">
-                <span>TOTAL</span><span>{fmtPrice(total)}</span>
+                <span>{t.cart.total}</span><span>{fmtPrice(total)}</span>
               </div>
               <button data-testid="checkout-button" disabled={!items.length || loading} onClick={checkout}
                 className="w-full bg-comicred text-paper font-mono uppercase tracking-[0.2em] text-sm py-4 border-2 border-ink hover:bg-ink transition-colors disabled:opacity-40">
-                {loading ? "Redirection…" : "Payer avec Stripe"}
+                {loading ? t.cart.redirect : t.cart.pay}
               </button>
-              <p className="font-mono text-[10px] text-inksoft mt-3 text-center uppercase">Paiement sécurisé · TVA calculée au paiement</p>
+              <p className="font-mono text-[10px] text-inksoft mt-3 text-center uppercase">{t.cart.note}</p>
             </div>
           </motion.aside>
         </>

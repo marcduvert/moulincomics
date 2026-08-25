@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { useLang } from "../context/LanguageContext";
 import { Marquee } from "../components/Marquee";
 import { Reveal } from "../components/Reveal";
 import { MapPin } from "lucide-react";
@@ -8,6 +9,7 @@ const CONV = "https://images.pexels.com/photos/36398813/pexels-photo-36398813.jp
 const CROWD = "https://images.unsplash.com/photo-1578434972378-e3c393d983db?crop=entropy&cs=srgb&fm=jpg&q=85&w=1000";
 
 export default function Conventions() {
+  const { t } = useLang();
   const [events, setEvents] = useState([]);
   useEffect(() => { api.get("/salons").then((r) => setEvents(r.data)).catch(() => {}); }, []);
   return (
@@ -17,9 +19,9 @@ export default function Conventions() {
         <div className="absolute inset-0 bg-ink/60" />
         <div className="relative max-w-[1400px] mx-auto px-4 sm:px-8 py-24 sm:py-32 text-paper">
           <Reveal>
-            <p className="font-mono text-xs uppercase tracking-[0.3em] text-comicyellow mb-4">Moulin Comics en tournée</p>
+            <p className="font-mono text-xs uppercase tracking-[0.3em] text-comicyellow mb-4">{t.conventions.eyebrow}</p>
             <h1 className="font-display font-black tracking-tighter text-4xl sm:text-5xl lg:text-6xl max-w-3xl leading-[0.9]">
-              ON DÉBALLE NOS CAISSES PARTOUT EN EUROPE
+              {t.conventions.title}
             </h1>
           </Reveal>
         </div>
@@ -28,10 +30,10 @@ export default function Conventions() {
       <Marquee items={["Rencontres", "Dédicaces", "Chine", "Collector", "VO", "VF", "Salons"]} />
 
       <section className="max-w-[1400px] mx-auto px-4 sm:px-8 py-16 sm:py-24">
-        <h2 className="font-anton text-3xl sm:text-4xl uppercase mb-10">Agenda 2026</h2>
+        <h2 className="font-anton text-3xl sm:text-4xl uppercase mb-10">{t.conventions.agenda}</h2>
         <div className="border-2 border-ink">
           {events.length === 0 && (
-            <div className="p-8 text-center font-mono text-sm text-inksoft">Aucun salon programmé pour le moment.</div>
+            <div className="p-8 text-center font-mono text-sm text-inksoft">{t.conventions.empty}</div>
           )}
           {events.map((e, i) => (
             <Reveal key={e.id || i} delay={i * 0.05}>
@@ -52,10 +54,9 @@ export default function Conventions() {
             <img src={CROWD} alt="Foule salon" className="w-full aspect-[4/3] object-cover border-2 border-ink" />
           </Reveal>
           <Reveal delay={0.1}>
-            <h3 className="font-display font-black tracking-tighter text-3xl sm:text-4xl">VENEZ CHINER À NOTRE STAND</h3>
+            <h3 className="font-display font-black tracking-tighter text-3xl sm:text-4xl">{t.conventions.standTitle}</h3>
             <p className="font-mono text-sm text-inksoft mt-5 leading-relaxed max-w-md">
-              Chaque salon est l'occasion de sortir des pièces rares de nos réserves. Comics VO fraîchement importés,
-              mensuels VF d'époque et éditions collector introuvables en ligne. Passez nous voir, on parle cases.
+              {t.conventions.standP}
             </p>
           </Reveal>
         </div>

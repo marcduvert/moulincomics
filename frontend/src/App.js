@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { CartProvider } from "./context/CartContext";
+import { LanguageProvider } from "./context/LanguageContext";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { CartDrawer } from "./components/CartDrawer";
@@ -54,11 +55,13 @@ const Layout = () => {
 
 export default function App() {
   return (
-    <CartProvider>
-      <BrowserRouter>
-        <Toaster position="top-center" toastOptions={{ style: { borderRadius: 0, border: "2px solid #0A0A0A", fontFamily: "IBM Plex Mono" } }} />
-        <Layout />
-      </BrowserRouter>
-    </CartProvider>
+    <LanguageProvider>
+      <CartProvider>
+        <BrowserRouter>
+          <Toaster position="top-center" toastOptions={{ style: { borderRadius: 0, border: "2px solid #0A0A0A", fontFamily: "IBM Plex Mono" } }} />
+          <Layout />
+        </BrowserRouter>
+      </CartProvider>
+    </LanguageProvider>
   );
 }
