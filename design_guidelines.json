@@ -1,0 +1,148 @@
+{
+  "project_name": "Moulin Comics",
+  "app_type": "e-commerce",
+  "theme": "light",
+  "art_direction": "Editorial Brutalism meets Vintage Comic Print. Awwwards Site-of-the-Day level. High contrast, visible grid lines, halftone/noise textures, and deliberate typography. It blends the gritty nostalgia of 80s French comic monthlies (Strange, Nova, Titans) and VO US comics with premium, modern fashion-ecommerce presentation.",
+  "typography": {
+    "primary_heading": {
+      "font": "Cabinet Grotesk",
+      "fallback": "sans-serif",
+      "weight": "font-black",
+      "tracking": "tracking-tighter",
+      "usage": "Main page headings, hero typography, section titles. Gives the premium editorial look."
+    },
+    "secondary_heading": {
+      "font": "Anton",
+      "fallback": "sans-serif",
+      "weight": "font-normal",
+      "tracking": "tracking-normal",
+      "usage": "Massive background kinetic text, marquee ribbons, chapter numbers. Adds the punchy 'comic book' blocky feel."
+    },
+    "body": {
+      "font": "IBM Plex Mono",
+      "fallback": "monospace",
+      "weight": "font-normal",
+      "tracking": "tracking-tight",
+      "usage": "Product details, prices, admin dashboard data, small utility text. Provides a structured, archival contrast to the wild headings."
+    },
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl",
+      "h3": "text-xl sm:text-2xl",
+      "body": "text-base",
+      "small": "text-sm uppercase tracking-[0.2em]"
+    }
+  },
+  "colors": {
+    "archetype": "Swiss & High-Contrast with CMYK accents",
+    "background": {
+      "primary": "#F4F1EA",
+      "secondary": "#EAE6DF",
+      "description": "Warm 'Newsprint' off-white. Avoid pure white. Gives the tactile feel of vintage comic pages."
+    },
+    "text": {
+      "primary": "#0A0A0A",
+      "secondary": "#4A4A4A",
+      "description": "Rich Ink Black for maximum contrast."
+    },
+    "accents": {
+      "red": "#E63946",
+      "blue": "#4361EE",
+      "yellow": "#FFCA3A",
+      "description": "Used sparingly for CTAs, active states, and hover reveals. Represents classic comic print colors."
+    },
+    "borders": {
+      "default": "rgba(10, 10, 10, 0.15)",
+      "dark": "rgba(10, 10, 10, 1)"
+    }
+  },
+  "visual_enhancers": {
+    "textures": "Apply a subtle SVG noise/grain overlay across the entire storefront to kill the 'digital flatness' and simulate paper.",
+    "borders": "Use 'Grid Borders (The Technical Look)'. Visible 1px solid borders (#0A0A0A or border-black/15) separating major layout sections, creating a structured, panel-like comic page layout.",
+    "radius": "Storefront: rounded-none (Brutalist, sharp edges). Admin: rounded-md (functional).",
+    "shadows": "Hard, solid drop shadows. Example: shadow-[4px_4px_0px_0px_rgba(10,10,10,1)]. Avoid soft blurry shadows on the storefront."
+  },
+  "layouts_and_grids": {
+    "storefront": "Mode A: The 'Tetris' Grid. Asymmetrical spans. A 12-column grid where the main product hero takes 8 columns and the details take 4. Leave empty cells for breathing room.",
+    "spacing": "Generous. Use p-8, p-12, p-24 for padding between major sections. Inner card padding must be at least p-6.",
+    "admin_dashboard": "Mode B: High Density Grid. 4-column strict grid. Tight gaps (gap-4). Every pixel utilized for functional inventory management."
+  },
+  "components": {
+    "header": {
+      "style": "Solid Background. bg-[#F4F1EA] with a hard bottom border (border-black). Z-index 50. Sticky.",
+      "navigation": "Logo left, 4 links center, Cart/CTA right. Visible on desktop. No transparent header."
+    },
+    "hero_section": {
+      "style": "Kinetic Hero. Split layout. Left: Massive typography (Cabinet Grotesk) with a masked line-by-line reveal animation on load. Right/Background: Abstract or tight crop of vintage comic art with max bg-black/30 overlay if text overlaps."
+    },
+    "marquee": {
+      "style": "The 'Editorial Ribbon'. Slow moving, font-mono or Anton, small/medium text, massive gaps between words. Border top and bottom to lock it in place."
+    },
+    "product_catalog": {
+      "style": "Grid layout with visible borders separating products. Images use mix-blend-multiply on the off-white background to blend perfectly. Hover states trigger the hard solid shadow and image slight scale."
+    },
+    "product_detail": {
+      "style": "Massive spotlight. Real cover photography treated deliberately. 50/50 split screen on desktop. Left is sticky photo, Right is scrolling details and Stripe checkout integration."
+    },
+    "manifesto_section": {
+      "style": "Numbered chapters about the shop's story. Huge typographic numbers (01, 02) using 'Anton' font. High contrast off-white on black section to break the rhythm."
+    },
+    "conventions_section": {
+      "style": "Photography heavy. Showcasing European comic conventions. Asymmetrical image grid (Tetris mode). overlapping images with date/location labels in uppercase mono font."
+    },
+    "admin_dashboard": {
+      "style": "Separate route/layout. Functional, clean. Sidebar navigation. Data tables for inventory (VO vs VF, strange, nova). Use Shadcn UI heavily customized with sharp corners and high contrast."
+    }
+  },
+  "motion_and_interactions": {
+    "scroll": "Lenis smooth scrolling is MANDATORY for the storefront.",
+    "hero_reveal": "Framer Motion: initial={y: '100%'} animate={y: 0} with overflow-hidden wrapper for the line-by-line text reveal.",
+    "hover_states": "Hovering a comic cover: transition: transform 0.3s ease, box-shadow 0.3s ease. Add a slight rotation (rotate-1 or rotate-2) to mimic picking up a physical comic book.",
+    "page_transitions": "Keep them snappy. No slow crossfades.",
+    "accessibility": "Respect prefers-reduced-motion. Ensure hover color contrasts."
+  },
+  "media_and_images": {
+    "hero_bg": {
+      "url": "https://images.unsplash.com/photo-1618519764620-7403abdbdfe9",
+      "description": "A collection of vintage Marvel comic books overlapping. Use for hero visual or manifesto background.",
+      "category": "hero"
+    },
+    "product_spotlight": {
+      "url": "https://images.pexels.com/photos/7768661/pexels-photo-7768661.jpeg",
+      "description": "Vintage Iron Man comic held by hand. Use for featured product detail section.",
+      "category": "product_detail"
+    },
+    "catalog_placeholders": [
+      {
+        "url": "https://images.unsplash.com/photo-1601645191163-3fc0d5d64e35",
+        "description": "Scattered superhero comics."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe",
+        "description": "Pile of comics sitting next to each other."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1588497859490-85d1c17db96d",
+        "description": "Joker comic book on brown table."
+      }
+    ],
+    "conventions": {
+      "url": "https://images.pexels.com/photos/36398813/pexels-photo-36398813.jpeg",
+      "description": "Lively crowd at Comic Con. Use for the European conventions/salons section.",
+      "category": "conventions"
+    }
+  },
+  "universal_guidelines_for_main_agent": [
+    "Do NOT use 'Inter', 'Roboto', 'Open Sans', or 'Lato' for headings. Use 'Cabinet Grotesk' for primary headings and 'Anton' for massive typographic elements.",
+    "Maximum heading size is text-6xl. Do not use text-7xl, 8xl, or 9xl for standard hero text. You may use fluid clamp() techniques within bounds.",
+    "Apply a subtle grain/noise SVG texture overlay with pointer-events-none fixed to the viewport.",
+    "Use 'Grid Borders'. Create a structural, panel-like layout using border-collapse or direct borders (border-black/15) around sections.",
+    "Do not apply global 'transition: all'. Animate specific properties (transform, opacity) on interactive elements.",
+    "All interactive elements (buttons, links, form inputs, cart toggles) MUST include a 'data-testid' attribute (e.g., data-testid='add-to-cart-button').",
+    "Header must have a solid or highly blurred background (bg-[#F4F1EA] border-b). Never fully transparent if content scrolls beneath.",
+    "Use Shadcn UI for complex interactive parts (Dialogs, Selects, Toasts via Sonner), but heavily customize them: remove soft radii (rounded-none), use hard borders, and high contrast active states.",
+    "For product images on light backgrounds, use 'mix-blend-multiply' to simulate ink printed directly on the page.",
+    "Implement a separate Admin layout that prioritizes density, functional grids, and slightly softer UI (rounded-md) compared to the brutalist storefront.",
+    "Use Lucide-react for standard icons, but prefer typography over icons where possible to maintain the editorial print vibe."
+  ]
+}
