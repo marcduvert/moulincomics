@@ -19,6 +19,16 @@ export default function Admin() {
   const [form, setForm] = useState(null);
   const [ready, setReady] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [fTitle, setFTitle] = useState("");
+  const [fSeries, setFSeries] = useState("");
+  const [fDate, setFDate] = useState("");
+
+  const filteredProducts = products.filter((p) => {
+    if (fTitle && !p.title?.toLowerCase().includes(fTitle.toLowerCase())) return false;
+    if (fSeries && (p.series || "") !== fSeries) return false;
+    if (fDate && (p.created_at || "").slice(0, 10) !== fDate) return false;
+    return true;
+  });
 
   const uploadCover = async (file) => {
     if (!file) return;
@@ -151,17 +161,47 @@ export default function Admin() {
                 <Plus size={14} /> Ajouter une BD
               </button>
             </div>
+            <div className="grid sm:grid-cols-3 gap-3 mb-4 font-mono text-sm">
+              <div>
+                <label className="text-[10px] uppercase tracking-widest text-inksoft">Rechercher un titre</label>
+                <input data-testid="admin-filter-title" value={fTitle} onChange={(e) => setFTitle(e.target.value)}
+                  placeholder="Titre du produit…"
+                  className="w-full border-2 border-ink rounded-md px-3 py-2 mt-1 bg-paper outline-none" />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-widest text-inksoft">Filtrer par série</label>
+                <select data-testid="admin-filter-series" value={fSeries} onChange={(e) => setFSeries(e.target.value)}
+                  className="w-full border-2 border-ink rounded-md px-3 py-2 mt-1 bg-paper">
+                  <option value="">Toutes les séries</option>
+                  {seriesList.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-widest text-inksoft">Date d'ajout</label>
+                <input data-testid="admin-filter-date" type="date" value={fDate} onChange={(e) => setFDate(e.target.value)}
+                  className="w-full border-2 border-ink rounded-md px-3 py-2 mt-1 bg-paper outline-none" />
+              </div>
+            </div>
+            {(fTitle || fSeries || fDate) && (
+              <div className="flex items-center gap-3 mb-3 font-mono text-xs">
+                <span className="text-inksoft">{filteredProducts.length} résultat(s)</span>
+                <button data-testid="admin-filter-reset" onClick={() => { setFTitle(""); setFSeries(""); setFDate(""); }}
+                  className="underline hover:text-comicred">Réinitialiser les filtres</button>
+              </div>
+            )}
             <div className="bg-paper border-2 border-ink rounded-md overflow-x-auto">
-              <table className="w-full font-mono text-sm min-w-[720px]">
+              <table className="w-full font-mono text-sm min-w-[800px]">
                 <thead className="bg-ink text-paper text-[11px] uppercase tracking-widest">
                   <tr>
                     <th className="text-left p-3">Titre</th><th className="text-left p-3">Cat.</th>
-                    <th className="text-left p-3">Série</th><th className="text-right p-3">Prix</th>
+                    <th className="text-left p-3">Série</th><th className="text-left p-3">Ajouté le</th>
+                    <th className="text-right p-3">Prix</th>
                     <th className="text-right p-3">Stock</th><th className="text-right p-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map((p) => (
+                  {filteredProducts.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-inksoft">Aucun produit ne correspond.</td></tr>}
+                  {filteredProducts.map((p) => (
                     <tr key={p.id} className="border-b border-ink/15" data-testid={`row-${p.id}`}>
                       <td className="p-3 flex items-center gap-2">
                         <img src={p.cover_image} alt="" className="w-8 h-10 object-cover" />
@@ -169,6 +209,7 @@ export default function Admin() {
                       </td>
                       <td className="p-3">{p.category}</td>
                       <td className="p-3">{p.series || "—"}</td>
+                      <td className="p-3 text-xs text-inksoft">{p.created_at ? new Date(p.created_at).toLocaleDateString("fr-FR") : "—"}</td>
                       <td className="p-3 text-right">{fmtPrice(p.price)}</td>
                       <td className={`p-3 text-right ${p.stock <= 1 ? "text-comicred" : ""}`}>{p.stock}</td>
                       <td className="p-3 text-right whitespace-nowrap">
