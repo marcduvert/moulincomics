@@ -10,7 +10,7 @@ export const Header = () => {
   const links = [
     { to: "/shop", label: "Boutique" },
     { to: "/shop?category=VO", label: "VO" },
-    { to: "/shop?category=VF", label: "VF · Strange" },
+    { to: "/shop?category=VF", label: "VF" },
     { to: "/conventions", label: "Salons" },
   ];
   return (
