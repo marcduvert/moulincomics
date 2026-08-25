@@ -254,6 +254,43 @@ async def admin_delete_series(series_id: str, admin: dict = Depends(get_current_
     await db.products.update_many({"series": doc["name"]}, {"$set": {"series": ""}})
     return {"ok": True}
 
+# ----- Salons (conventions) -----
+class SalonBody(BaseModel):
+    date_label: str = ""
+    city: str = ""
+    country: str = ""
+    name: str = ""
+    note: str = ""
+
+def _salon_out(d: dict) -> dict:
+    return {"id": str(d["_id"]), "date_label": d.get("date_label", ""), "city": d.get("city", ""),
+            "country": d.get("country", ""), "name": d.get("name", ""), "note": d.get("note", "")}
+
+@api.get("/salons")
+async def list_salons():
+    docs = await db.salons.find().sort("created_at", 1).to_list(500)
+    return [_salon_out(d) for d in docs]
+
+@api.post("/admin/salons")
+async def create_salon(body: SalonBody, admin: dict = Depends(get_current_admin)):
+    doc = body.model_dump()
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.salons.insert_one(doc)
+    return _salon_out(await db.salons.find_one({"_id": res.inserted_id}))
+
+@api.put("/admin/salons/{salon_id}")
+async def update_salon(salon_id: str, body: SalonBody, admin: dict = Depends(get_current_admin)):
+    await db.salons.update_one({"_id": ObjectId(salon_id)}, {"$set": body.model_dump()})
+    doc = await db.salons.find_one({"_id": ObjectId(salon_id)})
+    if not doc:
+        raise HTTPException(404, "Salon introuvable")
+    return _salon_out(doc)
+
+@api.delete("/admin/salons/{salon_id}")
+async def delete_salon(salon_id: str, admin: dict = Depends(get_current_admin)):
+    await db.salons.delete_one({"_id": ObjectId(salon_id)})
+    return {"ok": True}
+
 # ----- Admin auth -----
 @api.post("/auth/login")
 async def login(body: LoginRequest, response: Response):
@@ -499,12 +536,27 @@ async def seed_series():
         await db.series_list.insert_one({"name": n, "created_at": datetime.now(timezone.utc).isoformat()})
     logger.info("Series seeded")
 
+async def seed_salons():
+    if await db.salons.count_documents({}) > 0:
+        return
+    salons = [
+        {"date_label": "24–27 JAN 2026", "city": "Angoulême", "country": "France", "name": "Festival International de la BD", "note": "Stand VO & fonds Lug"},
+        {"date_label": "14–15 MAR 2026", "city": "Paris", "country": "France", "name": "Comic Con Paris", "note": "Nouveautés VO Marvel / DC"},
+        {"date_label": "18–19 AVR 2026", "city": "Bruxelles", "country": "Belgique", "name": "Brussels Comic Con", "note": "Strange, Nova, Titans"},
+        {"date_label": "30 OCT–3 NOV 2026", "city": "Lucca", "country": "Italie", "name": "Lucca Comics & Games", "note": "Sélection collector VO"},
+    ]
+    for s in salons:
+        s["created_at"] = datetime.now(timezone.utc).isoformat()
+        await db.salons.insert_one(s)
+    logger.info("Salons seeded")
+
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
     await seed_admin()
     await seed_products()
     await seed_series()
+    await seed_salons()
     try:
         init_storage()
         logger.info("Storage initialized")

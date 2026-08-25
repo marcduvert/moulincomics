@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags } from "lucide-react";
+import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin } from "lucide-react";
 import { api, fmtPrice, API } from "../lib/api";
 
 const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
@@ -14,6 +14,8 @@ export default function Admin() {
   const [orders, setOrders] = useState([]);
   const [seriesList, setSeriesList] = useState([]);
   const [newSeries, setNewSeries] = useState("");
+  const [salons, setSalons] = useState([]);
+  const [salonForm, setSalonForm] = useState(null);
   const [form, setForm] = useState(null);
   const [ready, setReady] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -35,6 +37,7 @@ export default function Admin() {
     api.get("/products").then((r) => setProducts(r.data));
     api.get("/admin/orders").then((r) => setOrders(r.data)).catch(() => {});
     api.get("/admin/series").then((r) => setSeriesList(r.data)).catch(() => {});
+    api.get("/salons").then((r) => setSalons(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -63,6 +66,20 @@ export default function Admin() {
   const delSeries = async (s) => {
     if (!window.confirm(`Supprimer la série "${s.name}" ? Les ${s.product_count} produit(s) associé(s) seront désaffectés.`)) return;
     await api.delete(`/admin/series/${s.id}`); toast.success("Supprimée"); load();
+  };
+
+  const SALON_EMPTY = { date_label: "", city: "", country: "", name: "", note: "" };
+  const saveSalon = async (e) => {
+    e.preventDefault();
+    try {
+      if (salonForm.id) await api.put(`/admin/salons/${salonForm.id}`, salonForm);
+      else await api.post("/admin/salons", salonForm);
+      toast.success("Salon enregistré"); setSalonForm(null); load();
+    } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
+  };
+  const delSalon = async (id) => {
+    if (!window.confirm("Supprimer ce salon ?")) return;
+    await api.delete(`/admin/salons/${id}`); toast.success("Supprimé"); load();
   };
 
   const save = async (e) => {
@@ -119,6 +136,9 @@ export default function Admin() {
           </button>
           <button onClick={() => setTab("series")} data-testid="tab-series" className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink ${tab === "series" ? "bg-ink text-paper" : "bg-paper"}`}>
             <Tags size={14} /> Séries ({seriesList.length})
+          </button>
+          <button onClick={() => setTab("salons")} data-testid="tab-salons" className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink ${tab === "salons" ? "bg-ink text-paper" : "bg-paper"}`}>
+            <MapPin size={14} /> Salons ({salons.length})
           </button>
         </div>
 
@@ -246,6 +266,44 @@ export default function Admin() {
             </div>
           </>
         )}
+
+        {tab === "salons" && (
+          <>
+            <div className="flex justify-between items-center mb-4">
+              <h1 className="font-display font-black tracking-tighter text-2xl">Salons & conventions</h1>
+              <button onClick={() => setSalonForm({ ...SALON_EMPTY })} data-testid="add-salon-btn"
+                className="flex items-center gap-2 bg-comicred text-paper font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink hover:bg-ink transition-colors">
+                <Plus size={14} /> Ajouter un salon
+              </button>
+            </div>
+            <div className="bg-paper border-2 border-ink rounded-md overflow-x-auto">
+              <table className="w-full font-mono text-sm min-w-[720px]">
+                <thead className="bg-ink text-paper text-[11px] uppercase tracking-widest">
+                  <tr>
+                    <th className="text-left p-3">Dates</th><th className="text-left p-3">Ville</th>
+                    <th className="text-left p-3">Événement</th><th className="text-left p-3">Note</th>
+                    <th className="text-right p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {salons.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-inksoft">Aucun salon.</td></tr>}
+                  {salons.map((s) => (
+                    <tr key={s.id} className="border-b border-ink/15" data-testid={`salon-row-${s.id}`}>
+                      <td className="p-3 text-comicred uppercase">{s.date_label}</td>
+                      <td className="p-3 font-display font-bold">{s.city}{s.country ? `, ${s.country}` : ""}</td>
+                      <td className="p-3">{s.name}</td>
+                      <td className="p-3 text-xs text-inksoft">{s.note}</td>
+                      <td className="p-3 text-right whitespace-nowrap">
+                        <button onClick={() => setSalonForm({ ...s })} data-testid={`salon-edit-${s.id}`} className="p-1.5 hover:text-comicblue"><Pencil size={15} /></button>
+                        <button onClick={() => delSalon(s.id)} data-testid={`salon-delete-${s.id}`} className="p-1.5 hover:text-comicred"><Trash2 size={15} /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {form && (
@@ -310,6 +368,30 @@ export default function Admin() {
             <div className="flex gap-2 mt-6">
               <button type="button" onClick={() => setForm(null)} className="flex-1 border-2 border-ink py-3 font-mono text-xs uppercase rounded-md">Annuler</button>
               <button type="submit" data-testid="save-product-btn" className="flex-1 bg-ink text-paper py-3 font-mono text-xs uppercase rounded-md hover:bg-comicred transition-colors">Enregistrer</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {salonForm && (
+        <div className="fixed inset-0 bg-ink/60 z-50 flex items-center justify-center p-4" onClick={() => setSalonForm(null)}>
+          <form onClick={(e) => e.stopPropagation()} onSubmit={saveSalon} data-testid="salon-form"
+            className="bg-paper border-2 border-ink rounded-md w-full max-w-md p-6">
+            <h2 className="font-display font-black text-xl mb-5">{salonForm.id ? "Modifier le salon" : "Nouveau salon"}</h2>
+            <div className="grid grid-cols-2 gap-3 font-mono text-sm">
+              {[["date_label", "Dates (ex. 24–27 JAN 2026)", "col-span-2"], ["city", "Ville"], ["country", "Pays"],
+                ["name", "Événement", "col-span-2"], ["note", "Note", "col-span-2"]].map(([k, l, cls]) => (
+                <div key={k} className={cls || ""}>
+                  <label className="text-[10px] uppercase tracking-widest text-inksoft">{l}</label>
+                  <input data-testid={`salon-field-${k}`} required={k === "city" || k === "name"} type="text"
+                    value={salonForm[k]} onChange={(e) => setSalonForm({ ...salonForm, [k]: e.target.value })}
+                    className="w-full border-2 border-ink px-2 py-2 mt-1 bg-papersoft outline-none rounded-md" />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-6">
+              <button type="button" onClick={() => setSalonForm(null)} className="flex-1 border-2 border-ink py-3 font-mono text-xs uppercase rounded-md">Annuler</button>
+              <button type="submit" data-testid="save-salon-btn" className="flex-1 bg-ink text-paper py-3 font-mono text-xs uppercase rounded-md hover:bg-comicred transition-colors">Enregistrer</button>
             </div>
           </form>
         </div>
