@@ -203,8 +203,56 @@ async def get_product(product_id: str):
 
 @api.get("/series")
 async def list_series():
-    vals = await db.products.distinct("series")
-    return [v for v in vals if v]
+    docs = await db.series_list.find().sort("name", 1).to_list(500)
+    return [d["name"] for d in docs]
+
+# ----- Admin series CRUD -----
+class SeriesBody(BaseModel):
+    name: str
+
+@api.get("/admin/series")
+async def admin_list_series(admin: dict = Depends(get_current_admin)):
+    docs = await db.series_list.find().sort("name", 1).to_list(500)
+    out = []
+    for d in docs:
+        name = d["name"]
+        count = await db.products.count_documents({"series": name})
+        out.append({"id": str(d["_id"]), "name": name, "product_count": count})
+    return out
+
+@api.post("/admin/series")
+async def admin_create_series(body: SeriesBody, admin: dict = Depends(get_current_admin)):
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(400, "Nom requis")
+    if await db.series_list.find_one({"name": name}):
+        raise HTTPException(400, "Cette série existe déjà")
+    res = await db.series_list.insert_one({"name": name, "created_at": datetime.now(timezone.utc).isoformat()})
+    return {"id": str(res.inserted_id), "name": name, "product_count": 0}
+
+@api.put("/admin/series/{series_id}")
+async def admin_update_series(series_id: str, body: SeriesBody, admin: dict = Depends(get_current_admin)):
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(400, "Nom requis")
+    old = await db.series_list.find_one({"_id": ObjectId(series_id)})
+    if not old:
+        raise HTTPException(404, "Série introuvable")
+    dup = await db.series_list.find_one({"name": name, "_id": {"$ne": ObjectId(series_id)}})
+    if dup:
+        raise HTTPException(400, "Cette série existe déjà")
+    await db.series_list.update_one({"_id": ObjectId(series_id)}, {"$set": {"name": name}})
+    await db.products.update_many({"series": old["name"]}, {"$set": {"series": name}})
+    return {"id": series_id, "name": name}
+
+@api.delete("/admin/series/{series_id}")
+async def admin_delete_series(series_id: str, admin: dict = Depends(get_current_admin)):
+    doc = await db.series_list.find_one({"_id": ObjectId(series_id)})
+    if not doc:
+        raise HTTPException(404, "Série introuvable")
+    await db.series_list.delete_one({"_id": ObjectId(series_id)})
+    await db.products.update_many({"series": doc["name"]}, {"$set": {"series": ""}})
+    return {"ok": True}
 
 # ----- Admin auth -----
 @api.post("/auth/login")
@@ -442,11 +490,21 @@ async def seed_products():
         await db.products.insert_one(doc)
     logger.info("Products seeded")
 
+async def seed_series():
+    existing = await db.series_list.count_documents({})
+    if existing > 0:
+        return
+    names = [v for v in await db.products.distinct("series") if v]
+    for n in sorted(names):
+        await db.series_list.insert_one({"name": n, "created_at": datetime.now(timezone.utc).isoformat()})
+    logger.info("Series seeded")
+
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
     await seed_admin()
     await seed_products()
+    await seed_series()
     try:
         init_storage()
         logger.info("Storage initialized")

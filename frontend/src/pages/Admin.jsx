@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags } from "lucide-react";
 import { api, fmtPrice, API } from "../lib/api";
 
 const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
@@ -12,6 +12,8 @@ export default function Admin() {
   const [tab, setTab] = useState("stock");
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [seriesList, setSeriesList] = useState([]);
+  const [newSeries, setNewSeries] = useState("");
   const [form, setForm] = useState(null);
   const [ready, setReady] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -32,6 +34,7 @@ export default function Admin() {
   const load = useCallback(() => {
     api.get("/products").then((r) => setProducts(r.data));
     api.get("/admin/orders").then((r) => setOrders(r.data)).catch(() => {});
+    api.get("/admin/series").then((r) => setSeriesList(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -40,6 +43,27 @@ export default function Admin() {
   }, [nav, load]);
 
   const logout = async () => { await api.post("/auth/logout"); nav("/admin/login"); };
+
+  const addSeries = async (e) => {
+    e.preventDefault();
+    if (!newSeries.trim()) return;
+    try {
+      await api.post("/admin/series", { name: newSeries.trim() });
+      setNewSeries(""); toast.success("Série ajoutée"); load();
+    } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
+  };
+
+  const renameSeries = async (s) => {
+    const name = window.prompt("Nouveau nom de la série :", s.name);
+    if (!name || name === s.name) return;
+    try { await api.put(`/admin/series/${s.id}`, { name }); toast.success("Renommée"); load(); }
+    catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
+  };
+
+  const delSeries = async (s) => {
+    if (!window.confirm(`Supprimer la série "${s.name}" ? Les ${s.product_count} produit(s) associé(s) seront désaffectés.`)) return;
+    await api.delete(`/admin/series/${s.id}`); toast.success("Supprimée"); load();
+  };
 
   const save = async (e) => {
     e.preventDefault();
@@ -92,6 +116,9 @@ export default function Admin() {
           </button>
           <button onClick={() => setTab("orders")} data-testid="tab-orders" className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink ${tab === "orders" ? "bg-ink text-paper" : "bg-paper"}`}>
             <Receipt size={14} /> Commandes ({orders.length})
+          </button>
+          <button onClick={() => setTab("series")} data-testid="tab-series" className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink ${tab === "series" ? "bg-ink text-paper" : "bg-paper"}`}>
+            <Tags size={14} /> Séries ({seriesList.length})
           </button>
         </div>
 
@@ -184,6 +211,41 @@ export default function Admin() {
             </div>
           </>
         )}
+
+        {tab === "series" && (
+          <>
+            <h1 className="font-display font-black tracking-tighter text-2xl mb-4">Séries</h1>
+            <form onSubmit={addSeries} className="flex gap-2 mb-6 max-w-md">
+              <input data-testid="new-series-input" value={newSeries} onChange={(e) => setNewSeries(e.target.value)}
+                placeholder="Nom de la nouvelle série (ex. Spider-Man)"
+                className="flex-1 border-2 border-ink rounded-md px-3 py-2.5 font-mono text-sm bg-paper outline-none" />
+              <button type="submit" data-testid="add-series-btn"
+                className="flex items-center gap-2 bg-comicred text-paper font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink hover:bg-ink transition-colors">
+                <Plus size={14} /> Ajouter
+              </button>
+            </form>
+            <div className="bg-paper border-2 border-ink rounded-md overflow-x-auto">
+              <table className="w-full font-mono text-sm min-w-[480px]">
+                <thead className="bg-ink text-paper text-[11px] uppercase tracking-widest">
+                  <tr><th className="text-left p-3">Série</th><th className="text-right p-3">Produits</th><th className="text-right p-3">Actions</th></tr>
+                </thead>
+                <tbody>
+                  {seriesList.length === 0 && <tr><td colSpan={3} className="p-8 text-center text-inksoft">Aucune série. Ajoutez-en une ci-dessus.</td></tr>}
+                  {seriesList.map((s) => (
+                    <tr key={s.id} className="border-b border-ink/15" data-testid={`series-row-${s.id}`}>
+                      <td className="p-3 font-display font-bold">{s.name}</td>
+                      <td className="p-3 text-right">{s.product_count}</td>
+                      <td className="p-3 text-right whitespace-nowrap">
+                        <button onClick={() => renameSeries(s)} data-testid={`series-edit-${s.id}`} className="p-1.5 hover:text-comicblue"><Pencil size={15} /></button>
+                        <button onClick={() => delSeries(s)} data-testid={`series-delete-${s.id}`} className="p-1.5 hover:text-comicred"><Trash2 size={15} /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {form && (
@@ -192,7 +254,7 @@ export default function Admin() {
             className="bg-paper border-2 border-ink rounded-md w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
             <h2 className="font-display font-black text-xl mb-5">{form.id ? "Modifier" : "Nouvelle BD"}</h2>
             <div className="grid grid-cols-2 gap-3 font-mono text-sm">
-              {[["title", "Titre", "col-span-2"], ["author", "Auteur", "col-span-2"], ["series", "Série"], ["publisher", "Éditeur"],
+              {[["title", "Titre", "col-span-2"], ["author", "Auteur", "col-span-2"], ["publisher", "Éditeur"],
                 ["issue", "N°"], ["year", "Année"], ["price", "Prix €"], ["stock", "Stock"],
                 ["condition", "État", "col-span-2"]].map(([k, l, cls]) => (
                 <div key={k} className={cls || ""}>
@@ -225,6 +287,15 @@ export default function Admin() {
                   className="w-full border-2 border-ink px-2 py-2 mt-1 bg-papersoft rounded-md">
                   <option value="VO">VO</option><option value="VF">VF</option>
                 </select>
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] uppercase tracking-widest text-inksoft">Série</label>
+                <select data-testid="field-series" value={form.series || ""} onChange={(e) => setForm({ ...form, series: e.target.value })}
+                  className="w-full border-2 border-ink px-2 py-2 mt-1 bg-papersoft rounded-md">
+                  <option value="">Aucune série</option>
+                  {seriesList.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+                </select>
+                <p className="text-[10px] text-inksoft mt-1">Gérez la liste dans l'onglet « Séries ».</p>
               </div>
               <div className="col-span-2">
                 <label className="text-[10px] uppercase tracking-widest text-inksoft">Description</label>
