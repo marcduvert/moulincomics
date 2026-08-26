@@ -42,13 +42,16 @@ export default function ImportIA() {
   const [autocrop, setAutocrop] = useState(true);
   const [economic, setEconomic] = useState(true);
   const [withDesc, setWithDesc] = useState(true);
+  const [defaultPrice, setDefaultPrice] = useState("");
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [sessions, setSessions] = useState([]);
   const [showLog, setShowLog] = useState(false);
   const filesRef = useRef([]);
   const autoRef = useRef(false);
+  const priceRef = useRef("");
   useEffect(() => { filesRef.current = files; }, [files]);
   useEffect(() => { autoRef.current = autoImport; }, [autoImport]);
+  useEffect(() => { priceRef.current = defaultPrice; }, [defaultPrice]);
 
   const loadSessions = useCallback(() => {
     api.get("/admin/import/sessions").then((r) => setSessions(r.data)).catch(() => {});
@@ -92,7 +95,7 @@ export default function ImportIA() {
           fd.append("with_desc", withDesc);
           const { data } = await api.post("/admin/import/analyze", fd, { headers: { "Content-Type": "multipart/form-data" } });
           const sel = autoRef.current ? (data.confidence >= 95 && !data.duplicate) : true;
-          patch(myId, { status: "done", result: emptyResult(data), duplicate: data.duplicate,
+          patch(myId, { status: "done", result: { ...emptyResult(data), price: priceRef.current }, duplicate: data.duplicate,
             confidence: data.confidence || 0, selected: sel });
         } catch (e) {
           patch(myId, { status: "error" });
@@ -231,6 +234,12 @@ export default function ImportIA() {
 
         {/* CONTROLS */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
+          <label className="flex items-center gap-2 font-mono text-xs uppercase" title="Prix appliqué par défaut à chaque BD analysée (modifiable ensuite ligne par ligne)">
+            Prix par défaut €
+            <input data-testid="default-price-input" type="number" step="0.01" min="0" value={defaultPrice}
+              onChange={(e) => setDefaultPrice(e.target.value)} placeholder="0"
+              className="w-24 border-2 border-ink rounded-md px-2 py-2 bg-paper outline-none" />
+          </label>
           <button onClick={analyzeAll} disabled={analyzing || !files.length} data-testid="analyze-btn"
             className="flex items-center gap-2 bg-comicred text-paper font-mono text-xs uppercase tracking-widest px-5 py-3 rounded-md border-2 border-ink hover:bg-ink transition-colors disabled:opacity-40">
             {analyzing ? <><Loader2 size={14} className="animate-spin" /> Analyse…</> : <><Sparkles size={14} /> Analyser les BD</>}
