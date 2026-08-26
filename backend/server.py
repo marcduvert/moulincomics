@@ -10,6 +10,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import logging
 import uuid
+import hashlib
 import requests
 from pydantic import BaseModel, Field, BeforeValidator, ConfigDict
 from typing import List, Optional, Annotated, Any
@@ -417,6 +418,171 @@ async def analyze_cover(file: UploadFile = File(...), admin: dict = Depends(get_
     fields["cover_path"] = result["path"]
     fields["cover_url"] = f"/api/files/{result['path']}"
     return fields
+
+# ===== IMPORT INTELLIGENT (batch) =====
+async def _run_import_analysis(b64: str) -> dict:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+    system = ("Tu es un expert en comics et bandes dessinées pour le comic shop Moulin Comics "
+              "(VO US et VF Lug/Semic : Strange, Nova, Titans, Batman, Spider-Man, X-Men, Superman, Hulk...). "
+              "Tu analyses des couvertures. Tu n'inventes JAMAIS une information non lisible : "
+              "dans ce cas tu renvoies la chaîne 'INCONNU' (ou 'À VÉRIFIER' pour la langue). "
+              "Réponds STRICTEMENT en JSON valide sans texte autour.")
+    instructions = (
+        "Analyse cette couverture et renvoie un objet JSON avec EXACTEMENT ces clés :\n"
+        '{"title": str, "series": str, "issue": str, "publisher": str, "author": str, '
+        '"year": str, "language": "Français"|"Anglais"|"À vérifier", "country": str, '
+        '"category": "VF"|"VO", "confidence": int (0-100), "series_uncertain": bool}\n'
+        "Règles STRICTES:\n"
+        "- title = titre complet visible (série + n° + sous-titre si présent).\n"
+        "- series = NOM DE LA SÉRIE SEULE (ex: 'The Incredible Hulk #355 – Wildest Dreams' -> series='Hulk').\n"
+        "- issue = numéro seul (ex '355'). Si absent -> 'INCONNU'.\n"
+        "- category = 'VO' si édition version originale anglaise/US, 'VF' si édition française.\n"
+        "- language basé sur le texte visible: 'The Incredible Hulk' -> Anglais/VO ; 'Les aventures de' -> Français/VF. "
+        "Si incertain -> 'À vérifier'.\n"
+        "- N'invente NI l'année, NI le numéro, NI l'auteur, NI l'éditeur, NI l'édition. Mets 'INCONNU' si non lisible.\n"
+        "- confidence = ton niveau de certitude sur l'IDENTIFICATION de la BD (pas le prix), entier 0-100.\n"
+        "- series_uncertain = true si le nom de série est incertain.\n"
+        "Ne renvoie RIEN d'autre que le JSON."
+    )
+    chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=str(uuid.uuid4()),
+                   system_message=system).with_model("openai", "gpt-5.4")
+    raw = await chat.send_message(UserMessage(text=instructions, file_contents=[ImageContent(image_base64=b64)]))
+    import json as _json
+    text = raw if isinstance(raw, str) else str(raw)
+    s, e = text.find("{"), text.rfind("}")
+    if s != -1 and e != -1:
+        try:
+            return _json.loads(text[s:e + 1])
+        except Exception:
+            return {}
+    return {}
+
+async def _find_duplicate(series: str, issue: str, category: str, publisher: str, year: str):
+    if not series or series in ("INCONNU", "À VÉRIFIER") or not issue or issue == "INCONNU":
+        return None
+    query = {"series": {"$regex": f"^{series}$", "$options": "i"}, "issue": str(issue)}
+    if category:
+        query["category"] = category
+    doc = await db.products.find_one(query)
+    if doc:
+        return {"id": str(doc["_id"]), "title": doc.get("title", "")}
+    return None
+
+@api.post("/admin/import/analyze")
+async def import_analyze(file: UploadFile = File(...), admin: dict = Depends(get_current_admin)):
+    import base64
+    ext = (file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "bin")
+    if ext not in MIME_TYPES:
+        raise HTTPException(400, "Format non supporté (jpg, jpeg, png, webp)")
+    data = await file.read()
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(400, "Image trop lourde (max 10 Mo)")
+    content_type = file.content_type or MIME_TYPES[ext]
+    digest = hashlib.sha256(data).hexdigest()
+
+    cached = await db.analysis_cache.find_one({"hash": digest})
+    if cached:
+        res = dict(cached["result"])
+        res["cached"] = True
+        res["hash"] = digest
+        res["filename"] = file.filename
+        res["duplicate"] = await _find_duplicate(res.get("series", ""), res.get("issue", ""),
+                                                  res.get("category", ""), res.get("publisher", ""), res.get("year", ""))
+        return res
+
+    # store image once
+    path = f"{APP_NAME}/covers/{uuid.uuid4()}.{ext}"
+    stored = put_object(path, data, content_type)
+    await db.files.insert_one({"storage_path": stored["path"], "original_filename": file.filename,
+                               "content_type": content_type, "created_at": datetime.now(timezone.utc).isoformat()})
+    b64 = base64.b64encode(data).decode()
+    try:
+        fields = await _run_import_analysis(b64)
+    except Exception as ex:
+        logger.error(f"import analyze LLM error: {ex}")
+        raise HTTPException(502, "Analyse IA échouée")
+
+    result = {
+        "title": fields.get("title", ""), "series": fields.get("series", ""),
+        "issue": fields.get("issue", ""), "publisher": fields.get("publisher", ""),
+        "author": fields.get("author", ""), "year": fields.get("year", ""),
+        "language": fields.get("language", "À vérifier"),
+        "country": fields.get("country", ""),
+        "category": "VF" if fields.get("category") == "VF" else "VO",
+        "confidence": int(fields.get("confidence", 0)) if str(fields.get("confidence", "")).isdigit() else 0,
+        "series_uncertain": bool(fields.get("series_uncertain", False)),
+        "cover_path": stored["path"], "cover_url": f"/api/files/{stored['path']}",
+    }
+    await db.analysis_cache.insert_one({"hash": digest, "result": result,
+                                        "created_at": datetime.now(timezone.utc).isoformat()})
+    result["cached"] = False
+    result["hash"] = digest
+    result["filename"] = file.filename
+    result["duplicate"] = await _find_duplicate(result["series"], result["issue"],
+                                                result["category"], result["publisher"], result["year"])
+    return result
+
+class ImportItem(BaseModel):
+    title: str = ""
+    author: str = ""
+    series: str = ""
+    publisher: str = ""
+    category: str = "VO"
+    price: float = 0.0
+    stock: int = 1
+    condition: str = "Bon état"
+    year: str = ""
+    issue: str = ""
+    description: str = ""
+    cover_image: str = ""
+
+class BulkCreateBody(BaseModel):
+    items: List[ImportItem]
+
+@api.post("/admin/import/bulk-create")
+async def import_bulk_create(body: BulkCreateBody, admin: dict = Depends(get_current_admin)):
+    created = 0
+    series_seen = set()
+    for item in body.items:
+        data = item.model_dump()
+        # normalize INCONNU/À VÉRIFIER placeholders
+        for k in ("series", "issue", "publisher", "author", "year"):
+            if str(data.get(k, "")).strip().upper() in ("INCONNU", "À VÉRIFIER", "A VERIFIER"):
+                data[k] = ""
+        prod = Product(**data).model_dump(by_alias=True, exclude={"id"})
+        prod["created_at"] = prod["created_at"].isoformat()
+        await db.products.insert_one(prod)
+        created += 1
+        s = data.get("series", "").strip()
+        if s and s not in series_seen:
+            series_seen.add(s)
+            if not await db.series_list.find_one({"name": s}):
+                await db.series_list.insert_one({"name": s, "created_at": datetime.now(timezone.utc).isoformat()})
+    return {"created": created}
+
+class ImportSessionBody(BaseModel):
+    total_photos: int = 0
+    analyzed: int = 0
+    imported: int = 0
+    errors: int = 0
+    duplicates: int = 0
+
+@api.post("/admin/import/session")
+async def save_import_session(body: ImportSessionBody, admin: dict = Depends(get_current_admin)):
+    doc = body.model_dump()
+    doc["date"] = datetime.now(timezone.utc).isoformat()
+    res = await db.import_sessions.insert_one(doc)
+    doc["id"] = str(res.inserted_id)
+    return doc
+
+@api.get("/admin/import/sessions")
+async def list_import_sessions(admin: dict = Depends(get_current_admin)):
+    docs = await db.import_sessions.find().sort("date", -1).to_list(50)
+    out = []
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+        out.append(d)
+    return out
 
 @api.get("/admin/orders")
 async def list_orders(admin: dict = Depends(get_current_admin)):

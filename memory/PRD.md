@@ -23,6 +23,8 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Le gérant (admin) gérant son inventaire et suivant les commandes.
 
 ## Implemented (2026-06)
+### Import intelligent IA (batch) — 2026
+- Module `/admin/import` (bouton "IMPORT INTELLIGENT (IA)" dans l'admin): sélection multi-photos + drag&drop + miniatures, analyse IA par lots (OpenAI gpt-5.4 vision, concurrence 5) avec progression et reprise après erreur, tableau vérifiable éditable, score de confiance 0-100 (🟢🟡🔴), détection doublons (série+n°+cat), cache par hash SHA-256 (anti-recalcul coût IA), import sélectif (tout/aucun/fiables) + option auto ≥95%, valeurs par défaut (prix 0, stock 1, Bon état), photo analysée = couverture produit, journal des sessions. Endpoints `/api/admin/import/{analyze,bulk-create,session,sessions}`. Réutilise le modèle Product, l'object storage et l'auth admin existants — aucun système parallèle.
 - Storefront: Home kinetic (hero line-reveal + parallax), marquees, sélection featured, manifeste, teaser salons.
 - Boutique: filtres catégorie/série/recherche, grille produits.
 - Fiche produit: spotlight sticky, specs, ajout panier.

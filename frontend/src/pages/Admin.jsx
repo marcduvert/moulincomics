@@ -180,6 +180,10 @@ export default function Admin() {
             <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
               <h1 className="font-display font-black tracking-tighter text-2xl">Inventaire</h1>
               <div className="flex gap-2">
+                <button onClick={() => nav("/admin/import")} data-testid="import-ia-btn"
+                  className="flex items-center gap-2 bg-ink text-paper font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink hover:bg-comicblue transition-colors">
+                  <Sparkles size={14} /> Import intelligent (IA)
+                </button>
                 <label data-testid="smart-add-btn"
                   className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink cursor-pointer transition-colors ${analyzing ? "bg-papersoft" : "bg-comicyellow hover:bg-ink hover:text-paper"}`}>
                   {analyzing ? <><Loader2 size={14} className="animate-spin" /> Analyse…</> : <><Sparkles size={14} /> Ajout intelligent (IA)</>}

@@ -14,6 +14,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 import AdminLogin from "./pages/AdminLogin";
 import Admin from "./pages/Admin";
+import ImportIA from "./pages/ImportIA";
 
 const Storefront = ({ children }) => {
   useLenis();
@@ -36,6 +37,7 @@ const Layout = () => {
       <Routes>
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/import" element={<ImportIA />} />
       </Routes>
     );
   }
