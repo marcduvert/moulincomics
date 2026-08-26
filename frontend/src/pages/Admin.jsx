@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles } from "lucide-react";
+import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy } from "lucide-react";
 import { api, fmtPrice, API } from "../lib/api";
 
 const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
@@ -29,6 +29,31 @@ export default function Admin() {
     if (fDate && (p.created_at || "").slice(0, 10) !== fDate) return false;
     return true;
   });
+
+  const [selectedIds, setSelectedIds] = useState([]);
+  const toggleSelect = (id) => setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  const allVisibleSelected = filteredProducts.length > 0 && filteredProducts.every((p) => selectedIds.includes(p.id));
+  const toggleSelectAllVisible = () => {
+    if (allVisibleSelected) setSelectedIds((prev) => prev.filter((id) => !filteredProducts.some((p) => p.id === id)));
+    else setSelectedIds((prev) => [...new Set([...prev, ...filteredProducts.map((p) => p.id)])]);
+  };
+  const bulkDelete = async () => {
+    if (!selectedIds.length) return;
+    if (!window.confirm(`Supprimer définitivement ${selectedIds.length} produit(s) sélectionné(s) ?`)) return;
+    try {
+      const { data } = await api.post("/admin/products/bulk-delete", { ids: selectedIds });
+      toast.success(`${data.deleted} produit(s) supprimé(s)`);
+      setSelectedIds([]); load();
+    } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
+  };
+  const dedupe = async () => {
+    if (!window.confirm("Supprimer les doublons ? Le plus ancien exemplaire de chaque BD (même série + n° + catégorie, ou même titre) est conservé.")) return;
+    try {
+      const { data } = await api.post("/admin/products/dedupe");
+      toast.success(data.deleted > 0 ? `${data.deleted} doublon(s) supprimé(s) sur ${data.groups} groupe(s)` : "Aucun doublon trouvé");
+      setSelectedIds([]); load();
+    } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
+  };
 
   const uploadCover = async (file) => {
     if (!file) return;
@@ -224,10 +249,26 @@ export default function Admin() {
                   className="underline hover:text-comicred">Réinitialiser les filtres</button>
               </div>
             )}
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <button onClick={bulkDelete} disabled={!selectedIds.length} data-testid="bulk-delete-btn"
+                className="flex items-center gap-2 bg-comicred text-paper font-mono text-xs uppercase tracking-widest px-4 py-2 rounded-md border-2 border-ink hover:bg-ink transition-colors disabled:opacity-40">
+                <Trash2 size={14} /> Supprimer la sélection ({selectedIds.length})
+              </button>
+              <button onClick={dedupe} data-testid="dedupe-btn"
+                className="flex items-center gap-2 bg-paper font-mono text-xs uppercase tracking-widest px-4 py-2 rounded-md border-2 border-ink hover:bg-comicyellow transition-colors">
+                <Copy size={14} /> Supprimer les doublons
+              </button>
+              {selectedIds.length > 0 && (
+                <button onClick={() => setSelectedIds([])} className="font-mono text-xs uppercase underline hover:text-comicred">Désélectionner tout</button>
+              )}
+            </div>
             <div className="bg-paper border-2 border-ink rounded-md overflow-x-auto">
-              <table className="w-full font-mono text-sm min-w-[800px]">
+              <table className="w-full font-mono text-sm min-w-[840px]">
                 <thead className="bg-ink text-paper text-[11px] uppercase tracking-widest">
                   <tr>
+                    <th className="p-3 w-10 text-center">
+                      <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAllVisible} data-testid="select-all-checkbox" />
+                    </th>
                     <th className="text-left p-3">Titre</th><th className="text-left p-3">Cat.</th>
                     <th className="text-left p-3">Série</th><th className="text-left p-3">Ajouté le</th>
                     <th className="text-right p-3">Prix</th>
@@ -235,9 +276,12 @@ export default function Admin() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProducts.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-inksoft">Aucun produit ne correspond.</td></tr>}
+                  {filteredProducts.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-inksoft">Aucun produit ne correspond.</td></tr>}
                   {filteredProducts.map((p) => (
-                    <tr key={p.id} className="border-b border-ink/15" data-testid={`row-${p.id}`}>
+                    <tr key={p.id} className={`border-b border-ink/15 ${selectedIds.includes(p.id) ? "bg-comicyellow/30" : ""}`} data-testid={`row-${p.id}`}>
+                      <td className="p-3 text-center">
+                        <input type="checkbox" checked={selectedIds.includes(p.id)} onChange={() => toggleSelect(p.id)} data-testid={`select-${p.id}`} />
+                      </td>
                       <td className="p-3 flex items-center gap-2">
                         <img src={p.cover_image} alt="" className="w-8 h-10 object-cover" />
                         <span className="line-clamp-1">{p.title}</span>

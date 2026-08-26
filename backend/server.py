@@ -196,7 +196,7 @@ async def list_products(category: Optional[str] = None, series: Optional[str] = 
         query["$or"] = [{"title": {"$regex": q, "$options": "i"}},
                         {"series": {"$regex": q, "$options": "i"}},
                         {"publisher": {"$regex": q, "$options": "i"}}]
-    docs = await db.products.find(query).sort("created_at", -1).to_list(500)
+    docs = await db.products.find(query).sort("created_at", -1).to_list(5000)
     return [serialize(d) for d in docs]
 
 @api.get("/products/{product_id}")
@@ -338,6 +338,49 @@ async def update_product(product_id: str, body: ProductCreate, admin: dict = Dep
 async def delete_product(product_id: str, admin: dict = Depends(get_current_admin)):
     await db.products.delete_one({"_id": ObjectId(product_id)})
     return {"ok": True}
+
+class BulkDeleteBody(BaseModel):
+    ids: List[str]
+
+@api.post("/admin/products/bulk-delete")
+async def bulk_delete_products(body: BulkDeleteBody, admin: dict = Depends(get_current_admin)):
+    oids = []
+    for i in body.ids:
+        try:
+            oids.append(ObjectId(i))
+        except Exception:
+            pass
+    if not oids:
+        return {"deleted": 0}
+    res = await db.products.delete_many({"_id": {"$in": oids}})
+    return {"deleted": res.deleted_count}
+
+@api.post("/admin/products/dedupe")
+async def dedupe_products(admin: dict = Depends(get_current_admin)):
+    docs = await db.products.find().sort("created_at", 1).to_list(5000)
+    groups: dict = {}
+    for d in docs:
+        series = (d.get("series") or "").strip().lower()
+        issue = (d.get("issue") or "").strip().lower()
+        category = (d.get("category") or "").strip().upper()
+        if series and issue:
+            key = ("si", series, issue, category)
+        else:
+            title = (d.get("title") or "").strip().lower()
+            if not title:
+                continue
+            key = ("t", title, category)
+        groups.setdefault(key, []).append(d)
+    to_delete = []
+    for key, items in groups.items():
+        if len(items) > 1:
+            # keep the oldest (first, already sorted asc by created_at), delete the rest
+            for extra in items[1:]:
+                to_delete.append(extra["_id"])
+    if not to_delete:
+        return {"deleted": 0, "groups": 0}
+    res = await db.products.delete_many({"_id": {"$in": to_delete}})
+    return {"deleted": res.deleted_count, "groups": sum(1 for k, v in groups.items() if len(v) > 1)}
 
 @api.post("/admin/upload")
 async def upload_cover(file: UploadFile = File(...), admin: dict = Depends(get_current_admin)):
