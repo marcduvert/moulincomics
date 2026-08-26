@@ -196,7 +196,8 @@ async def list_products(category: Optional[str] = None, series: Optional[str] = 
         query["$or"] = [{"title": {"$regex": q, "$options": "i"}},
                         {"series": {"$regex": q, "$options": "i"}},
                         {"publisher": {"$regex": q, "$options": "i"}}]
-    docs = await db.products.find(query).sort("created_at", -1).to_list(5000)
+    projection = {"description": 0, "description_en": 0, "description_es": 0}
+    docs = await db.products.find(query, projection).sort("created_at", -1).to_list(5000)
     return [serialize(d) for d in docs]
 
 @api.get("/products/{product_id}")
@@ -906,6 +907,9 @@ async def seed_salons():
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
+    await db.products.create_index("category")
+    await db.products.create_index("series")
+    await db.products.create_index("created_at")
     await seed_admin()
     await seed_products()
     await seed_series()

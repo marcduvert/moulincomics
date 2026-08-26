@@ -1,37 +1,64 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
 import { ProductCard } from "../components/ProductCard";
-import { Reveal } from "../components/Reveal";
+
+// Module-level cache with short TTL: fast navigation, but refreshes so new admin
+// products appear without a hard reload.
+let PRODUCTS_CACHE = null;
+let SERIES_CACHE = null;
+let CACHE_TS = 0;
+const CACHE_TTL = 60000;
+const cacheFresh = () => PRODUCTS_CACHE != null && Date.now() - CACHE_TS < CACHE_TTL;
 
 export default function Shop() {
   const { t } = useLang();
   const CATS = [{ v: "", l: t.shop.all }, { v: "VO", l: "VO" }, { v: "VF", l: "VF" }];
   const [params, setParams] = useSearchParams();
-  const [products, setProducts] = useState([]);
-  const [series, setSeries] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [allProducts, setAllProducts] = useState(PRODUCTS_CACHE || []);
+  const [series, setSeries] = useState(SERIES_CACHE || []);
+  const [loading, setLoading] = useState(!cacheFresh());
   const category = params.get("category") || "";
   const serie = params.get("series") || "";
   const q = params.get("q") || "";
+  const [search, setSearch] = useState(q);
+  const searchTimer = useRef(null);
 
-  useEffect(() => { api.get("/series").then((r) => setSeries(r.data)); }, []);
-
+  // Fetch the full catalogue once (or when cache is stale), then filter client-side.
   useEffect(() => {
-    setLoading(true);
-    const p = {};
-    if (category) p.category = category;
-    if (serie) p.series = serie;
-    if (q) p.q = q;
-    api.get("/products", { params: p }).then((r) => { setProducts(r.data); setLoading(false); });
-  }, [category, serie, q]);
+    api.get("/series").then((r) => { SERIES_CACHE = r.data; setSeries(r.data); }).catch(() => {});
+    if (!cacheFresh()) {
+      api.get("/products").then((r) => { PRODUCTS_CACHE = r.data; CACHE_TS = Date.now(); setAllProducts(r.data); setLoading(false); })
+        .catch(() => setLoading(false));
+    }
+  }, []);
 
   const setParam = (k, v) => {
     const next = new URLSearchParams(params);
     if (v) next.set(k, v); else next.delete(k);
-    setParams(next);
+    setParams(next, { replace: true });
   };
+
+  // Debounced sync of search text -> URL (kept for shareable links); filtering is instant below.
+  const onSearchChange = (val) => {
+    setSearch(val);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => setParam("q", val), 300);
+  };
+
+  const filtered = useMemo(() => {
+    const needle = (search || q).trim().toLowerCase();
+    return allProducts.filter((p) => {
+      if (category && p.category !== category) return false;
+      if (serie && (p.series || "") !== serie) return false;
+      if (needle) {
+        const hay = `${p.title || ""} ${p.series || ""} ${p.publisher || ""}`.toLowerCase();
+        if (!hay.includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [allProducts, category, serie, search, q]);
 
   return (
     <div>
@@ -44,8 +71,8 @@ export default function Shop() {
 
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-8">
         <div className="flex flex-wrap items-center gap-6 mb-8 border-b border-ink/15 pb-6">
-          <input data-testid="search-input" defaultValue={q} placeholder={t.shop.searchPh}
-            onKeyDown={(e) => { if (e.key === "Enter") setParam("q", e.target.value); }}
+          <input data-testid="search-input" value={search} placeholder={t.shop.searchPh}
+            onChange={(e) => onSearchChange(e.target.value)}
             className="flex-1 min-w-[200px] bg-transparent border-2 border-ink px-4 py-2.5 font-mono text-sm outline-none focus:bg-papersoft" />
           <div className="flex gap-2">
             {CATS.map((c) => (
@@ -70,11 +97,11 @@ export default function Shop() {
 
         {loading ? (
           <p className="font-mono text-sm text-inksoft py-20 text-center">{t.shop.loading}</p>
-        ) : products.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <p className="font-mono text-sm text-inksoft py-20 text-center">{t.shop.empty}</p>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {products.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+            {filtered.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
           </div>
         )}
       </div>
