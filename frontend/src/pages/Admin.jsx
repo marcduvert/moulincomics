@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin } from "lucide-react";
+import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles } from "lucide-react";
 import { api, fmtPrice, API } from "../lib/api";
 
 const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
@@ -41,6 +41,29 @@ export default function Admin() {
       toast.success("Image chargée");
     } catch (e) { toast.error(e.response?.data?.detail || "Échec de l'upload"); }
     finally { setUploading(false); }
+  };
+
+  const [analyzing, setAnalyzing] = useState(false);
+  const smartAdd = async (file) => {
+    if (!file) return;
+    setAnalyzing(true);
+    toast.info("Analyse de la couverture par l'IA…");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const { data } = await api.post("/admin/analyze-cover", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      setForm({
+        ...EMPTY,
+        title: data.title || "", author: data.author || "", series: data.series || "",
+        publisher: data.publisher || "", category: data.category === "VF" ? "VF" : "VO",
+        issue: data.issue || "", year: data.year || "", condition: data.condition || "Bon état",
+        description: data.description || "", description_en: data.description_en || "", description_es: data.description_es || "",
+        cover_image: data.cover_url ? `${API.replace(/\/api$/, "")}${data.cover_url}` : "",
+        price: "", stock: 1, featured: false,
+      });
+      toast.success("Champs pré-remplis par l'IA — vérifiez puis enregistrez");
+    } catch (e) { toast.error(e.response?.data?.detail || "L'analyse IA a échoué"); }
+    finally { setAnalyzing(false); }
   };
 
   const load = useCallback(() => {
@@ -154,12 +177,20 @@ export default function Admin() {
 
         {tab === "stock" && (
           <>
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
               <h1 className="font-display font-black tracking-tighter text-2xl">Inventaire</h1>
-              <button onClick={() => setForm({ ...EMPTY })} data-testid="add-product-btn"
-                className="flex items-center gap-2 bg-comicred text-paper font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink hover:bg-ink transition-colors">
-                <Plus size={14} /> Ajouter une BD
-              </button>
+              <div className="flex gap-2">
+                <label data-testid="smart-add-btn"
+                  className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink cursor-pointer transition-colors ${analyzing ? "bg-papersoft" : "bg-comicyellow hover:bg-ink hover:text-paper"}`}>
+                  {analyzing ? <><Loader2 size={14} className="animate-spin" /> Analyse…</> : <><Sparkles size={14} /> Ajout intelligent (IA)</>}
+                  <input data-testid="smart-add-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" className="hidden"
+                    disabled={analyzing} onChange={(e) => { smartAdd(e.target.files?.[0]); e.target.value = ""; }} />
+                </label>
+                <button onClick={() => setForm({ ...EMPTY })} data-testid="add-product-btn"
+                  className="flex items-center gap-2 bg-comicred text-paper font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink hover:bg-ink transition-colors">
+                  <Plus size={14} /> Ajouter une BD
+                </button>
+              </div>
             </div>
             <div className="grid sm:grid-cols-3 gap-3 mb-4 font-mono text-sm">
               <div>

@@ -366,6 +366,58 @@ async def serve_file(path: str):
     return Response(content=data, media_type=ct,
                     headers={"Cache-Control": "public, max-age=31536000"})
 
+@api.post("/admin/analyze-cover")
+async def analyze_cover(file: UploadFile = File(...), admin: dict = Depends(get_current_admin)):
+    import base64, json as _json
+    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+    ext = (file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "bin")
+    if ext not in MIME_TYPES:
+        raise HTTPException(400, "Format non supporté (jpg, png, gif, webp)")
+    data = await file.read()
+    if len(data) > 8 * 1024 * 1024:
+        raise HTTPException(400, "Image trop lourde (max 8 Mo)")
+    content_type = file.content_type or MIME_TYPES[ext]
+    # store cover
+    path = f"{APP_NAME}/covers/{uuid.uuid4()}.{ext}"
+    result = put_object(path, data, content_type)
+    await db.files.insert_one({"storage_path": result["path"], "original_filename": file.filename,
+                               "content_type": content_type, "created_at": datetime.now(timezone.utc).isoformat()})
+    # analyze with vision LLM
+    b64 = base64.b64encode(data).decode()
+    system = ("Tu es un expert en bandes dessinées et comics pour le comic shop Moulin Comics "
+              "(spécialiste VO US et mensuels VF Lug/Semic : Strange, Nova, Titans). "
+              "À partir de la couverture fournie, identifie le comic et réponds STRICTEMENT en JSON valide, sans texte autour.")
+    instructions = (
+        "Analyse cette couverture de comic/BD et renvoie un objet JSON avec EXACTEMENT ces clés :\n"
+        '{"title": str, "series": str, "author": str, "publisher": str, "issue": str, "year": str, '
+        '"category": "VO" ou "VF", "condition": "", '
+        '"description": str (français, 2 phrases, ton passionné de comic shop), '
+        '"description_en": str (traduction anglaise), '
+        '"description_es": str (traduction espagnole)}\n'
+        "Règles: category = 'VO' si édition en version originale (anglais/US, ex. prix en cents/$), "
+        "'VF' si édition française (Lug, Semic, prix en francs/euros, texte français). "
+        "author = scénariste/dessinateur si visible sinon l'éditeur. "
+        "Laisse une chaîne vide si une info est inconnue. Ne mets RIEN d'autre que le JSON."
+    )
+    try:
+        chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=str(uuid.uuid4()),
+                       system_message=system).with_model("openai", "gpt-5.4")
+        raw = await chat.send_message(UserMessage(text=instructions, file_contents=[ImageContent(image_base64=b64)]))
+    except Exception as e:
+        logger.error(f"analyze-cover LLM error: {e}")
+        raise HTTPException(502, "L'analyse IA a échoué. Réessayez ou remplissez manuellement.")
+    text = raw if isinstance(raw, str) else str(raw)
+    s, e = text.find("{"), text.rfind("}")
+    fields = {}
+    if s != -1 and e != -1:
+        try:
+            fields = _json.loads(text[s:e + 1])
+        except Exception:
+            fields = {}
+    fields["cover_path"] = result["path"]
+    fields["cover_url"] = f"/api/files/{result['path']}"
+    return fields
+
 @api.get("/admin/orders")
 async def list_orders(admin: dict = Depends(get_current_admin)):
     docs = await db.payment_transactions.find().sort("created_at", -1).to_list(500)
