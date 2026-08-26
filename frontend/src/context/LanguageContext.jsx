@@ -6,7 +6,7 @@ const T = {
     hero: {
       eyebrow: "Comic Shop · VO & VF · Paris",
       l1: "DES CASES", l2: "QUI VALENT", l3: "DE L'OR.",
-      p: "Moulin Comics — spécialiste de la VO et gardien d'un large stock de mensuels VF : Strange, Nova, Titans. Chinez, réservez, collectionnez. Livraison en Europe disponible.",
+      p: "BD & Comics français et américains — éditions anciennes, collectors et pépites à redécouvrir.",
       cta1: "Explorer le stock", cta2: "Les Spider-Man",
       badgeL: "Est. Moulin Comics", badgeR: "Vol. 01",
     },
