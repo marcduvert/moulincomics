@@ -5,7 +5,7 @@ const T = {
     nav: { shop: "Boutique", vo: "VO", vf: "VF", salons: "Salons" },
     hero: {
       eyebrow: "Comic Shop · VO & VF · Paris",
-      l1: "DES CASES", l2: "QUI VALENT", l3: "DE L'OR.",
+      l1: "Moulin Comics —", l2: "Votre prochaine pièce", l3: "de collection est ici",
       p: "BD & Comics français et américains — éditions anciennes, collectors et pépites à redécouvrir.",
       cta1: "Explorer le stock", cta2: "Les Spider-Man",
       badgeL: "Est. Moulin Comics", badgeR: "Vol. 01",
@@ -62,7 +62,7 @@ const T = {
     nav: { shop: "Shop", vo: "OV", vf: "French", salons: "Events" },
     hero: {
       eyebrow: "Comic Shop · OV & French · Paris",
-      l1: "PANELS", l2: "WORTH THEIR", l3: "WEIGHT IN GOLD.",
+      l1: "Moulin Comics —", l2: "Your next collector's", l3: "piece is here",
       p: "Moulin Comics — original-version specialist and keeper of a vast stock of French monthlies: Strange, Nova, Titans. Browse, reserve, collect. Shipping across Europe available.",
       cta1: "Browse the stock", cta2: "The Spider-Man",
       badgeL: "Est. Moulin Comics", badgeR: "Vol. 01",
@@ -119,7 +119,7 @@ const T = {
     nav: { shop: "Tienda", vo: "VO", vf: "VF", salons: "Salones" },
     hero: {
       eyebrow: "Comic Shop · VO & VF · París",
-      l1: "VIÑETAS", l2: "QUE VALEN", l3: "SU PESO EN ORO.",
+      l1: "Moulin Comics —", l2: "Tu próxima pieza", l3: "de colección está aquí",
       p: "Moulin Comics — especialista en versión original y guardián de un amplio stock de mensuales franceses: Strange, Nova, Titans. Busca, reserva, colecciona. Envíos a toda Europa disponibles.",
       cta1: "Explorar el stock", cta2: "Los Spider-Man",
       badgeL: "Est. Moulin Comics", badgeR: "Vol. 01",
