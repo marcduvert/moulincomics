@@ -661,8 +661,7 @@ async def save_import_session(body: ImportSessionBody, admin: dict = Depends(get
     doc = body.model_dump()
     doc["date"] = datetime.now(timezone.utc).isoformat()
     res = await db.import_sessions.insert_one(doc)
-    doc["id"] = str(res.inserted_id)
-    return doc
+    return {"id": str(res.inserted_id), "date": doc["date"], **body.model_dump()}
 
 @api.get("/admin/import/sessions")
 async def list_import_sessions(admin: dict = Depends(get_current_admin)):
