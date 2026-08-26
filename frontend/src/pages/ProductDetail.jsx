@@ -18,8 +18,12 @@ export default function ProductDetail() {
     window.scrollTo(0, 0);
     api.get(`/products/${id}`).then((r) => {
       setP(r.data);
-      api.get("/products", { params: { category: r.data.category } })
-        .then((rr) => setRelated(rr.data.filter((x) => x.id !== id).slice(0, 4)));
+      if (r.data.series) {
+        api.get("/products", { params: { series: r.data.series } })
+          .then((rr) => setRelated(rr.data.filter((x) => x.id !== id).slice(0, 4)));
+      } else {
+        setRelated([]);
+      }
     });
   }, [id]);
 
