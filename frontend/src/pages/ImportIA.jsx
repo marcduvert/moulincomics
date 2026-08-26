@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { UploadCloud, X, Loader2, Check, AlertTriangle, Trash2, ArrowLeft, Sparkles, CheckCircle2, History } from "lucide-react";
+import { UploadCloud, X, Loader2, Check, AlertTriangle, Trash2, ArrowLeft, Sparkles, CheckCircle2, History, FileDown } from "lucide-react";
 import { api } from "../lib/api";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
@@ -25,8 +25,12 @@ const emptyResult = (data) => ({
   language: data.language || "À vérifier",
   category: data.category === "VF" ? "VF" : "VO",
   price: "", stock: 1, condition: "Bon état",
+  description: data.description || "", description_en: data.description_en || "", description_es: data.description_es || "",
+  model_used: data.model_used || "", cropped: !!data.cropped,
   cover_image: data.cover_url ? `${BACKEND}${data.cover_url}` : "",
 });
+
+const csvEscape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 
 export default function ImportIA() {
   const nav = useNavigate();
@@ -35,6 +39,9 @@ export default function ImportIA() {
   const [analyzing, setAnalyzing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [autoImport, setAutoImport] = useState(false);
+  const [autocrop, setAutocrop] = useState(true);
+  const [economic, setEconomic] = useState(true);
+  const [withDesc, setWithDesc] = useState(true);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [sessions, setSessions] = useState([]);
   const [showLog, setShowLog] = useState(false);
@@ -80,6 +87,9 @@ export default function ImportIA() {
         try {
           const fd = new FormData();
           fd.append("file", f.file);
+          fd.append("autocrop", autocrop);
+          fd.append("economic", economic);
+          fd.append("with_desc", withDesc);
           const { data } = await api.post("/admin/import/analyze", fd, { headers: { "Content-Type": "multipart/form-data" } });
           const sel = autoRef.current ? (data.confidence >= 95 && !data.duplicate) : true;
           patch(myId, { status: "done", result: emptyResult(data), duplicate: data.duplicate,
@@ -109,6 +119,25 @@ export default function ImportIA() {
   const selectAll = (v) => setFiles((prev) => prev.map((f) => (f.status === "done" ? { ...f, selected: v } : f)));
   const selectReliable = () => setFiles((prev) => prev.map((f) => (f.status === "done" ? { ...f, selected: f.confidence >= 95 && !f.duplicate } : f)));
 
+  const exportCSV = () => {
+    if (!doneFiles.length) { toast.error("Rien à exporter"); return; }
+    const cols = ["fichier", "titre", "serie", "numero", "editeur", "auteur", "annee", "langue", "categorie",
+      "prix", "stock", "etat", "confiance", "doublon", "modele", "recadree", "image_url"];
+    const rows = doneFiles.map((f) => [
+      f.file.name, f.result.title, f.result.series, f.result.issue, f.result.publisher, f.result.author,
+      f.result.year, f.result.language, f.result.category, f.result.price || 0, f.result.stock,
+      f.result.condition, f.confidence, f.duplicate ? "OUI" : "non", f.result.model_used,
+      f.result.cropped ? "oui" : "non", f.result.cover_image,
+    ]);
+    const csv = [cols, ...rows].map((r) => r.map(csvEscape).join(",")).join("\r\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `import-bd-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   const importSelected = async () => {
     if (!selectedFiles.length) { toast.error("Aucun produit sélectionné"); return; }
     setImporting(true);
@@ -118,6 +147,8 @@ export default function ImportIA() {
         publisher: f.result.publisher, category: f.result.category,
         price: parseFloat(f.result.price) || 0, stock: parseInt(f.result.stock) || 1,
         condition: f.result.condition || "Bon état", year: f.result.year, issue: f.result.issue,
+        description: f.result.description || "", description_en: f.result.description_en || "",
+        description_es: f.result.description_es || "",
         cover_image: f.result.cover_image,
       }));
       const { data } = await api.post("/admin/import/bulk-create", { items });
@@ -208,6 +239,18 @@ export default function ImportIA() {
             <input type="checkbox" checked={autoImport} onChange={(e) => setAutoImport(e.target.checked)} data-testid="auto-import-toggle" />
             Importer auto les identifications ≥ 95 %
           </label>
+          <label className="flex items-center gap-2 font-mono text-xs uppercase cursor-pointer" title="Détecte et redresse la couverture sur les photos prises de travers">
+            <input type="checkbox" checked={autocrop} onChange={(e) => setAutocrop(e.target.checked)} data-testid="autocrop-toggle" />
+            Recadrage auto
+          </label>
+          <label className="flex items-center gap-2 font-mono text-xs uppercase cursor-pointer" title="Modèle rapide et moins cher d'abord ; modèle puissant seulement si la confiance est faible">
+            <input type="checkbox" checked={economic} onChange={(e) => setEconomic(e.target.checked)} data-testid="economic-toggle" />
+            Mode économique
+          </label>
+          <label className="flex items-center gap-2 font-mono text-xs uppercase cursor-pointer" title="Génère les descriptions FR/EN/ES pendant l'analyse">
+            <input type="checkbox" checked={withDesc} onChange={(e) => setWithDesc(e.target.checked)} data-testid="withdesc-toggle" />
+            Descriptions FR/EN/ES
+          </label>
           <button onClick={() => setShowLog(!showLog)} className="ml-auto flex items-center gap-2 font-mono text-xs uppercase border-2 border-ink px-3 py-2 rounded-md hover:bg-paper">
             <History size={14} /> Journal ({sessions.length})
           </button>
@@ -251,6 +294,7 @@ export default function ImportIA() {
               <button onClick={() => selectAll(true)} className="border border-ink px-2 py-1 hover:bg-paper">Tout sélectionner</button>
               <button onClick={() => selectAll(false)} className="border border-ink px-2 py-1 hover:bg-paper">Tout désélectionner</button>
               <button onClick={selectReliable} className="border border-ink px-2 py-1 hover:bg-paper">Uniquement fiables (≥95%)</button>
+              <button onClick={exportCSV} data-testid="export-csv-btn" className="flex items-center gap-1 border border-ink px-2 py-1 hover:bg-paper"><FileDown size={13} /> Export CSV</button>
               <button onClick={importSelected} disabled={importing || !selectedFiles.length} data-testid="import-selected-btn"
                 className="ml-auto flex items-center gap-2 bg-ink text-paper uppercase tracking-widest px-4 py-2 rounded-md border-2 border-ink hover:bg-comicred transition-colors disabled:opacity-40">
                 {importing ? <><Loader2 size={14} className="animate-spin" /> Import…</> : <><CheckCircle2 size={14} /> Importer {selectedFiles.length} produits</>}

@@ -5,7 +5,7 @@ import os
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File, Form
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import logging
@@ -420,34 +420,93 @@ async def analyze_cover(file: UploadFile = File(...), admin: dict = Depends(get_
     return fields
 
 # ===== IMPORT INTELLIGENT (batch) =====
-async def _run_import_analysis(b64: str) -> dict:
-    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+def auto_crop_cover(data: bytes):
+    """Détecte le plus grand quadrilatère (la couverture) et corrige la perspective.
+    Renvoie (jpeg_bytes, 'jpg') si un recadrage fiable est trouvé, sinon (data, None)."""
+    import cv2
+    import numpy as np
+    try:
+        arr = np.frombuffer(data, np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            return data, None
+        h, w = img.shape[:2]
+        max_dim = 1400
+        scale = min(1.0, max_dim / max(h, w))
+        small = cv2.resize(img, (int(w * scale), int(h * scale))) if scale < 1 else img.copy()
+        gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+        gray = cv2.GaussianBlur(gray, (5, 5), 0)
+        edges = cv2.Canny(gray, 50, 150)
+        edges = cv2.dilate(edges, np.ones((3, 3), np.uint8), iterations=2)
+        cnts, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not cnts:
+            return data, None
+        area_img = small.shape[0] * small.shape[1]
+        best = None
+        for c in sorted(cnts, key=cv2.contourArea, reverse=True)[:5]:
+            peri = cv2.arcLength(c, True)
+            approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+            if len(approx) == 4 and cv2.contourArea(approx) > 0.20 * area_img:
+                best = approx.reshape(4, 2).astype("float32")
+                break
+        if best is None:
+            return data, None
+        best /= scale  # back to full-res coords
+        # order points: tl, tr, br, bl
+        s = best.sum(axis=1); d = np.diff(best, axis=1)
+        rect = np.array([best[np.argmin(s)], best[np.argmin(d)],
+                         best[np.argmax(s)], best[np.argmax(d)]], dtype="float32")
+        (tl, tr, br, bl) = rect
+        wA = np.linalg.norm(br - bl); wB = np.linalg.norm(tr - tl)
+        hA = np.linalg.norm(tr - br); hB = np.linalg.norm(tl - bl)
+        mw, mh = int(max(wA, wB)), int(max(hA, hB))
+        if mw < 200 or mh < 200:
+            return data, None
+        dst = np.array([[0, 0], [mw - 1, 0], [mw - 1, mh - 1], [0, mh - 1]], dtype="float32")
+        M = cv2.getPerspectiveTransform(rect, dst)
+        warped = cv2.warpPerspective(img, M, (mw, mh))
+        ok, buf = cv2.imencode(".jpg", warped, [cv2.IMWRITE_JPEG_QUALITY, 90])
+        if not ok:
+            return data, None
+        return buf.tobytes(), "jpg"
+    except Exception:
+        return data, None
+
+def _analysis_prompt(with_desc: bool):
     system = ("Tu es un expert en comics et bandes dessinées pour le comic shop Moulin Comics "
               "(VO US et VF Lug/Semic : Strange, Nova, Titans, Batman, Spider-Man, X-Men, Superman, Hulk...). "
               "Tu analyses des couvertures. Tu n'inventes JAMAIS une information non lisible : "
               "dans ce cas tu renvoies la chaîne 'INCONNU' (ou 'À VÉRIFIER' pour la langue). "
               "Réponds STRICTEMENT en JSON valide sans texte autour.")
-    instructions = (
-        "Analyse cette couverture et renvoie un objet JSON avec EXACTEMENT ces clés :\n"
-        '{"title": str, "series": str, "issue": str, "publisher": str, "author": str, '
-        '"year": str, "language": "Français"|"Anglais"|"À vérifier", "country": str, '
-        '"category": "VF"|"VO", "confidence": int (0-100), "series_uncertain": bool}\n'
+    keys = ('{"title": str, "series": str, "issue": str, "publisher": str, "author": str, '
+            '"year": str, "language": "Français"|"Anglais"|"À vérifier", "country": str, '
+            '"category": "VF"|"VO", "confidence": int, "series_uncertain": bool')
+    if with_desc:
+        keys += (', "description": str (français, 2 phrases, ton passionné de comic shop), '
+                 '"description_en": str (anglais), "description_es": str (espagnol)')
+    keys += "}"
+    rules = (
         "Règles STRICTES:\n"
         "- title = titre complet visible (série + n° + sous-titre si présent).\n"
         "- series = NOM DE LA SÉRIE SEULE (ex: 'The Incredible Hulk #355 – Wildest Dreams' -> series='Hulk').\n"
         "- issue = numéro seul (ex '355'). Si absent -> 'INCONNU'.\n"
         "- category = 'VO' si édition version originale anglaise/US, 'VF' si édition française.\n"
-        "- language basé sur le texte visible: 'The Incredible Hulk' -> Anglais/VO ; 'Les aventures de' -> Français/VF. "
-        "Si incertain -> 'À vérifier'.\n"
-        "- N'invente NI l'année, NI le numéro, NI l'auteur, NI l'éditeur, NI l'édition. Mets 'INCONNU' si non lisible.\n"
-        "- confidence = ton niveau de certitude sur l'IDENTIFICATION de la BD (pas le prix), entier 0-100.\n"
-        "- series_uncertain = true si le nom de série est incertain.\n"
-        "Ne renvoie RIEN d'autre que le JSON."
-    )
-    chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=str(uuid.uuid4()),
-                   system_message=system).with_model("openai", "gpt-5.4")
-    raw = await chat.send_message(UserMessage(text=instructions, file_contents=[ImageContent(image_base64=b64)]))
+        "- language: 'The Incredible Hulk' -> Anglais/VO ; 'Les aventures de' -> Français/VF. Si incertain -> 'À vérifier'.\n"
+        "- N'invente NI l'année, NI le numéro, NI l'auteur, NI l'éditeur. Mets 'INCONNU' si non lisible.\n"
+        "- confidence = certitude sur l'IDENTIFICATION (pas le prix), entier 0-100.\n"
+        "- series_uncertain = true si le nom de série est incertain.\n")
+    if with_desc:
+        rules += "- description/description_en/description_es basées uniquement sur ce qui est identifiable.\n"
+    rules += "Ne renvoie RIEN d'autre que le JSON."
+    return system, ("Analyse cette couverture et renvoie un objet JSON avec EXACTEMENT ces clés :\n" + keys + "\n" + rules)
+
+async def _analyze_with_model(b64: str, model: str, with_desc: bool) -> dict:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
     import json as _json
+    system, instructions = _analysis_prompt(with_desc)
+    chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=str(uuid.uuid4()),
+                   system_message=system).with_model("openai", model)
+    raw = await chat.send_message(UserMessage(text=instructions, file_contents=[ImageContent(image_base64=b64)]))
     text = raw if isinstance(raw, str) else str(raw)
     s, e = text.find("{"), text.rfind("}")
     if s != -1 and e != -1:
@@ -456,6 +515,10 @@ async def _run_import_analysis(b64: str) -> dict:
         except Exception:
             return {}
     return {}
+
+CHEAP_MODEL = "gpt-5.4-mini"
+STRONG_MODEL = "gpt-5.4"
+ESCALATE_BELOW = 80
 
 async def _find_duplicate(series: str, issue: str, category: str, publisher: str, year: str):
     if not series or series in ("INCONNU", "À VÉRIFIER") or not issue or issue == "INCONNU":
@@ -469,7 +532,10 @@ async def _find_duplicate(series: str, issue: str, category: str, publisher: str
     return None
 
 @api.post("/admin/import/analyze")
-async def import_analyze(file: UploadFile = File(...), admin: dict = Depends(get_current_admin)):
+async def import_analyze(file: UploadFile = File(...),
+                         autocrop: bool = Form(True), economic: bool = Form(True),
+                         with_desc: bool = Form(True),
+                         admin: dict = Depends(get_current_admin)):
     import base64
     ext = (file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "bin")
     if ext not in MIME_TYPES:
@@ -490,14 +556,30 @@ async def import_analyze(file: UploadFile = File(...), admin: dict = Depends(get
                                                   res.get("category", ""), res.get("publisher", ""), res.get("year", ""))
         return res
 
-    # store image once
-    path = f"{APP_NAME}/covers/{uuid.uuid4()}.{ext}"
-    stored = put_object(path, data, content_type)
+    # optional auto-crop / deskew of the cover
+    store_bytes, store_ext, store_ct = data, ext, content_type
+    if autocrop:
+        cropped, new_ext = auto_crop_cover(data)
+        if new_ext:
+            store_bytes, store_ext, store_ct = cropped, new_ext, MIME_TYPES[new_ext]
+
+    # store image once (the cropped version becomes the cover)
+    path = f"{APP_NAME}/covers/{uuid.uuid4()}.{store_ext}"
+    stored = put_object(path, store_bytes, store_ct)
     await db.files.insert_one({"storage_path": stored["path"], "original_filename": file.filename,
-                               "content_type": content_type, "created_at": datetime.now(timezone.utc).isoformat()})
-    b64 = base64.b64encode(data).decode()
+                               "content_type": store_ct, "created_at": datetime.now(timezone.utc).isoformat()})
+    b64 = base64.b64encode(store_bytes).decode()
     try:
-        fields = await _run_import_analysis(b64)
+        if economic:
+            model_used = CHEAP_MODEL
+            fields = await _analyze_with_model(b64, CHEAP_MODEL, with_desc)
+            conf = int(fields.get("confidence", 0)) if str(fields.get("confidence", "")).isdigit() else 0
+            if conf < ESCALATE_BELOW:
+                model_used = STRONG_MODEL
+                fields = await _analyze_with_model(b64, STRONG_MODEL, with_desc)
+        else:
+            model_used = STRONG_MODEL
+            fields = await _analyze_with_model(b64, STRONG_MODEL, with_desc)
     except Exception as ex:
         logger.error(f"import analyze LLM error: {ex}")
         raise HTTPException(502, "Analyse IA échouée")
@@ -511,6 +593,11 @@ async def import_analyze(file: UploadFile = File(...), admin: dict = Depends(get
         "category": "VF" if fields.get("category") == "VF" else "VO",
         "confidence": int(fields.get("confidence", 0)) if str(fields.get("confidence", "")).isdigit() else 0,
         "series_uncertain": bool(fields.get("series_uncertain", False)),
+        "description": fields.get("description", ""),
+        "description_en": fields.get("description_en", ""),
+        "description_es": fields.get("description_es", ""),
+        "cropped": bool(store_ext != ext or autocrop and store_bytes is not data),
+        "model_used": model_used,
         "cover_path": stored["path"], "cover_url": f"/api/files/{stored['path']}",
     }
     await db.analysis_cache.insert_one({"hash": digest, "result": result,
@@ -534,6 +621,8 @@ class ImportItem(BaseModel):
     year: str = ""
     issue: str = ""
     description: str = ""
+    description_en: str = ""
+    description_es: str = ""
     cover_image: str = ""
 
 class BulkCreateBody(BaseModel):
