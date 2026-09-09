@@ -32,6 +32,16 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Page Salons (agenda Europe).
 - Admin: login JWT, CRUD inventaire, onglet commandes.
 - 12 produits seed (VO + VF Strange/Nova/Titans).
+- Admin: login JWT, CRUD inventaire, onglet commandes, séries, salons, suppression groupée/dédoublonnage.
+- Multilingue UI FR/EN/ES (LanguageContext) + descriptions produits FR/EN/ES.
+
+### Contenu éditorial administrable + multilingue — 2026-09
+- Collection MongoDB indépendante `site_content` (document key='home'), sections : hero, maison (3 blocs), salons, villes (marquee), footer.
+- Page admin `/admin/content` ("Contenu du site") : édition structurée par onglets, upload d'images éditoriales via l'object storage existant, villes réordonnables.
+- Versions par langue : overrides optionnels `en`/`es` imbriqués par section. Le français est la base ; tout champ de traduction vide retombe sur le FR (admin) puis sur les traductions statiques du site (public). Bandeau des villes commun à toutes les langues.
+- Endpoints : `GET /api/content` (public), `PUT /api/admin/content/{section}` (FR), `PUT /api/admin/content/{section}/{lang}` (en|es, champs vides = retour au FR).
+- Frontend : `ContentContext` + localisation client dans `Home.jsx` (helper `localized()`) et `Footer.jsx`. Design général inchangé, catalogue non touché.
+- Tests : iteration_5.json — 9/9 backend pytest + flux e2e Playwright (édition EN/ES, persistance, fallback, non-régression catalogue).
 
 ## Backlog
 - P1: upload d'images de couverture (object storage) au lieu d'URL.

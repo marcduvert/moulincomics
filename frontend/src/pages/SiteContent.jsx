@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Upload, Loader2, Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowLeft, Save, Upload, Loader2, Plus, Trash2, ArrowUp, ArrowDown, Languages } from "lucide-react";
 import { api } from "../lib/api";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
 const TABS = [["hero", "Accueil"], ["maison", "La Maison"], ["salons", "Salons"], ["footer", "Footer"]];
+const LANGS = [["fr", "Français"], ["en", "English"], ["es", "Español"]];
 
 const Field = ({ label, value, onChange, textarea, placeholder }) => (
   <div className="mb-4">
@@ -55,6 +56,7 @@ export default function SiteContent() {
   const nav = useNavigate();
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState("hero");
+  const [lang, setLang] = useState("fr");
   const [c, setC] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -65,15 +67,22 @@ export default function SiteContent() {
     }).catch(() => nav("/admin/login"));
   }, [nav]);
 
-  const setSection = (sec, obj) => setC((prev) => ({ ...prev, [sec]: obj }));
   const patch = (sec, k, v) => setC((prev) => ({ ...prev, [sec]: { ...prev[sec], [k]: v } }));
+  const val = (sec, k) => (lang === "fr" ? c?.[sec]?.[k] : c?.[sec]?.[lang]?.[k]) ?? "";
+  const ph = (sec, k) => (lang === "fr" ? undefined : (c?.[sec]?.[k] || ""));
+  const setField = (sec, k, v) => {
+    if (lang === "fr") patch(sec, k, v);
+    else patch(sec, lang, { ...(c[sec]?.[lang] || {}), [k]: v });
+  };
 
   const save = async (sec) => {
     setSaving(true);
     try {
-      const { data } = await api.put(`/admin/content/${sec}`, c[sec]);
+      const url = lang === "fr" ? `/admin/content/${sec}` : `/admin/content/${sec}/${lang}`;
+      const body = lang === "fr" ? c[sec] : (c[sec]?.[lang] || {});
+      const { data } = await api.put(url, body);
       setC(data);
-      toast.success("Modifications enregistrées");
+      toast.success(lang === "fr" ? "Modifications enregistrées" : `Traduction ${lang.toUpperCase()} enregistrée`);
     } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
     finally { setSaving(false); }
   };
@@ -81,10 +90,11 @@ export default function SiteContent() {
   if (!ready || !c) return <div className="min-h-screen bg-ink text-paper flex items-center justify-center font-mono text-sm">Chargement…</div>;
 
   const SaveBar = ({ sec }) => (
-    <div className="flex gap-2 mt-2">
+    <div className="flex gap-2 mt-2 flex-wrap">
       <button onClick={() => save(sec)} disabled={saving} data-testid={`save-${sec}`}
         className="flex items-center gap-2 bg-ink text-paper font-mono text-xs uppercase tracking-widest px-5 py-3 rounded-md border-2 border-ink hover:bg-comicred transition-colors disabled:opacity-40">
-        {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Enregistrer
+        {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+        Enregistrer{lang !== "fr" ? ` (${lang.toUpperCase()})` : ""}
       </button>
       <a href="/" target="_blank" rel="noreferrer" className="flex items-center font-mono text-xs uppercase px-4 py-3 border-2 border-ink rounded-md hover:bg-papersoft">Voir le site ↗</a>
     </div>
@@ -96,6 +106,13 @@ export default function SiteContent() {
     if (j < 0 || j >= arr.length) return;
     [arr[i], arr[j]] = [arr[j], arr[i]]; setC((p) => ({ ...p, villes: arr }));
   };
+
+  const mblocks = lang === "fr" ? (c.maison?.blocks || []) : (c.maison?.[lang]?.blocks || c.maison?.blocks || []);
+  const setBlocks = (bl) => {
+    if (lang === "fr") patch("maison", "blocks", bl);
+    else patch("maison", lang, { ...(c.maison?.[lang] || {}), blocks: bl });
+  };
+  const frImg = (sec) => c?.[sec]?.image || "";
 
   return (
     <div className="min-h-screen bg-papersoft">
@@ -112,27 +129,42 @@ export default function SiteContent() {
       </header>
 
       <div className="max-w-[1100px] mx-auto px-5 py-8">
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-4">
           {TABS.map(([k, l]) => (
             <button key={k} onClick={() => setTab(k)} data-testid={`content-tab-${k}`}
               className={`font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink ${tab === k ? "bg-ink text-paper" : "bg-paper"}`}>{l}</button>
           ))}
         </div>
 
+        <div className="flex flex-wrap items-center gap-2 mb-6" data-testid="content-lang-switcher">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-inksoft flex items-center gap-1">
+            <Languages size={12} /> Langue du contenu
+          </span>
+          {LANGS.map(([code, label]) => (
+            <button key={code} onClick={() => setLang(code)} data-testid={`content-lang-${code}`}
+              className={`font-mono text-xs uppercase tracking-widest px-3 py-1.5 rounded-md border-2 border-ink ${lang === code ? "bg-comicred text-paper" : "bg-paper"}`}>{label}</button>
+          ))}
+        </div>
+        {lang !== "fr" && (
+          <p className="font-mono text-xs text-inksoft mb-4 border-l-2 border-comicred pl-3" data-testid="lang-note">
+            Vous éditez la traduction {lang.toUpperCase()}. Les champs laissés vides reprennent automatiquement le texte français, rappelé en grisé dans chaque champ.
+          </p>
+        )}
+
         <div className="bg-paper border-2 border-ink rounded-md p-6">
           {tab === "hero" && (
             <>
               <h2 className="font-display font-black text-xl mb-4">Page d'accueil — Hero</h2>
-              <Field label="Petit texte au-dessus du titre (eyebrow)" value={c.hero.eyebrow} onChange={(v) => patch("hero", "eyebrow", v)} />
-              <Field label="Grand titre (une ligne = un retour à la ligne ; la dernière ligne est en rouge)" textarea value={c.hero.title} onChange={(v) => patch("hero", "title", v)} />
-              <Field label="Texte de présentation" textarea value={c.hero.description} onChange={(v) => patch("hero", "description", v)} />
+              <Field label="Petit texte au-dessus du titre (eyebrow)" value={val("hero", "eyebrow")} onChange={(v) => setField("hero", "eyebrow", v)} placeholder={ph("hero", "eyebrow")} />
+              <Field label="Grand titre (une ligne = un retour à la ligne ; la dernière ligne est en rouge)" textarea value={val("hero", "title")} onChange={(v) => setField("hero", "title", v)} placeholder={ph("hero", "title")} />
+              <Field label="Texte de présentation" textarea value={val("hero", "description")} onChange={(v) => setField("hero", "description", v)} placeholder={ph("hero", "description")} />
               <div className="grid sm:grid-cols-2 gap-4">
-                <Field label="Bouton principal — texte" value={c.hero.primary_text} onChange={(v) => patch("hero", "primary_text", v)} />
-                <Field label="Bouton principal — lien" value={c.hero.primary_url} onChange={(v) => patch("hero", "primary_url", v)} placeholder="/shop" />
-                <Field label="Deuxième bouton — texte" value={c.hero.secondary_text} onChange={(v) => patch("hero", "secondary_text", v)} />
-                <Field label="Deuxième bouton — lien" value={c.hero.secondary_url} onChange={(v) => patch("hero", "secondary_url", v)} placeholder="/shop?series=..." />
+                <Field label="Bouton principal — texte" value={val("hero", "primary_text")} onChange={(v) => setField("hero", "primary_text", v)} placeholder={ph("hero", "primary_text")} />
+                <Field label="Bouton principal — lien" value={val("hero", "primary_url")} onChange={(v) => setField("hero", "primary_url", v)} placeholder={ph("hero", "primary_url") || "/shop"} />
+                <Field label="Deuxième bouton — texte" value={val("hero", "secondary_text")} onChange={(v) => setField("hero", "secondary_text", v)} placeholder={ph("hero", "secondary_text")} />
+                <Field label="Deuxième bouton — lien" value={val("hero", "secondary_url")} onChange={(v) => setField("hero", "secondary_url", v)} placeholder={ph("hero", "secondary_url") || "/shop?series=..."} />
               </div>
-              <ImageField label="Image principale" value={c.hero.image} onChange={(v) => patch("hero", "image", v)} />
+              <ImageField label="Image principale" value={val("hero", "image") || (lang !== "fr" ? frImg("hero") : "")} onChange={(v) => setField("hero", "image", v)} />
               <SaveBar sec="hero" />
             </>
           )}
@@ -140,14 +172,14 @@ export default function SiteContent() {
           {tab === "maison" && (
             <>
               <h2 className="font-display font-black text-xl mb-4">Section « La Maison » — 3 blocs</h2>
-              {(c.maison.blocks || []).map((b, i) => (
+              {mblocks.map((b, i) => (
                 <div key={i} className="border-2 border-ink rounded-md p-4 mb-4">
                   <p className="font-mono text-[10px] uppercase text-comicred mb-2">Bloc {i + 1}</p>
                   <div className="grid sm:grid-cols-4 gap-3">
-                    <div className="sm:col-span-1"><Field label="Numéro" value={b.n} onChange={(v) => { const bl = [...c.maison.blocks]; bl[i] = { ...bl[i], n: v }; setSection("maison", { blocks: bl }); }} /></div>
-                    <div className="sm:col-span-3"><Field label="Titre" value={b.title} onChange={(v) => { const bl = [...c.maison.blocks]; bl[i] = { ...bl[i], title: v }; setSection("maison", { blocks: bl }); }} /></div>
+                    <div className="sm:col-span-1"><Field label="Numéro" value={b.n} onChange={(v) => { const bl = [...mblocks]; bl[i] = { ...bl[i], n: v }; setBlocks(bl); }} /></div>
+                    <div className="sm:col-span-3"><Field label="Titre" value={b.title} onChange={(v) => { const bl = [...mblocks]; bl[i] = { ...bl[i], title: v }; setBlocks(bl); }} /></div>
                   </div>
-                  <Field label="Texte" textarea value={b.text} onChange={(v) => { const bl = [...c.maison.blocks]; bl[i] = { ...bl[i], text: v }; setSection("maison", { blocks: bl }); }} />
+                  <Field label="Texte" textarea value={b.text} onChange={(v) => { const bl = [...mblocks]; bl[i] = { ...bl[i], text: v }; setBlocks(bl); }} />
                 </div>
               ))}
               <SaveBar sec="maison" />
@@ -157,31 +189,39 @@ export default function SiteContent() {
           {tab === "salons" && (
             <>
               <h2 className="font-display font-black text-xl mb-4">Section « Salons » (accueil)</h2>
-              <Field label="Petit texte (eyebrow)" value={c.salons.eyebrow} onChange={(v) => patch("salons", "eyebrow", v)} />
-              <Field label="Titre principal" textarea value={c.salons.title} onChange={(v) => patch("salons", "title", v)} />
-              <Field label="Texte de présentation" textarea value={c.salons.description} onChange={(v) => patch("salons", "description", v)} />
+              <Field label="Petit texte (eyebrow)" value={val("salons", "eyebrow")} onChange={(v) => setField("salons", "eyebrow", v)} placeholder={ph("salons", "eyebrow")} />
+              <Field label="Titre principal" textarea value={val("salons", "title")} onChange={(v) => setField("salons", "title", v)} placeholder={ph("salons", "title")} />
+              <Field label="Texte de présentation" textarea value={val("salons", "description")} onChange={(v) => setField("salons", "description", v)} placeholder={ph("salons", "description")} />
               <div className="grid sm:grid-cols-2 gap-4">
-                <Field label="Bouton — texte" value={c.salons.button_text} onChange={(v) => patch("salons", "button_text", v)} />
-                <Field label="Bouton — lien" value={c.salons.button_url} onChange={(v) => patch("salons", "button_url", v)} placeholder="/conventions" />
+                <Field label="Bouton — texte" value={val("salons", "button_text")} onChange={(v) => setField("salons", "button_text", v)} placeholder={ph("salons", "button_text")} />
+                <Field label="Bouton — lien" value={val("salons", "button_url")} onChange={(v) => setField("salons", "button_url", v)} placeholder={ph("salons", "button_url") || "/conventions"} />
               </div>
-              <ImageField label="Image principale" value={c.salons.image} onChange={(v) => patch("salons", "image", v)} />
+              <ImageField label="Image principale" value={val("salons", "image") || (lang !== "fr" ? frImg("salons") : "")} onChange={(v) => setField("salons", "image", v)} />
 
               <div className="border-t-2 border-ink/15 mt-6 pt-6">
                 <h3 className="font-display font-bold text-lg mb-3">Bandeau des villes</h3>
-                {villes.map((v, i) => (
-                  <div key={i} className="flex items-center gap-2 mb-2">
-                    <input value={v} onChange={(e) => { const arr = [...villes]; arr[i] = e.target.value; setC((p) => ({ ...p, villes: arr })); }}
-                      data-testid={`ville-${i}`} className="flex-1 border-2 border-ink rounded-md px-3 py-2 bg-papersoft font-mono text-sm outline-none" />
-                    <button onClick={() => moveVille(i, -1)} className="border border-ink p-2 rounded"><ArrowUp size={12} /></button>
-                    <button onClick={() => moveVille(i, 1)} className="border border-ink p-2 rounded"><ArrowDown size={12} /></button>
-                    <button onClick={() => setC((p) => ({ ...p, villes: villes.filter((_, j) => j !== i) }))} className="text-comicred p-2"><Trash2 size={14} /></button>
-                  </div>
-                ))}
-                <button onClick={() => setC((p) => ({ ...p, villes: [...villes, "NOUVELLE VILLE"] }))} data-testid="add-ville"
-                  className="flex items-center gap-2 mt-2 font-mono text-xs uppercase border-2 border-ink px-3 py-2 rounded-md hover:bg-papersoft"><Plus size={13} /> Ajouter une ville</button>
-                <div className="mt-4"><button onClick={() => save("villes")} disabled={saving} data-testid="save-villes"
-                  className="flex items-center gap-2 bg-comicblue text-paper font-mono text-xs uppercase tracking-widest px-5 py-3 rounded-md border-2 border-ink hover:bg-ink transition-colors disabled:opacity-40">
-                  {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Enregistrer les villes</button></div>
+                {lang === "fr" ? (
+                  <>
+                    {villes.map((v, i) => (
+                      <div key={i} className="flex items-center gap-2 mb-2">
+                        <input value={v} onChange={(e) => { const arr = [...villes]; arr[i] = e.target.value; setC((p) => ({ ...p, villes: arr })); }}
+                          data-testid={`ville-${i}`} className="flex-1 border-2 border-ink rounded-md px-3 py-2 bg-papersoft font-mono text-sm outline-none" />
+                        <button onClick={() => moveVille(i, -1)} className="border border-ink p-2 rounded"><ArrowUp size={12} /></button>
+                        <button onClick={() => moveVille(i, 1)} className="border border-ink p-2 rounded"><ArrowDown size={12} /></button>
+                        <button onClick={() => setC((p) => ({ ...p, villes: villes.filter((_, j) => j !== i) }))} className="text-comicred p-2"><Trash2 size={14} /></button>
+                      </div>
+                    ))}
+                    <button onClick={() => setC((p) => ({ ...p, villes: [...villes, "NOUVELLE VILLE"] }))} data-testid="add-ville"
+                      className="flex items-center gap-2 mt-2 font-mono text-xs uppercase border-2 border-ink px-3 py-2 rounded-md hover:bg-papersoft"><Plus size={13} /> Ajouter une ville</button>
+                    <div className="mt-4"><button onClick={() => save("villes")} disabled={saving} data-testid="save-villes"
+                      className="flex items-center gap-2 bg-comicblue text-paper font-mono text-xs uppercase tracking-widest px-5 py-3 rounded-md border-2 border-ink hover:bg-ink transition-colors disabled:opacity-40">
+                      {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Enregistrer les villes</button></div>
+                  </>
+                ) : (
+                  <p className="font-mono text-xs text-inksoft" data-testid="villes-shared-note">
+                    Le bandeau des villes est commun à toutes les langues. Passez en « Français » pour le modifier.
+                  </p>
+                )}
               </div>
               <div className="mt-6"><SaveBar sec="salons" /></div>
             </>
@@ -190,12 +230,12 @@ export default function SiteContent() {
           {tab === "footer" && (
             <>
               <h2 className="font-display font-black text-xl mb-4">Footer</h2>
-              <Field label="Présentation courte" textarea value={c.footer.description} onChange={(v) => patch("footer", "description", v)} />
+              <Field label="Présentation courte" textarea value={val("footer", "description")} onChange={(v) => setField("footer", "description", v)} placeholder={ph("footer", "description")} />
               <div className="grid sm:grid-cols-2 gap-4">
-                <Field label="Adresse" value={c.footer.address} onChange={(v) => patch("footer", "address", v)} />
-                <Field label="Email" value={c.footer.email} onChange={(v) => patch("footer", "email", v)} />
-                <Field label="Téléphone" value={c.footer.phone} onChange={(v) => patch("footer", "phone", v)} />
-                <Field label="Réseaux sociaux (texte)" value={c.footer.social} onChange={(v) => patch("footer", "social", v)} />
+                <Field label="Adresse" value={val("footer", "address")} onChange={(v) => setField("footer", "address", v)} placeholder={ph("footer", "address")} />
+                <Field label="Email" value={val("footer", "email")} onChange={(v) => setField("footer", "email", v)} placeholder={ph("footer", "email")} />
+                <Field label="Téléphone" value={val("footer", "phone")} onChange={(v) => setField("footer", "phone", v)} placeholder={ph("footer", "phone")} />
+                <Field label="Réseaux sociaux (texte)" value={val("footer", "social")} onChange={(v) => setField("footer", "social", v)} placeholder={ph("footer", "social")} />
               </div>
               <SaveBar sec="footer" />
             </>

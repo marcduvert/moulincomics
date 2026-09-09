@@ -13,7 +13,7 @@ const HERO = "https://images.unsplash.com/photo-1618519764620-7403abdbdfe9?crop=
 const CONV = "https://images.pexels.com/photos/36398813/pexels-photo-36398813.jpeg?auto=compress&cs=tinysrgb&w=1200";
 
 export default function Home() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { content } = useContent();
   const [featured, setFeatured] = useState([]);
   const heroRef = useRef(null);
@@ -21,18 +21,43 @@ export default function Home() {
   const y = useTransform(scrollYProgress, [0, 1], [0, 160]);
   const scale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
 
-  const hero = content?.hero || {};
-  const salons = content?.salons || {};
-  const heroLines = (hero.title || `${t.hero.l1}\n${t.hero.l2}\n${t.hero.l3}`).split("\n");
+  const heroDefaults = {
+    eyebrow: t.hero.eyebrow,
+    title: `${t.hero.l1}\n${t.hero.l2}\n${t.hero.l3}`,
+    description: t.hero.p,
+    primary_text: t.hero.cta1, primary_url: "/shop",
+    secondary_text: t.hero.cta2, secondary_url: "/shop?series=Spider-Man",
+    image: "",
+  };
+  const salonsDefaults = {
+    eyebrow: t.convTeaser.eyebrow, title: t.convTeaser.title,
+    description: t.convTeaser.p, button_text: t.convTeaser.cta,
+    button_url: "/conventions", image: "",
+  };
+  const clean = (o) => Object.fromEntries(Object.entries(o || {})
+    .filter(([k, v]) => v !== "" && v != null && k !== "en" && k !== "es"));
+  const localized = (sec, defaults) => {
+    const base = content?.[sec] || {};
+    if (lang === "fr") return { ...defaults, ...clean(base) };
+    const shared = {};
+    ["primary_url", "secondary_url", "button_url", "image"].forEach((k) => { if (base[k]) shared[k] = base[k]; });
+    return { ...defaults, ...shared, ...clean(base[lang]) };
+  };
+  const hero = localized("hero", heroDefaults);
+  const salons = localized("salons", salonsDefaults);
+  const heroLines = (hero.title || "").split("\n");
   const blackLines = heroLines.slice(0, -1);
   const redLine = heroLines[heroLines.length - 1];
-  const chapters = (content?.maison?.blocks && content.maison.blocks.length
-    ? content.maison.blocks
-    : [
-      { n: "01", title: t.manifesto.c1t, text: t.manifesto.c1d },
-      { n: "02", title: t.manifesto.c2t, text: t.manifesto.c2d },
-      { n: "03", title: t.manifesto.c3t, text: t.manifesto.c3d },
-    ]);
+  const defaultBlocks = [
+    { n: "01", title: t.manifesto.c1t, text: t.manifesto.c1d },
+    { n: "02", title: t.manifesto.c2t, text: t.manifesto.c2d },
+    { n: "03", title: t.manifesto.c3t, text: t.manifesto.c3d },
+  ];
+  const maisonBase = content?.maison || {};
+  const maisonBlocks = lang === "fr"
+    ? maisonBase.blocks
+    : (maisonBase[lang]?.blocks?.length ? maisonBase[lang].blocks : null);
+  const chapters = (maisonBlocks && maisonBlocks.length) ? maisonBlocks : defaultBlocks;
   const villes = (content?.villes && content.villes.length)
     ? content.villes : ["Angoulême", "Comic Con Paris", "Lucca", "Bruxelles", "Lyon", "FIBD"];
   const heroImg = hero.image || HERO;
@@ -140,7 +165,7 @@ export default function Home() {
         </Reveal>
       </section>
 
-      <Marquee dark items={["Angoulême", "Comic Con Paris", "Lucca", "Bruxelles", "Lyon", "FIBD"]} />
+      <Marquee dark items={villes} />
     </div>
   );
 }

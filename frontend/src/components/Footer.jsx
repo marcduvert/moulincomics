@@ -3,9 +3,16 @@ import { useLang } from "../context/LanguageContext";
 import { useContent } from "../context/ContentContext";
 
 export const Footer = () => {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { content } = useContent();
-  const f = content?.footer || {};
+  const base = content?.footer || {};
+  const clean = (o) => Object.fromEntries(Object.entries(o || {})
+    .filter(([k, v]) => v !== "" && v != null && k !== "en" && k !== "es"));
+  const defaults = { description: t.footer.desc, address: "", email: "", phone: "", social: "", links: [] };
+  const f = lang === "fr"
+    ? { ...defaults, ...clean(base) }
+    : { ...defaults, address: base.address || "", email: base.email || "", phone: base.phone || "",
+        links: base.links || [], ...clean(base[lang]) };
   return (
   <footer className="bg-ink text-paper mt-24">
     <div className="max-w-[1400px] mx-auto px-6 py-16 grid md:grid-cols-4 gap-10">

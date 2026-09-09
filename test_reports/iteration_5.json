@@ -1,0 +1,22 @@
+{
+  "summary": "Tested Moulin Comics per-language editorial content override feature (FR/EN/ES). Backend: 9/9 pytest passed (public GET, admin PUT hero/en, footer/es, maison/en with blocks, invalid lang, invalid section, unauthenticated, empty override unset, products regression). Frontend: full flow OK via Playwright — admin login, lang switcher (fr/en/es data-testid), lang-note visible in non-FR, FR placeholders shown as grey hints in EN inputs, save-hero produces 'Traduction EN enregistrée' toast, EN eyebrow persists after reload, FR value untouched by EN edits, salons tab shows villes-shared-note in EN and ville-0 editor in FR, maison EN block override displays on public /?lang=en, footer ES override displays on public /?lang=es. No EN leak on FR/ES public pages. /shop still renders products (regression OK, 13+ products via API).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_content_lang.py",
+    "/app/test_reports/pytest/content_lang.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is ~1000 lines — approaching the 700-line guideline; consider splitting content/auth/products/import/payments into routers for maintainability.",
+    "SiteContent.jsx defines helper `frImg` after the JSX return of the component (line 247). Works due to function hoisting inside the component body but is stylistically confusing; move it above return.",
+    "_merge_content only merges top-level keys and does not deep-merge nested `en`/`es` overrides — currently fine because per-lang objects are read as-is on the client, but note that empty string/list overrides are stripped server-side (update_content_lang cleans body), which is correct behaviour."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "marcduvert@gmail.com / 11Joinville- (admin)",
+  "seed_data_creation": "Test overrides created in site_content.home: hero.en (TEST_EN eyebrow + 'Your next UI collectible / is right here' title), maison.en.blocks[0].title='TEST_EN VO first UI', footer.es.description='TEST_ES Tienda de comics UI …'. Main agent may want to overwrite with clean demo copy.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All admin editorial per-language flows work. Backend endpoints: PUT /api/admin/content/{section} (FR base) and PUT /api/admin/content/{section}/{lang} (en|es only). Public GET /api/content returns merged doc with nested {en,es} sub-objects for each section. Localized rendering handled client-side (Home.jsx localized() helper + Footer.jsx base[lang]). Villes marquee intentionally shared across all languages."
+}

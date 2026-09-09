@@ -874,11 +874,20 @@ DEFAULT_CONTENT = {
 }
 CONTENT_SECTIONS = set(DEFAULT_CONTENT.keys())
 
+CONTENT_LANGS = ("en", "es")
+
 def _merge_content(stored: dict) -> dict:
     out = {}
     for k, dv in DEFAULT_CONTENT.items():
         sv = (stored or {}).get(k)
-        out[k] = sv if sv not in (None, "", []) else dv
+        if isinstance(dv, dict) and isinstance(sv, dict):
+            merged = dict(dv)
+            for kk, vv in sv.items():
+                if vv not in (None, "", []):
+                    merged[kk] = vv
+            out[k] = merged
+        else:
+            out[k] = sv if sv not in (None, "", []) else dv
     return out
 
 @api.get("/content")
@@ -891,6 +900,22 @@ async def update_content(section: str, body: Any = Body(...), admin: dict = Depe
     if section not in CONTENT_SECTIONS:
         raise HTTPException(400, "Section inconnue")
     await db.site_content.update_one({"key": "home"}, {"$set": {section: body}}, upsert=True)
+    doc = await db.site_content.find_one({"key": "home"})
+    return _merge_content(doc)
+
+@api.put("/admin/content/{section}/{lang}")
+async def update_content_lang(section: str, lang: str, body: dict = Body(...), admin: dict = Depends(get_current_admin)):
+    if section not in CONTENT_SECTIONS:
+        raise HTTPException(400, "Section inconnue")
+    if lang not in CONTENT_LANGS:
+        raise HTTPException(400, "Langue inconnue")
+    if not isinstance(body, dict):
+        raise HTTPException(400, "Contenu invalide")
+    cleaned = {k: v for k, v in body.items() if v not in (None, "", []) and k not in CONTENT_LANGS}
+    if cleaned:
+        await db.site_content.update_one({"key": "home"}, {"$set": {f"{section}.{lang}": cleaned}}, upsert=True)
+    else:
+        await db.site_content.update_one({"key": "home"}, {"$unset": {f"{section}.{lang}": ""}})
     doc = await db.site_content.find_one({"key": "home"})
     return _merge_content(doc)
 
