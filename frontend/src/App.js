@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { CartProvider } from "./context/CartContext";
 import { LanguageProvider } from "./context/LanguageContext";
+import { ContentProvider } from "./context/ContentContext";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { CartDrawer } from "./components/CartDrawer";
@@ -15,6 +16,7 @@ import PaymentCancel from "./pages/PaymentCancel";
 import AdminLogin from "./pages/AdminLogin";
 import Admin from "./pages/Admin";
 import ImportIA from "./pages/ImportIA";
+import SiteContent from "./pages/SiteContent";
 
 const Storefront = ({ children }) => {
   useLenis();
@@ -38,6 +40,7 @@ const Layout = () => {
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin/import" element={<ImportIA />} />
+        <Route path="/admin/content" element={<SiteContent />} />
       </Routes>
     );
   }
@@ -58,12 +61,14 @@ const Layout = () => {
 export default function App() {
   return (
     <LanguageProvider>
-      <CartProvider>
-        <BrowserRouter>
-          <Toaster position="top-center" toastOptions={{ style: { borderRadius: 0, border: "2px solid #0A0A0A", fontFamily: "IBM Plex Mono" } }} />
-          <Layout />
-        </BrowserRouter>
-      </CartProvider>
+      <ContentProvider>
+        <CartProvider>
+          <BrowserRouter>
+            <Toaster position="top-center" toastOptions={{ style: { borderRadius: 0, border: "2px solid #0A0A0A", fontFamily: "IBM Plex Mono" } }} />
+            <Layout />
+          </BrowserRouter>
+        </CartProvider>
+      </ContentProvider>
     </LanguageProvider>
   );
 }

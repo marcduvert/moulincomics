@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy } from "lucide-react";
+import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText } from "lucide-react";
 import { api, fmtPrice, API } from "../lib/api";
 
 const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
@@ -177,6 +177,9 @@ export default function Admin() {
           </div>
           <div className="flex items-center gap-2">
             <a href="/" target="_blank" rel="noreferrer" className="font-mono text-xs uppercase hover:text-comicyellow px-3">Voir le site ↗</a>
+            <button onClick={() => nav("/admin/content")} data-testid="site-content-btn" className="flex items-center gap-2 border border-paper/40 px-3 py-1.5 font-mono text-xs uppercase hover:bg-comicblue transition-colors">
+              <FileText size={14} /> Contenu du site
+            </button>
             <button onClick={logout} data-testid="admin-logout" className="flex items-center gap-2 border border-paper/40 px-3 py-1.5 font-mono text-xs uppercase hover:bg-comicred transition-colors">
               <LogOut size={14} /> Quitter
             </button>

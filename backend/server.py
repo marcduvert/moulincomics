@@ -5,7 +5,7 @@ import os
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File, Form
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File, Form, Body
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import logging
@@ -844,6 +844,55 @@ async def stripe_webhook(request: Request):
                       "updated_at": datetime.now(timezone.utc)}})
         await _decrement_stock(obj["id"])
     return {"status": "ok"}
+
+# ===== CONTENU ÉDITORIAL (site_content) =====
+DEFAULT_CONTENT = {
+    "hero": {
+        "eyebrow": "Comic Shop · VO & VF · Paris",
+        "title": "Moulin Comics —\nVotre prochaine pièce\nde collection est ici",
+        "description": "BD & Comics français et américains — éditions anciennes, collectors et pépites à redécouvrir.",
+        "primary_text": "Explorer le stock", "primary_url": "/shop",
+        "secondary_text": "Les Spider-Man", "secondary_url": "/shop?series=Spider-Man",
+        "image": "",
+    },
+    "maison": {"blocks": [
+        {"n": "01", "title": "La VO d'abord", "text": "Comic shop spécialisé en version originale. Marvel, DC, indés — les titres qui définissent le médium, dans leur langue d'origine."},
+        {"n": "02", "title": "Le fonds VF", "text": "Un large stock de mensuels : les bons vieux Strange, Nova et Titans de l'ère Lug & Semic. La nostalgie a une adresse."},
+        {"n": "03", "title": "Sur les salons", "text": "On sillonne les conventions d'Europe avec une sélection triée sur le volet. Retrouvez-nous case après case."},
+    ]},
+    "salons": {
+        "eyebrow": "Sur la route", "title": "RETROUVEZ-NOUS SUR LES SALONS D'EUROPE",
+        "description": "De Paris à Bruxelles, d'Angoulême à Lucca — on déballe nos caisses partout en Europe. Une sélection différente à chaque étape.",
+        "button_text": "Voir l'agenda", "button_url": "/conventions", "image": "",
+    },
+    "villes": ["Angoulême", "Comic Con Paris", "Lucca", "Bruxelles", "Lyon", "FIBD"],
+    "footer": {
+        "description": "Comic shop spécialisé en VO. Large stock de mensuels VF — Strange, Nova, Titans. De la case à la caisse depuis toujours.",
+        "address": "Paris · France", "email": "bonjour@moulincomics.fr", "phone": "",
+        "social": "", "links": [],
+    },
+}
+CONTENT_SECTIONS = set(DEFAULT_CONTENT.keys())
+
+def _merge_content(stored: dict) -> dict:
+    out = {}
+    for k, dv in DEFAULT_CONTENT.items():
+        sv = (stored or {}).get(k)
+        out[k] = sv if sv not in (None, "", []) else dv
+    return out
+
+@api.get("/content")
+async def get_content():
+    doc = await db.site_content.find_one({"key": "home"}) or {}
+    return _merge_content(doc)
+
+@api.put("/admin/content/{section}")
+async def update_content(section: str, body: Any = Body(...), admin: dict = Depends(get_current_admin)):
+    if section not in CONTENT_SECTIONS:
+        raise HTTPException(400, "Section inconnue")
+    await db.site_content.update_one({"key": "home"}, {"$set": {section: body}}, upsert=True)
+    doc = await db.site_content.find_one({"key": "home"})
+    return _merge_content(doc)
 
 app.include_router(api)
 
