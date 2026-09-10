@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText } from "lucide-react";
@@ -7,11 +7,16 @@ import { api, fmtPrice, API } from "../lib/api";
 const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
   condition: "Très bon état", year: "", issue: "", description: "", description_en: "", description_es: "", cover_image: "", featured: false };
 
+const fmtAddr = (a) => a
+  ? [a.line1, a.line2, [a.postal_code, a.city].filter(Boolean).join(" "), a.country].filter(Boolean)
+  : [];
+
 export default function Admin() {
   const nav = useNavigate();
   const [tab, setTab] = useState("stock");
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [openOrder, setOpenOrder] = useState(null);
   const [seriesList, setSeriesList] = useState([]);
   const [newSeries, setNewSeries] = useState("");
   const [salons, setSalons] = useState([]);
@@ -310,22 +315,33 @@ export default function Admin() {
           <>
             <h1 className="font-display font-black tracking-tighter text-2xl mb-4">Commandes reçues</h1>
             <div className="bg-paper border-2 border-ink rounded-md overflow-x-auto">
-              <table className="w-full font-mono text-sm min-w-[820px]">
+              <table className="w-full font-mono text-sm min-w-[1080px]">
                 <thead className="bg-ink text-paper text-[11px] uppercase tracking-widest">
                   <tr>
-                    <th className="text-left p-3">Réf.</th><th className="text-left p-3">Articles</th>
+                    <th className="text-left p-3">Réf.</th><th className="text-left p-3">Date</th>
+                    <th className="text-left p-3">Client</th><th className="text-left p-3">Articles</th>
                     <th className="text-right p-3">Montant</th><th className="text-left p-3">Paiement</th>
                     <th className="text-left p-3">Traitement</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-inksoft">Aucune commande.</td></tr>}
+                  {orders.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-inksoft">Aucune commande.</td></tr>}
                   {orders.map((o) => {
                     const fs = o.fulfillment_status || "en_attente";
                     const badge = { en_attente: "border-ink/30 text-inksoft", expediee: "bg-comicblue text-paper border-ink", livree: "bg-comicyellow border-ink" }[fs];
+                    const open = openOrder === o.session_id;
                     return (
-                    <tr key={o.session_id} className="border-b border-ink/15" data-testid={`order-${o.session_id}`}>
+                    <Fragment key={o.session_id}>
+                    <tr className="border-b border-ink/15 cursor-pointer hover:bg-papersoft/60 transition-colors"
+                      onClick={() => setOpenOrder(open ? null : o.session_id)}
+                      data-testid={`order-${o.session_id}`}>
                       <td className="p-3 text-xs text-inksoft">{o.session_id?.slice(-10)}</td>
+                      <td className="p-3 text-xs whitespace-nowrap">{o.created_at ? new Date(o.created_at).toLocaleDateString("fr-FR") : "—"}</td>
+                      <td className="p-3 text-xs" data-testid={`order-customer-${o.session_id}`}>
+                        {o.customer?.name
+                          ? <><span className="font-bold">{o.customer.name}</span><br/><span className="text-inksoft">{o.customer.email || ""}</span></>
+                          : <span className="text-inksoft">—</span>}
+                      </td>
                       <td className="p-3 text-xs max-w-[240px]">{(o.items || []).map((i) => `${i.title} ×${i.quantity}`).join(", ")}</td>
                       <td className="p-3 text-right">{fmtPrice(o.amount || 0)}</td>
                       <td className="p-3">
@@ -333,7 +349,7 @@ export default function Admin() {
                           {o.payment_status === "paid" ? "payé" : o.payment_status}
                         </span>
                       </td>
-                      <td className="p-3">
+                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-2">
                           <span className={`text-[10px] uppercase px-2 py-1 border ${badge}`}>
                             {{ en_attente: "En attente", expediee: "Expédiée", livree: "Livrée" }[fs]}
@@ -348,6 +364,42 @@ export default function Admin() {
                         </div>
                       </td>
                     </tr>
+                    {open && (
+                    <tr className="border-b border-ink/15 bg-papersoft/40" data-testid={`order-detail-${o.session_id}`}>
+                      <td colSpan={7} className="p-5">
+                        <div className="grid sm:grid-cols-3 gap-6 text-xs">
+                          <div>
+                            <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Client</p>
+                            <p className="font-bold">{o.customer?.name || "—"}</p>
+                            {o.customer?.email && <p><a className="underline" href={`mailto:${o.customer.email}`}>{o.customer.email}</a></p>}
+                            {o.customer?.phone && <p>{o.customer.phone}</p>}
+                            <p className="text-inksoft mt-2">Réf. complète : {o.session_id}</p>
+                          </div>
+                          <div>
+                            <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Adresse de livraison</p>
+                            {o.shipping?.address
+                              ? <>{o.shipping.name && <p className="font-bold">{o.shipping.name}</p>}{fmtAddr(o.shipping.address).map((l, i) => <p key={i}>{l}</p>)}</>
+                              : o.billing?.address
+                                ? <>{o.billing.name && <p className="font-bold">{o.billing.name}</p>}{fmtAddr(o.billing.address).map((l, i) => <p key={i}>{l}</p>)}<p className="text-inksoft italic mt-1">Identique à la facturation</p></>
+                                : <p className="text-inksoft">Non renseignée</p>}
+                          </div>
+                          <div>
+                            <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Adresse de facturation</p>
+                            {o.billing?.address
+                              ? <>{o.billing.name && <p className="font-bold">{o.billing.name}</p>}{fmtAddr(o.billing.address).map((l, i) => <p key={i}>{l}</p>)}</>
+                              : <p className="text-inksoft">Non renseignée</p>}
+                          </div>
+                        </div>
+                        <div className="mt-4 border-t border-ink/15 pt-3">
+                          <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Détail des articles</p>
+                          {(o.items || []).map((i, idx) => (
+                            <p key={idx} className="text-xs">{i.title} ×{i.quantity} — {fmtPrice((i.price || 0) * i.quantity)}</p>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                    )}
+                    </Fragment>
                   ); })}
                 </tbody>
               </table>

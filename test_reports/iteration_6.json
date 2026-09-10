@@ -1,0 +1,35 @@
+{
+  "summary": "Tested Admin orders panel enrichment + full Stripe checkout E2E. Backend regression on /api/admin/orders, /api/admin/orders/{sid}/status, /api/products, /api/payments/checkout all pass (6/6 pytest). Admin UI shows the 7 new columns (Réf., Date, Client, Articles, Montant, Paiement, Traitement), marc duvert paid order displays name+email in Client column, clicking the row opens order-detail-{session_id} with billing address '16 quai de polangis, 94340 Joinville le pont, FR'. Re-click collapses. Changing status via order-status-{sid} does NOT toggle the detail row (stopPropagation OK). Full E2E purchase completed with Stripe test card 4242… — new session cs_test_a1Y3s33juteMNFWAtJJUlyO5rb4LKNpUJxpjSnmzzz7PX5YhgtMjXfIcOU (22 €, Deadpool vs Punisher ×1). After /payment/success, backend flagged the order paid, decremented stock, and captured customer (Alice E2E Tester + email) + billing address (10 rue de Test E2E, 75001 Paris, FR). The GET /admin/orders response now includes customer + billing for this new order.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/admin/orders", "issue": "For the new E2E order, only 'billing' is populated; 'shipping' is empty. When the Stripe Checkout user leaves 'Billing info is same as shipping' checked (default), Stripe stores the address only in customer_details.address (billing) and does not populate shipping_details on the session, so Admin UI shows 'Adresse de livraison : Non renseignée'. Real delivery info is still available under the billing block. Not a code bug per se, but worth noting: consider falling back to display billing as shipping when shipping is missing, or explicitly log this in the UI."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_orders_admin.py",
+    "/app/test_reports/pytest/orders_admin.xml"
+  ],
+  "action_items": [
+    "(Optional UX) In Admin.jsx order detail, when o.shipping?.address is missing but o.billing?.address is present, display billing address as the shipping address (or add a note 'Livraison identique à la facturation') — otherwise users see 'Non renseignée' even though the address was captured."
+  ],
+  "critical_code_review_comments": [
+    "server.py:743 GET /admin/orders performs lazy Stripe retrieval for up to 10 paid orders lacking customer info on every call — fine at low volume; consider caching or a background one-shot backfill if the collection grows.",
+    "Admin.jsx is 587 lines; could be split (Orders tab / Stock tab into separate components) for maintainability, but not urgent."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_orders_admin.py"
+  ],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100% (admin panel + full Stripe E2E round-trip)"},
+  "test_credentials": "Admin: marcduvert@gmail.com / 11Joinville- (as provided).",
+  "seed_data_creation": "One real Stripe test order was created during E2E and remains in the DB: session cs_test_a1Y3s33juteMNFWAtJJUlyO5rb4LKNpUJxpjSnmzzz7PX5YhgtMjXfIcOU, amount 22 €, product Deadpool vs Punisher (stock decremented to 0). Also toggled the 'Nova nº45' order status to 'Expédiée' during a stopPropagation test (visible in screenshot); harmless.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Admin orders enrichment (customer/billing/shipping) is fully working end-to-end. Stripe hosted checkout automates cleanly with: (1) fill shipping name + set country FR + click 'Enter address manually' + fill line1/postal/city, (2) click Card radio, (3) fill 4242 card / 12/34 / 123, (4) 'Billing = shipping' is checked by default → resulting Stripe session stores address only in customer_details.address (surfaced as 'billing' in our schema). If the tester unchecks that box, both shipping and billing should populate. GET /admin/orders payload structure: {customer:{name,email,phone?}, billing:{name,address:{line1,line2,postal_code,city,state,country}}, shipping:{name,address:{...}}}.",
+  "rca of the issue": "N/A — feature works. Only minor UX gap noted about 'Adresse de livraison : Non renseignée' when Stripe checkbox 'Billing = shipping' is checked (default)."
+}

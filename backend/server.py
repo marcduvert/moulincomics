@@ -716,9 +716,42 @@ async def list_import_sessions(admin: dict = Depends(get_current_admin)):
         out.append(d)
     return out
 
+def _addr(a):
+    if not a:
+        return None
+    return {"line1": a.get("line1"), "line2": a.get("line2"),
+            "postal_code": a.get("postal_code"), "city": a.get("city"),
+            "state": a.get("state"), "country": a.get("country")}
+
+def _customer_payload(s):
+    """Extrait nom/email/téléphone + adresses de livraison/facturation d'une session Stripe."""
+    cd = s.get("customer_details") or {}
+    sd = s.get("shipping_details") or s.get("shipping") or {}
+    out = {}
+    cust = {k: cd.get(k) for k in ("name", "email", "phone") if cd.get(k)}
+    if cust:
+        out["customer"] = cust
+    if cd.get("address"):
+        out["billing"] = {"name": cd.get("name"), "address": _addr(cd["address"])}
+    if sd and (sd.get("name") or sd.get("address")):
+        out["shipping"] = {"name": sd.get("name"), "address": _addr(sd.get("address"))}
+    return out
+
+
 @api.get("/admin/orders")
 async def list_orders(admin: dict = Depends(get_current_admin)):
     docs = await db.payment_transactions.find().sort("created_at", -1).to_list(500)
+    # Rattrapage paresseux : infos client Stripe pour les commandes payées sans fiche client
+    missing = [d for d in docs if d.get("payment_status") == "paid" and not d.get("customer")][:10]
+    for d in missing:
+        try:
+            s = stripe.checkout.Session.retrieve(d["session_id"])
+            cust = _customer_payload(s)
+            if cust:
+                await db.payment_transactions.update_one({"session_id": d["session_id"]}, {"$set": cust})
+                d.update(cust)
+        except Exception:
+            pass
     out = []
     for d in docs:
         d.pop("_id", None)
@@ -802,6 +835,9 @@ async def payment_status(session_id: str):
     if record.get("payment_status") != "paid":
         try:
             s = stripe.checkout.Session.retrieve(session_id)
+            cust = _customer_payload(s)
+            if cust:
+                await db.payment_transactions.update_one({"session_id": session_id}, {"$set": cust})
             if s.payment_status == "paid" or s.status == "complete":
                 await db.payment_transactions.update_one(
                     {"session_id": session_id, "payment_status": {"$ne": "paid"}},
@@ -842,6 +878,9 @@ async def stripe_webhook(request: Request):
             {"session_id": obj["id"], "payment_status": {"$ne": "paid"}},
             {"$set": {"status": "completed", "payment_status": obj.get("payment_status", "paid"),
                       "updated_at": datetime.now(timezone.utc)}})
+        cust = _customer_payload(obj)
+        if cust:
+            await db.payment_transactions.update_one({"session_id": obj["id"]}, {"$set": cust})
         await _decrement_stock(obj["id"])
     return {"status": "ok"}
 
