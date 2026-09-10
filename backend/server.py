@@ -110,7 +110,7 @@ async def send_email(*, to: str, subject: str, html: str, reply_to: str | None =
     resp.raise_for_status()
     return resp.json().get("id")
 
-def _shipping_email_html(order: dict) -> str:
+def _order_email_html(order: dict, headline: str, message: str) -> str:
     name = escape((order.get("customer") or {}).get("name") or "")
     ref = escape(order.get("session_id", "")[-10:])
     rows = ""
@@ -136,7 +136,8 @@ def _shipping_email_html(order: dict) -> str:
         + brand + '</td></tr>'
         '<tr><td style="padding:24px">'
         '<p style="font-size:15px">Bonjour ' + name + ',</p>'
-        '<p style="font-size:15px">Bonne nouvelle : votre commande <strong>réf. ' + ref + '</strong> vient d\'être expédiée.</p>'
+        '<p style="font-size:17px;font-weight:bold;margin:14px 0 4px">' + escape(headline) + '</p>'
+        '<p style="font-size:15px">' + escape(message) + ' <strong>réf. ' + ref + '</strong></p>'
         '<p style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#c8102e;margin:20px 0 6px">Votre commande</p>'
         '<table role="presentation" width="100%">' + rows + ""
         '<tr><td style="padding:10px 0;font-size:15px;font-weight:bold">Total</td>'
@@ -149,6 +150,35 @@ def _shipping_email_html(order: dict) -> str:
         + brand + ' — nous ne vous demanderons jamais votre mot de passe ni vos coordonnées bancaires par email.'
         '</td></tr></table></td></tr></table>'
     )
+
+def _shipping_email_html(order: dict) -> str:
+    return _order_email_html(order, "Votre commande est expédiée",
+                             "Bonne nouvelle : votre commande vient d'être expédiée.")
+
+def _confirmation_email_html(order: dict) -> str:
+    return _order_email_html(order, "Merci pour votre commande",
+                             "Votre paiement est confirmé et votre commande est en préparation.")
+
+async def _maybe_send_confirmation_email(session_id: str) -> bool:
+    """Envoie l'email de confirmation si la commande est payée et pas encore notifiée."""
+    order = await db.payment_transactions.find_one({"session_id": session_id})
+    if not order or order.get("payment_status") != "paid" or order.get("confirmation_email_sent"):
+        return False
+    to = (order.get("customer") or {}).get("email")
+    if not to:
+        return False
+    # Marquer avant l'envoi pour éviter tout doublon ; annuler si l'envoi échoue
+    await db.payment_transactions.update_one(
+        {"session_id": session_id}, {"$set": {"confirmation_email_sent": True}})
+    try:
+        await send_email(to=to,
+                         subject="Confirmation de votre commande Moulin Comics",
+                         html=_confirmation_email_html(order))
+        return True
+    except Exception:
+        await db.payment_transactions.update_one(
+            {"session_id": session_id}, {"$unset": {"confirmation_email_sent": ""}})
+        raise
 
 
 # ---------- DB ----------
@@ -1007,6 +1037,10 @@ async def payment_status(session_id: str):
                     {"$set": {"status": "completed", "payment_status": "paid",
                               "updated_at": datetime.now(timezone.utc)}})
                 await _decrement_stock(session_id)
+                try:
+                    await _maybe_send_confirmation_email(session_id)
+                except Exception as e:
+                    logging.getLogger(__name__).error(f"confirmation email error: {e}")
                 record = await db.payment_transactions.find_one({"session_id": session_id})
         except stripe.error.StripeError:
             pass
@@ -1045,6 +1079,10 @@ async def stripe_webhook(request: Request):
         if cust:
             await db.payment_transactions.update_one({"session_id": obj["id"]}, {"$set": cust})
         await _decrement_stock(obj["id"])
+        try:
+            await _maybe_send_confirmation_email(obj["id"])
+        except Exception as e:
+            logging.getLogger(__name__).error(f"confirmation email error: {e}")
     return {"status": "ok"}
 
 # ===== CONTENU ÉDITORIAL (site_content) =====

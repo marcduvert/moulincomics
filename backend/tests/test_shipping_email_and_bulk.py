@@ -38,9 +38,12 @@ def test_shipping_email_first_transition_sends(admin_session, mongo_col):
     order = mongo_col.find_one({"session_id": ALICE_SID})
     if not order:
         pytest.skip("Alice E2E order not in DB")
-    # Reset: unset shipping_email_sent and put fulfillment back to en_attente
+    # Reset: unset shipping_email_sent, put fulfillment back to en_attente,
+    # and force a deliverable test recipient (Stripe checkout may have stored an
+    # example.com address, which the email proxy rejects with 422).
     mongo_col.update_one({"session_id": ALICE_SID},
-                         {"$set": {"fulfillment_status": "en_attente"},
+                         {"$set": {"fulfillment_status": "en_attente",
+                                   "customer.email": "delivered@resend.dev"},
                           "$unset": {"shipping_email_sent": ""}})
     r = admin_session.put(f"{BASE_URL}/api/admin/orders/{ALICE_SID}/status",
                           json={"fulfillment_status": "expediee"}, timeout=30)

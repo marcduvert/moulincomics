@@ -55,13 +55,20 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Onglet Commandes admin : recherche texte (client/email/article/réf.), filtres Paiement et Traitement, tri Date/Client/Montant par clic d'en-tête, cases à cocher + tout sélectionner + bouton Supprimer (confirm).
 - Tests : iteration_7.json — 9/9 backend + e2e filtres/tri/recherche/sélection/suppression. Email réel validé vers delivered@resend.dev.
 
+### Email de confirmation de commande — 2026-09
+- Email automatique au client dès que le paiement est validé (webhook `checkout.session.completed` ou polling `/payments/status/{session_id}`), via `_maybe_send_confirmation_email` : flag `confirmation_email_sent` anti-doublon posé avant envoi et annulé en cas d'échec.
+- Modèles factorisés : `_order_email_html` (mise en page commune) + `_shipping_email_html` / `_confirmation_email_html`.
+- Note test : le proxy email applique une limite de débit (429 après envois répétés) — espacer les tests d'envoi.
+- Suite pytest : 56/56 en séquentiel (`-n 0`) ; en parallèle (xdist, imposé par pytest.ini) des races sur la base partagée peuvent faire échouer des teardowns — problème de suite de tests, pas de l'app.
+- Tests obsolètes corrigés : test_shop_perf (default BASE_URL), test_import_ia (descriptions vérifiées via endpoint détail), test_shipping_email (destinataire delivered@resend.dev forcé car l'adresse example.com de la session Stripe est rejetée par le proxy).
+
 
 ## Backlog
 - P1: upload d'images de couverture (object storage) au lieu d'URL.
 - P1: gestion des frais de port / retrait salon.
 - P2: comptes clients + historique de commandes.
 - P2: recherche avancée / tri par prix, wishlist.
-- P2: emails de confirmation de commande (email expédition déjà fait via Resend managé).
+- P2: ~~emails de confirmation de commande~~ (fait, avec email d'expédition, via Resend managé).
 
 ## Credentials
 Voir /app/memory/test_credentials.md

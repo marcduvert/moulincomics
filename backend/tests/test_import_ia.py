@@ -86,7 +86,9 @@ def test_bulk_create_products(auth_headers):
     data = r.json()
     assert data.get("created") == 2, f"Expected created=2, got {data}"
 
-    # Now fetch products and verify presence + fields
+    # Now fetch products and verify presence + fields.
+    # NOTE: the list endpoint intentionally omits descriptions (light payload),
+    # so description fields are verified via the detail endpoint.
     pr = requests.get(f"{BASE_URL}/api/products", timeout=30)
     assert pr.status_code == 200
     products = pr.json()
@@ -94,10 +96,13 @@ def test_bulk_create_products(auth_headers):
     for it in items:
         assert it["title"] in titles, f"Missing product {it['title']}"
         p = titles[it["title"]]
-        assert p.get("description_en") == it["description_en"]
-        assert p.get("description_es") == it["description_es"]
         assert p.get("cover_image") == it["cover_image"]
         assert "_id" not in p, "Raw ObjectId should not be exposed"
+        dr = requests.get(f"{BASE_URL}/api/products/{p['id']}", timeout=30)
+        assert dr.status_code == 200
+        detail = dr.json()
+        assert detail.get("description_en") == it["description_en"]
+        assert detail.get("description_es") == it["description_es"]
         pid = p.get("id")
         assert pid and isinstance(pid, str)
         created_product_ids.append(pid)
