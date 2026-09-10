@@ -1,0 +1,23 @@
+{
+  "summary": "Tested new features: shipping email on transition to 'expediee' + bulk-delete orders + orders list search/filter/sort/multi-select. Backend: 9/9 pytest passed (test_shipping_email_and_bulk.py). Confirmed first transition 'en_attente'->'expediee' on Alice E2E order (delivered@resend.dev) returns email_sent=true and persists shipping_email_sent flag; second transition returns email_sent=false (no duplicate). Transitions to 'en_attente' and 'livree' always return email_sent=false. bulk-delete: 200 with deleted=2 on real ids, 400 on empty list, 401 without auth, and orders disappear from GET /admin/orders. Non-regression: /api/products=13, /api/content OK. Frontend: filter bar visible, Paiement=Payées shows 2 rows, Traitement=Expédiée shows 3 rows, search 'marc'=1 row, search 'Spider-Man'=1 row (article title match). Sort Montant ascending [0,0,12,15,22,30,250] then descending [250,30,22,15,12,0,0] both strictly sorted. Sort Date/Client clicks work. Selecting 2 pending checkboxes shows 'Supprimer (2)' button; checkbox click does NOT open the order-detail row (stopPropagation OK); row click DOES open order-detail; bulk delete after window.confirm accept removes the 2 orders (7->5 rows) and toast '2 commande(s) supprimée(s)' shown. orders-check-all selects all visible rows (5/5).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_shipping_email_and_bulk.py",
+    "/app/test_reports/pytest/shipping_and_bulk.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py update_order_status: email_sent flag is set inside the try but shipping_email_sent DB update is also inside try; if Mongo update fails the email will have been sent while the flag isn't persisted, allowing a duplicate on retry. Consider setting the flag before send_email or in a finally. Low risk since Mongo update rarely fails.",
+    "Admin.jsx now ~700 lines; long-term consider splitting Orders tab into its own component for maintainability.",
+    "Bulk-delete has no confirmation on the backend and no soft-delete/audit; hard delete is irreversible. Consider adding an audit log entry or a is_deleted flag."
+  ],
+  "updated_files": ["/app/backend/tests/test_shipping_email_and_bulk.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% (filters+sort+search+multi-select+bulk delete + stopPropagation)"},
+  "test_credentials": "Admin: marcduvert@gmail.com / 11Joinville-",
+  "seed_data_creation": "Inserted and cleaned up 2 dummy pending orders (TEST_bulk_del_1/2) for bulk-delete test. Alice E2E order state was reset (fulfillment_status/shipping_email_sent) during tests, then restored to fulfillment_status=expediee + shipping_email_sent=true.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Shipping email + bulk-delete + orders list controls are fully functional. Alice E2E order (session cs_test_a1Y3s33juteMNFWAtJJUlyO5rb4LKNpUJxpjSnmzzz7PX5YhgtMjXfIcOU) is the canonical test order for email flow (delivered@resend.dev), with shipping_email_sent already set — to retest email sending, unset shipping_email_sent + reset fulfillment_status to en_attente via Mongo (DB_NAME=test_database, coll payment_transactions) before PUT expediee. During this run the 2 pending test-cart orders left over from previous iterations (cs_test_...KxXfWz0Qoi and cs_test_...iBug06cNa2) were deleted through the UI bulk-delete path.",
+  "rca of the issue": "N/A — feature works end-to-end."
+}

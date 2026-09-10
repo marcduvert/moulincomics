@@ -49,12 +49,19 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 
 - Tests : iteration_5.json — 9/9 backend pytest + flux e2e Playwright (édition EN/ES, persistance, fallback, non-régression catalogue).
 
+### Emails d'expédition + gestion commandes avancée — 2026-09
+- Email transactionnel automatique au client quand une commande passe à « Expédiée » : intégration Resend managée Emergent (`EMERGENT_EMAIL_KEY`/`EMAIL_FROM_NAME`/`EMAIL_REPLY_TO` dans backend/.env), modèle HTML serveur fixe avec porte `_assert_safe_email`, déclenché dans `PUT /api/admin/orders/{session_id}/status` uniquement à la transition vers `expediee` (flag `shipping_email_sent` anti-doublon, posé avant envoi et annulé si échec ; l'échec d'envoi ne bloque pas le statut).
+- `POST /api/admin/orders/bulk-delete` : suppression groupée de commandes.
+- Onglet Commandes admin : recherche texte (client/email/article/réf.), filtres Paiement et Traitement, tri Date/Client/Montant par clic d'en-tête, cases à cocher + tout sélectionner + bouton Supprimer (confirm).
+- Tests : iteration_7.json — 9/9 backend + e2e filtres/tri/recherche/sélection/suppression. Email réel validé vers delivered@resend.dev.
+
+
 ## Backlog
 - P1: upload d'images de couverture (object storage) au lieu d'URL.
 - P1: gestion des frais de port / retrait salon.
 - P2: comptes clients + historique de commandes.
 - P2: recherche avancée / tri par prix, wishlist.
-- P2: emails de confirmation (Resend).
+- P2: emails de confirmation de commande (email expédition déjà fait via Resend managé).
 
 ## Credentials
 Voir /app/memory/test_credentials.md

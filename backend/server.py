@@ -19,6 +19,137 @@ from bson import ObjectId
 import bcrypt
 import jwt
 import stripe
+import re
+import ipaddress
+import httpx
+from html import escape
+from html.parser import HTMLParser
+from urllib.parse import urlparse
+
+# ---------- Email transactionnel (Resend managé Emergent) ----------
+EMAIL_BASE_URL = "https://integrations.emergentagent.com"
+EMAIL_KEY = os.environ["EMERGENT_EMAIL_KEY"]
+EMAIL_FROM_NAME = os.environ["EMAIL_FROM_NAME"]
+EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
+
+_SHORTENERS = ("bit.ly", "tinyurl.com", "t.co", "is.gd", "cutt.ly", "goo.gl", "rebrand.ly")
+_CRED_ASK = ("reply with your password", "reply with the code", "send your password", "cvv",
+             "send us your password", "enter your password below", "confirm your card number",
+             "your full card number", "seed phrase", "recovery phrase", "verify your card",
+             "social security number", "confirm your bank details")
+_HOSTISH = re.compile(r"\b(?:https?://)?((?:[a-z0-9-]+\.)+[a-z]{2,})", re.I)
+
+def _host_ok(host: str) -> bool:
+    if not host or "xn--" in host:
+        return False
+    try:
+        ipaddress.ip_address(host)
+        return False
+    except ValueError:
+        pass
+    return not any(host == s or host.endswith("." + s) for s in _SHORTENERS)
+
+def _same_site(shown: str, real: str) -> bool:
+    return shown == real or real.endswith("." + shown) or shown.endswith("." + real)
+
+class _EmailScan(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.tags, self.urls, self.anchors = set(), [], []
+        self._href, self._text = None, []
+    def handle_starttag(self, tag, attrs):
+        self.tags.add(tag.lower())
+        self.urls += [v for k, v in attrs if k.lower() in ("href", "src") and v]
+        if tag.lower() == "a":
+            self._href = dict((k.lower(), v) for k, v in attrs).get("href")
+            self._text = []
+    def handle_data(self, data):
+        if self._href is not None:
+            self._text.append(data)
+    def handle_endtag(self, tag):
+        if tag.lower() == "a" and self._href is not None:
+            self.anchors.append((self._href, "".join(self._text)))
+            self._href, self._text = None, []
+
+def _assert_safe_email(subject: str, html: str) -> None:
+    scan = _EmailScan(); scan.feed(html)
+    if scan.tags & {"form", "input", "textarea", "select"}:
+        raise ValueError("No forms or input fields in email (G2)")
+    body = f"{subject}\n{html}".lower()
+    for p in _CRED_ASK:
+        if p in body:
+            raise ValueError(f"Email asks the recipient for credentials: {p!r} (G2)")
+    for url in scan.urls:
+        low = url.strip().lower()
+        if low.startswith(("mailto:", "tel:", "cid:", "#")):
+            continue
+        if not low.startswith("https://"):
+            raise ValueError(f"Email links/assets must be absolute https: {url!r} (G3)")
+        host = urlparse(low).hostname or ""
+        if not _host_ok(host) or urlparse(low).username is not None:
+            raise ValueError(f"Shortened, numeric-host or credential-bearing URL: {url!r} (G3)")
+    for href, text in scan.anchors:
+        real = urlparse(href.strip().lower()).hostname or ""
+        if not real:
+            continue
+        for m in _HOSTISH.finditer(text):
+            if not _same_site(m.group(1).lower(), real):
+                raise ValueError(f"Anchor text {m.group(1)!r} != real link host {real!r} (G3)")
+
+async def send_email(*, to: str, subject: str, html: str, reply_to: str | None = None) -> str | None:
+    _assert_safe_email(subject, html)
+    payload = {"to": [to], "subject": subject, "html": html, "from_name": EMAIL_FROM_NAME}
+    if reply_to or EMAIL_REPLY_TO:
+        payload["contact_email"] = reply_to or EMAIL_REPLY_TO
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            f"{EMAIL_BASE_URL}/api/v1/email/send",
+            headers={"X-Email-Key": EMAIL_KEY},
+            json=payload,
+        )
+    resp.raise_for_status()
+    return resp.json().get("id")
+
+def _shipping_email_html(order: dict) -> str:
+    name = escape((order.get("customer") or {}).get("name") or "")
+    ref = escape(order.get("session_id", "")[-10:])
+    rows = ""
+    for i in order.get("items", []):
+        title = escape(str(i.get("title", "")))
+        qty = int(i.get("quantity", 1))
+        line_total = f"{float(i.get('price', 0)) * qty:.2f} €"
+        rows += ('<tr><td style="padding:6px 0;font-size:14px;border-bottom:1px solid #eee">'
+                 + title + " ×" + str(qty)
+                 + '</td><td style="padding:6px 0;font-size:14px;text-align:right;border-bottom:1px solid #eee">'
+                 + line_total + "</td></tr>")
+    ship = order.get("shipping") or order.get("billing") or {}
+    a = ship.get("address") or {}
+    city_line = " ".join(v for v in (a.get("postal_code"), a.get("city")) if v)
+    addr_lines = [x for x in (ship.get("name"), a.get("line1"), a.get("line2"), city_line, a.get("country")) if x]
+    addr = "<br>".join(escape(str(x)) for x in addr_lines) or "—"
+    total = f"{float(order.get('amount', 0)):.2f} €"
+    brand = escape(EMAIL_FROM_NAME)
+    return (
+        '<table role="presentation" width="100%" style="background:#f5f2ea;padding:24px 0">'
+        '<tr><td align="center"><table role="presentation" width="560" style="background:#ffffff;border:2px solid #141414;font-family:Arial,sans-serif;color:#141414">'
+        '<tr><td style="background:#141414;color:#f5f2ea;padding:16px 24px;font-size:20px;font-weight:bold;letter-spacing:2px">'
+        + brand + '</td></tr>'
+        '<tr><td style="padding:24px">'
+        '<p style="font-size:15px">Bonjour ' + name + ',</p>'
+        '<p style="font-size:15px">Bonne nouvelle : votre commande <strong>réf. ' + ref + '</strong> vient d\'être expédiée.</p>'
+        '<p style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#c8102e;margin:20px 0 6px">Votre commande</p>'
+        '<table role="presentation" width="100%">' + rows + ""
+        '<tr><td style="padding:10px 0;font-size:15px;font-weight:bold">Total</td>'
+        '<td style="padding:10px 0;font-size:15px;font-weight:bold;text-align:right">' + total + '</td></tr></table>'
+        '<p style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#c8102e;margin:20px 0 6px">Adresse de livraison</p>'
+        '<p style="font-size:14px;line-height:1.5">' + addr + '</p>'
+        '<p style="font-size:13px;margin-top:20px">Merci pour votre confiance et bonne lecture !</p>'
+        '</td></tr>'
+        '<tr><td style="padding:14px 24px;font-size:11px;color:#888;border-top:1px solid #eee">'
+        + brand + ' — nous ne vous demanderons jamais votre mot de passe ni vos coordonnées bancaires par email.'
+        '</td></tr></table></td></tr></table>'
+    )
+
 
 # ---------- DB ----------
 mongo_url = os.environ['MONGO_URL']
@@ -771,13 +902,45 @@ async def update_order_status(session_id: str, body: FulfillmentUpdate,
                               admin: dict = Depends(get_current_admin)):
     if body.fulfillment_status not in {"en_attente", "expediee", "livree"}:
         raise HTTPException(400, "Statut invalide")
-    res = await db.payment_transactions.update_one(
+    order = await db.payment_transactions.find_one({"session_id": session_id})
+    if not order:
+        raise HTTPException(404, "Commande introuvable")
+    await db.payment_transactions.update_one(
         {"session_id": session_id},
         {"$set": {"fulfillment_status": body.fulfillment_status,
                   "updated_at": datetime.now(timezone.utc)}})
-    if res.matched_count == 0:
-        raise HTTPException(404, "Commande introuvable")
-    return {"ok": True, "fulfillment_status": body.fulfillment_status}
+    email_sent = False
+    if (body.fulfillment_status == "expediee"
+            and order.get("fulfillment_status") != "expediee"
+            and not order.get("shipping_email_sent")):
+        try:
+            to = (order.get("customer") or {}).get("email")
+            if to:
+                # Marquer avant l'envoi pour éviter tout doublon ; annuler si l'envoi échoue
+                await db.payment_transactions.update_one(
+                    {"session_id": session_id}, {"$set": {"shipping_email_sent": True}})
+                try:
+                    await send_email(to=to,
+                                     subject="Votre commande Moulin Comics est expédiée",
+                                     html=_shipping_email_html(order))
+                    email_sent = True
+                except Exception:
+                    await db.payment_transactions.update_one(
+                        {"session_id": session_id}, {"$unset": {"shipping_email_sent": ""}})
+                    raise
+        except Exception as e:
+            logging.getLogger(__name__).error(f"shipping email error: {e}")
+    return {"ok": True, "fulfillment_status": body.fulfillment_status, "email_sent": email_sent}
+
+class OrdersBulkDelete(BaseModel):
+    session_ids: List[str]
+
+@api.post("/admin/orders/bulk-delete")
+async def bulk_delete_orders(body: OrdersBulkDelete, admin: dict = Depends(get_current_admin)):
+    if not body.session_ids:
+        raise HTTPException(400, "Aucune commande sélectionnée")
+    res = await db.payment_transactions.delete_many({"session_id": {"$in": body.session_ids}})
+    return {"deleted": res.deleted_count}
 
 # ----- Payments (Stripe) -----
 @api.post("/payments/checkout")

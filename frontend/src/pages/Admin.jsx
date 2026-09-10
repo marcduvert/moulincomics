@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react";
 import { api, fmtPrice, API } from "../lib/api";
 
 const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
@@ -17,6 +17,11 @@ export default function Admin() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [openOrder, setOpenOrder] = useState(null);
+  const [orderSearch, setOrderSearch] = useState("");
+  const [orderPay, setOrderPay] = useState("all");
+  const [orderFul, setOrderFul] = useState("all");
+  const [orderSort, setOrderSort] = useState({ key: "created_at", dir: -1 });
+  const [selectedOrders, setSelectedOrders] = useState([]);
   const [seriesList, setSeriesList] = useState([]);
   const [newSeries, setNewSeries] = useState("");
   const [salons, setSalons] = useState([]);
@@ -164,11 +169,55 @@ export default function Admin() {
 
   const updateStatus = async (sessionId, status) => {
     try {
-      await api.put(`/admin/orders/${sessionId}/status`, { fulfillment_status: status });
+      const { data } = await api.put(`/admin/orders/${sessionId}/status`, { fulfillment_status: status });
       setOrders((prev) => prev.map((o) => (o.session_id === sessionId ? { ...o, fulfillment_status: status } : o)));
-      toast.success("Statut mis à jour");
+      toast.success(data.email_sent ? "Statut mis à jour — email d'expédition envoyé au client" : "Statut mis à jour");
     } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
   };
+
+  const toggleSort = (k) => setOrderSort((p) => (p.key === k ? { key: k, dir: -p.dir } : { key: k, dir: 1 }));
+  const toggleOrderSelect = (sid) => setSelectedOrders((p) => (p.includes(sid) ? p.filter((x) => x !== sid) : [...p, sid]));
+  const viewOrders = orders
+    .filter((o) => {
+      if (orderPay === "paid" && o.payment_status !== "paid") return false;
+      if (orderPay === "pending" && o.payment_status === "paid") return false;
+      if (orderFul !== "all" && (o.fulfillment_status || "en_attente") !== orderFul) return false;
+      if (orderSearch) {
+        const hay = [o.session_id, o.customer?.name, o.customer?.email,
+          ...(o.items || []).map((i) => i.title)].filter(Boolean).join(" ").toLowerCase();
+        if (!hay.includes(orderSearch.toLowerCase())) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const k = orderSort.key;
+      const va = k === "customer" ? (a.customer?.name || "") : k === "amount" ? (a.amount || 0) : (a.created_at || "");
+      const vb = k === "customer" ? (b.customer?.name || "") : k === "amount" ? (b.amount || 0) : (b.created_at || "");
+      return (va > vb ? 1 : va < vb ? -1 : 0) * orderSort.dir;
+    });
+  const allSelected = viewOrders.length > 0 && viewOrders.every((o) => selectedOrders.includes(o.session_id));
+  const toggleSelectAll = () => setSelectedOrders(allSelected ? [] : viewOrders.map((o) => o.session_id));
+  const deleteSelected = async () => {
+    if (!selectedOrders.length) return;
+    if (!window.confirm(`Supprimer définitivement ${selectedOrders.length} commande(s) ?`)) return;
+    try {
+      const { data } = await api.post("/admin/orders/bulk-delete", { session_ids: selectedOrders });
+      setOrders((prev) => prev.filter((o) => !selectedOrders.includes(o.session_id)));
+      setSelectedOrders([]);
+      toast.success(`${data.deleted} commande(s) supprimée(s)`);
+    } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
+  };
+
+  const Th = ({ k, children, className = "" }) => (
+    <th className={`text-left p-3 cursor-pointer select-none hover:text-comicyellow ${className}`}
+      onClick={() => toggleSort(k)} data-testid={`orders-sort-${k}`}>
+      <span className="inline-flex items-center gap-1">{children}
+        {orderSort.key === k
+          ? (orderSort.dir === 1 ? <ChevronUp size={11} /> : <ChevronDown size={11} />)
+          : <ArrowUpDown size={11} className="opacity-40" />}
+      </span>
+    </th>
+  );
 
   if (!ready) return <div className="min-h-screen bg-ink text-paper flex items-center justify-center font-mono text-sm">Chargement…</div>;
 
@@ -314,19 +363,50 @@ export default function Admin() {
         {tab === "orders" && (
           <>
             <h1 className="font-display font-black tracking-tighter text-2xl mb-4">Commandes reçues</h1>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <input data-testid="orders-search" value={orderSearch} onChange={(e) => setOrderSearch(e.target.value)}
+                placeholder="Rechercher (client, email, article, réf.)"
+                className="border-2 border-ink rounded-md px-3 py-2 font-mono text-xs bg-paper outline-none w-64" />
+              <select data-testid="orders-filter-pay" value={orderPay} onChange={(e) => setOrderPay(e.target.value)}
+                className="border-2 border-ink rounded-md px-3 py-2 font-mono text-xs bg-paper">
+                <option value="all">Paiement : tous</option>
+                <option value="paid">Payées</option>
+                <option value="pending">En attente</option>
+              </select>
+              <select data-testid="orders-filter-ful" value={orderFul} onChange={(e) => setOrderFul(e.target.value)}
+                className="border-2 border-ink rounded-md px-3 py-2 font-mono text-xs bg-paper">
+                <option value="all">Traitement : tous</option>
+                <option value="en_attente">En attente</option>
+                <option value="expediee">Expédiée</option>
+                <option value="livree">Livrée</option>
+              </select>
+              {selectedOrders.length > 0 && (
+                <button onClick={deleteSelected} data-testid="orders-delete-selected"
+                  className="flex items-center gap-2 bg-comicred text-paper font-mono text-xs uppercase tracking-widest px-4 py-2 rounded-md border-2 border-ink hover:bg-ink transition-colors">
+                  <Trash2 size={13} /> Supprimer ({selectedOrders.length})
+                </button>
+              )}
+            </div>
             <div className="bg-paper border-2 border-ink rounded-md overflow-x-auto">
               <table className="w-full font-mono text-sm min-w-[1080px]">
                 <thead className="bg-ink text-paper text-[11px] uppercase tracking-widest">
                   <tr>
-                    <th className="text-left p-3">Réf.</th><th className="text-left p-3">Date</th>
-                    <th className="text-left p-3">Client</th><th className="text-left p-3">Articles</th>
-                    <th className="text-right p-3">Montant</th><th className="text-left p-3">Paiement</th>
+                    <th className="p-3 w-8">
+                      <input type="checkbox" data-testid="orders-check-all" checked={allSelected} onChange={toggleSelectAll}
+                        className="accent-comicred w-4 h-4 cursor-pointer" />
+                    </th>
+                    <th className="text-left p-3">Réf.</th>
+                    <Th k="created_at">Date</Th>
+                    <Th k="customer">Client</Th>
+                    <th className="text-left p-3">Articles</th>
+                    <Th k="amount" className="!text-right">Montant</Th>
+                    <th className="text-left p-3">Paiement</th>
                     <th className="text-left p-3">Traitement</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-inksoft">Aucune commande.</td></tr>}
-                  {orders.map((o) => {
+                  {viewOrders.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-inksoft">Aucune commande.</td></tr>}
+                  {viewOrders.map((o) => {
                     const fs = o.fulfillment_status || "en_attente";
                     const badge = { en_attente: "border-ink/30 text-inksoft", expediee: "bg-comicblue text-paper border-ink", livree: "bg-comicyellow border-ink" }[fs];
                     const open = openOrder === o.session_id;
@@ -335,6 +415,11 @@ export default function Admin() {
                     <tr className="border-b border-ink/15 cursor-pointer hover:bg-papersoft/60 transition-colors"
                       onClick={() => setOpenOrder(open ? null : o.session_id)}
                       data-testid={`order-${o.session_id}`}>
+                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox" data-testid={`order-check-${o.session_id}`}
+                          checked={selectedOrders.includes(o.session_id)} onChange={() => toggleOrderSelect(o.session_id)}
+                          className="accent-comicred w-4 h-4 cursor-pointer" />
+                      </td>
                       <td className="p-3 text-xs text-inksoft">{o.session_id?.slice(-10)}</td>
                       <td className="p-3 text-xs whitespace-nowrap">{o.created_at ? new Date(o.created_at).toLocaleDateString("fr-FR") : "—"}</td>
                       <td className="p-3 text-xs" data-testid={`order-customer-${o.session_id}`}>
@@ -366,7 +451,7 @@ export default function Admin() {
                     </tr>
                     {open && (
                     <tr className="border-b border-ink/15 bg-papersoft/40" data-testid={`order-detail-${o.session_id}`}>
-                      <td colSpan={7} className="p-5">
+                      <td colSpan={8} className="p-5">
                         <div className="grid sm:grid-cols-3 gap-6 text-xs">
                           <div>
                             <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Client</p>
