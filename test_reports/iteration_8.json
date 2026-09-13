@@ -1,0 +1,25 @@
+{
+  "summary": "SEO V1 end-to-end validation for Moulin Comics (frontend + backend). All required SEO/meta features present and working, no regression on catalog/cart/checkout/admin/i18n. Home: title 'Moulin Comics — Comics Marvel, DC & BD de collection', FR meta description, canonical=SITE_URL/, meta robots=noindex,nofollow (preview attendu), og:title/type=website/image/url/twitter:card=summary_large_image, JSON-LD array with Organization + WebSite. Shop: title 'BOUTIQUE — Comics VO & VF | Moulin Comics', canonical=/shop même avec ?category=VO, BreadcrumbList JSON-LD, 13 product cards affichés. Conventions: title/desc/canonical/robots OK. Fiche produit The Amazing Spider-Man #403 (6a8ee8c1...): title dynamique 'The Amazing Spider-Man #403 — Comic Marvel Comics — Moulin Comics', meta description dynamique avec série+éditeur+année+état+stock réel, canonical=/product/{id}, og:type=product, og:image=couverture réelle, JSON-LD Product (sku=id, brand.name=Marvel Comics, offers priceCurrency=EUR, price='12.00', availability=OutOfStock, itemCondition=UsedCondition) + BreadcrumbList 4 niveaux (Accueil/Boutique/série/titre). Fil d'Ariane visuel data-testid=breadcrumb, clic sur 'Boutique' -> /shop OK. Deadpool vs Punisher: img alt='Deadpool vs Punisher — Comic Marvel — Moulin Comics', ProductCard imgs loading=lazy avec alt descriptif. Pages sensibles /payment/success, /payment/cancel, /admin/login: meta robots=noindex,nofollow. Sitemap: /api/sitemap.xml renvoie 16 <loc> (/, /shop, /conventions + 13 /product/), 0 URL admin/payment/cart/checkout, domaine = SITE_URL. robots.txt: bloc Cloudflare managed (normal) + User-agent:* Allow:/ Disallow:/admin /payment /cart /checkout + ligne Sitemap. Admin /admin/content onglet content-tab-seo: fonctionne, bouton save-seo (ENREGISTRER) présent, changement seo_title -> 'Titre SEO Test' + reload home => document.title='Titre SEO Test' confirmé; puis restauration à 'Moulin Comics — Comics Marvel, DC & BD de collection' OK. Non-régression: /api/products=13, add-to-cart passe le compteur à 1, POST /api/payments/checkout crée bien une session Stripe (checkout_url cs_test_...) sans paiement, admin login marcduvert@gmail.com / 11Joinville- OK, mobile 390x844 home+fiche produit s'affichent proprement avec fil d'Ariane lisible.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_8.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Filtres 'séries' de la Boutique affichent encore TEST_chainedSeries / TEST_seriesAlpha / TEST_seriesBeta (chips vides) — vestiges pytest côté collection series, sans produit associé (le catalogue reste bien à 13 produits réels). Faible impact SEO (les produits eux-mêmes sont propres) mais visible en UI. À nettoyer côté seed/série.",
+    "og:image du produit pointe vers /api/files/... : ok fonctionnellement, mais l'image OG doit idéalement être 1200x630 pour LinkedIn/Twitter cards (les covers actuelles font 400-800px). À voir plus tard.",
+    "Product JSON-LD 'description' recopie juste le nom du produit — on gagnerait à réutiliser la meta description dynamique (série/année/éditeur/état) pour un rich snippet plus riche.",
+    "Champs SEO admin (input SEO Title, textarea Meta description, OG Title/Description) n'ont pas de data-testid dédiés (seul le tab content-tab-seo et le bouton save-seo en ont). Ok pour ce sprint, à ajouter pour tests futurs."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (sitemap 16 URLs OK, robots.txt OK, /api/products=13, /api/payments/checkout OK)", "frontend": "100% (SEO tags toutes pages, JSON-LD Product+Breadcrumb, admin SEO save+reload, non-régression cart/shop/admin/mobile)"},
+  "test_credentials": "Admin: marcduvert@gmail.com / 11Joinville-",
+  "seed_data_creation": "Aucune donnée créée. Modif SEO Title admin appliquée puis restaurée à la valeur cible.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "SEO V1 stable. Sitemap dynamique OK (3 pages + 13 produits). Preview volontairement noindex via REACT_APP_ROBOTS=noindex,nofollow — passer à 'index,follow' au branchement du domaine définitif + mettre à jour SITE_URL (backend/.env), REACT_APP_SITE_URL (frontend/.env) et la ligne Sitemap dans /app/frontend/public/robots.txt. Le tag save-seo existe mais les inputs SEO n'ont pas de data-testid, utiliser un fill via JS setter natif sur l'input contenant 'Moulin Comics' comme dans ce test. Le bloc Cloudflare en tête de robots.txt est managé par la plateforme et NE doit pas être considéré comme un bug. Bande de séries 'TEST_' encore présente en UI Shop — à faire nettoyer par main agent si SEO impact craint.",
+  "rca of the issue": "N/A — SEO V1 fonctionne comme spécifié."
+}

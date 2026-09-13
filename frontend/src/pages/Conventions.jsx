@@ -4,6 +4,7 @@ import { useLang } from "../context/LanguageContext";
 import { Marquee } from "../components/Marquee";
 import { Reveal } from "../components/Reveal";
 import { MapPin } from "lucide-react";
+import { Seo } from "../components/Seo";
 
 const CONV = "https://images.pexels.com/photos/36398813/pexels-photo-36398813.jpeg?auto=compress&cs=tinysrgb&w=1200";
 const CROWD = "https://images.unsplash.com/photo-1578434972378-e3c393d983db?crop=entropy&cs=srgb&fm=jpg&q=85&w=1000";
@@ -14,8 +15,13 @@ export default function Conventions() {
   useEffect(() => { api.get("/salons").then((r) => setEvents(r.data)).catch(() => {}); }, []);
   return (
     <div>
+      <Seo
+        title="Salons & conventions BD — Moulin Comics en tournée | Moulin Comics"
+        description="Moulin Comics sillonne les salons et conventions BD en Europe : Angoulême, Paris, Bruxelles, Lucca. Venez chiner comics VO et mensuels VF à notre stand."
+        path="/conventions"
+      />
       <section className="relative border-b-2 border-ink overflow-hidden">
-        <img src={CONV} alt="Convention" className="absolute inset-0 w-full h-full object-cover" />
+        <img src={CONV} alt="Stand Moulin Comics en convention BD" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-ink/60" />
         <div className="relative max-w-[1400px] mx-auto px-4 sm:px-8 py-24 sm:py-32 text-paper">
           <Reveal>

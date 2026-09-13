@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react";
 import { api, fmtPrice, API } from "../lib/api";
+import { Seo } from "../components/Seo";
 
 const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
   condition: "Très bon état", year: "", issue: "", description: "", description_en: "", description_es: "", cover_image: "", featured: false };
@@ -223,6 +224,7 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-papersoft">
+      <Seo title="Administration | Moulin Comics" noindex />
       <header className="bg-ink text-paper border-b-2 border-ink sticky top-0 z-40">
         <div className="max-w-[1300px] mx-auto px-5 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">

@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /payment
+Disallow: /cart
+Disallow: /checkout
+
+# Sitemap dynamique généré par le backend (produits inclus automatiquement).
+# Au branchement du domaine définitif : mettre à jour cette ligne + SITE_URL (backend/.env) + REACT_APP_SITE_URL (frontend/.env).
+Sitemap: https://moulin-bd-comics.preview.emergentagent.com/api/sitemap.xml

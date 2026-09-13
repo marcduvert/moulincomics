@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ShoppingBag, Check } from "lucide-react";
-import { api, fmtPrice } from "../lib/api";
+import { ShoppingBag, Check } from "lucide-react";import { api, fmtPrice } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { ProductCard } from "../components/ProductCard";
+import { Seo } from "../components/Seo";
+import { absUrl } from "../lib/seo";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -33,18 +34,70 @@ export default function ProductDetail() {
     : (lang === "es" && p.description_es) ? p.description_es
     : p.description;
 
+  // --- SEO dynamique (données réelles du produit uniquement) ---
+  const titleParts = [p.title];
+  if (p.series && !p.title.toLowerCase().includes(p.series.toLowerCase())) titleParts.push(p.series);
+  else if (p.publisher && !p.title.toLowerCase().includes(p.publisher.toLowerCase())) titleParts.push(`Comic ${p.publisher}`);
+  titleParts.push("Moulin Comics");
+  const seoTitle = titleParts.join(" — ");
+  const descBits = [p.title + (p.issue && !p.title.includes(`#${p.issue}`) ? ` #${p.issue}` : "")];
+  if (p.series) descBits.push(`série ${p.series}`);
+  if (p.publisher) descBits.push(`édité par ${p.publisher}`);
+  if (p.year) descBits.push(`(${p.year})`);
+  if (p.condition) descBits.push(`état : ${p.condition}`);
+  descBits.push(p.stock > 0 ? `disponible à ${fmtPrice(p.price)}` : "actuellement épuisé");
+  const seoDesc = descBits.join(", ") + ".";
+  const productLd = {
+    "@context": "https://schema.org", "@type": "Product",
+    name: p.title + (p.issue && !p.title.includes(`#${p.issue}`) ? ` #${p.issue}` : ""),
+    image: [p.cover_image],
+    description: localizedDesc || seoDesc,
+    sku: p.id,
+    ...(p.publisher && { brand: { "@type": "Brand", name: p.publisher } }),
+    offers: {
+      "@type": "Offer",
+      url: absUrl(`/product/${p.id}`),
+      priceCurrency: "EUR",
+      price: Number(p.price || 0).toFixed(2),
+      availability: p.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      itemCondition: (p.condition || "").toLowerCase().includes("neuf")
+        ? "https://schema.org/NewCondition" : "https://schema.org/UsedCondition",
+    },
+  };
+  const breadcrumbLd = {
+    "@context": "https://schema.org", "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: t.nav.home || "Accueil", item: absUrl("/") },
+      { "@type": "ListItem", position: 2, name: t.nav.shop, item: absUrl("/shop") },
+      ...(p.series ? [{ "@type": "ListItem", position: 3, name: p.series,
+        item: absUrl(`/shop?series=${encodeURIComponent(p.series)}`) }] : []),
+      { "@type": "ListItem", position: p.series ? 4 : 3, name: p.title },
+    ],
+  };
+
   return (
     <div>
+      <Seo title={seoTitle} description={seoDesc} path={`/product/${p.id}`}
+        image={p.cover_image} type="product" jsonLd={[productLd, breadcrumbLd]} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 pt-6">
-        <Link to="/shop" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest hover:text-comicred">
-          <ArrowLeft size={14} /> {t.product.back}
-        </Link>
+        <nav aria-label="Fil d'Ariane" data-testid="breadcrumb"
+          className="font-mono text-xs uppercase tracking-widest flex items-center gap-2 flex-wrap">
+          <Link to="/" className="hover:text-comicred">{t.nav.home || "Accueil"}</Link>
+          <span className="text-inksoft">›</span>
+          <Link to="/shop" className="hover:text-comicred">{t.nav.shop}</Link>
+          {p.series && (<>
+            <span className="text-inksoft">›</span>
+            <Link to={`/shop?series=${encodeURIComponent(p.series)}`} className="hover:text-comicred">{p.series}</Link>
+          </>)}
+          <span className="text-inksoft">›</span>
+          <span className="text-inksoft line-clamp-1">{p.title}</span>
+        </nav>
       </div>
       <section className="max-w-[1400px] mx-auto px-4 sm:px-8 py-8 grid lg:grid-cols-2 gap-8 lg:gap-16">
         <div className="lg:sticky lg:top-24 self-start">
           <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }}
             className="border-2 border-ink bg-papersoft p-4 shadow-hardlg">
-            <img src={p.cover_image} alt={p.title} className="w-full aspect-[3/4] object-cover blend-ink" />
+            <img src={p.cover_image} alt={seoTitle.replace(" | Moulin Comics", "")} className="w-full aspect-[3/4] object-cover blend-ink" />
           </motion.div>
         </div>
         <div>

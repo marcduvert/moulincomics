@@ -4,6 +4,7 @@ import { CheckCircle2 } from "lucide-react";
 import { api, fmtPrice } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
+import { Seo } from "../components/Seo";
 
 export default function PaymentSuccess() {
   const [params] = useSearchParams();
@@ -29,6 +30,7 @@ export default function PaymentSuccess() {
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 py-20">
+      <Seo title="Paiement confirmé | Moulin Comics" noindex />
       <div className="max-w-lg w-full border-2 border-ink bg-papersoft p-8 sm:p-12 text-center shadow-hardlg">
         {status === "checking" && <p className="font-mono text-sm">{t.pay.checking}</p>}
         {status === "paid" && (

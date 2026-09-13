@@ -15,7 +15,8 @@ export const ProductCard = ({ product, index = 0 }) => {
     <Link to={`/product/${product.id}`} data-testid={`product-card-${product.id}`}
       className="group block border-2 border-ink bg-papersoft hover:shadow-hard transition-shadow duration-300">
       <div className="relative aspect-[3/4] overflow-hidden bg-papersoft border-b-2 border-ink">
-        <img src={product.cover_image} alt={product.title}
+        <img src={product.cover_image} loading="lazy"
+          alt={`${product.title}${product.series ? ` — ${product.series}` : ""}${product.publisher ? ` ${product.publisher}` : ""}`}
           className="w-full h-full object-cover blend-ink transition-transform duration-500 group-hover:scale-105 group-hover:rotate-1" />
         <span className="absolute top-0 left-0 bg-ink text-paper font-mono text-[10px] uppercase tracking-widest px-2 py-1">
           {product.category}

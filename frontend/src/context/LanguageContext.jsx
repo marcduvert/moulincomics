@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 const T = {
   fr: {
-    nav: { shop: "Boutique", vo: "VO", vf: "VF", salons: "Salons" },
+    nav: { home: "Accueil", shop: "Boutique", vo: "VO", vf: "VF", salons: "Salons" },
     hero: {
       eyebrow: "Comic Shop · VO & VF · Paris",
       l1: "Moulin Comics —", l2: "Votre prochaine pièce", l3: "de collection est ici",
@@ -59,7 +59,7 @@ const T = {
     },
   },
   en: {
-    nav: { shop: "Shop", vo: "OV", vf: "French", salons: "Events" },
+    nav: { home: "Home", shop: "Shop", vo: "OV", vf: "French", salons: "Events" },
     hero: {
       eyebrow: "Comic Shop · OV & French · Paris",
       l1: "Moulin Comics —", l2: "Your next collector's", l3: "piece is here",
@@ -116,7 +116,7 @@ const T = {
     },
   },
   es: {
-    nav: { shop: "Tienda", vo: "VO", vf: "VF", salons: "Salones" },
+    nav: { home: "Inicio", shop: "Tienda", vo: "VO", vf: "VF", salons: "Salones" },
     hero: {
       eyebrow: "Comic Shop · VO & VF · París",
       l1: "Moulin Comics —", l2: "Tu próxima pieza", l3: "de colección está aquí",

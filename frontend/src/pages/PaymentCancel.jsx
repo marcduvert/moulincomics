@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
 import { XCircle } from "lucide-react";
 import { useLang } from "../context/LanguageContext";
+import { Seo } from "../components/Seo";
 
 export default function PaymentCancel() {
   const { t } = useLang();
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 py-20">
+      <Seo title="Paiement annulé | Moulin Comics" noindex />
       <div className="max-w-lg w-full border-2 border-ink bg-papersoft p-8 sm:p-12 text-center shadow-hardlg">
         <XCircle size={48} className="mx-auto text-inksoft mb-6" />
         <h1 className="font-display font-black tracking-tighter text-3xl sm:text-4xl">{t.pay.cancelTitle}</h1>

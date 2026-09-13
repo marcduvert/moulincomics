@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
+import { Seo } from "../components/Seo";
 
 export default function AdminLogin() {
   const nav = useNavigate();
@@ -24,6 +25,7 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-screen bg-ink flex items-center justify-center px-4">
+      <Seo title="Espace gérant | Moulin Comics" noindex />
       <form onSubmit={submit} className="w-full max-w-sm bg-paper border-2 border-ink p-8 shadow-hardlg" data-testid="admin-login-form">
         <span className="bg-ink text-paper font-anton text-xl px-2 py-0.5">MC</span>
         <h1 className="font-display font-black tracking-tighter text-2xl mt-5">Espace gérant</h1>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { UploadCloud, X, Loader2, Check, AlertTriangle, Trash2, ArrowLeft, Sparkles, CheckCircle2, History, FileDown } from "lucide-react";
 import { api } from "../lib/api";
+import { Seo } from "../components/Seo";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
 const ACCEPT = ["image/jpeg", "image/png", "image/webp"];
@@ -173,6 +174,7 @@ export default function ImportIA() {
 
   return (
     <div className="min-h-screen bg-papersoft">
+      <Seo title="Import intelligent | Moulin Comics" noindex />
       <header className="bg-ink text-paper border-b-2 border-ink sticky top-0 z-40">
         <div className="max-w-[1400px] mx-auto px-5 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">

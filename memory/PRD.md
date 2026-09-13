@@ -60,6 +60,17 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Modèles factorisés : `_order_email_html` (mise en page commune) + `_shipping_email_html` / `_confirmation_email_html`.
 - Note test : le proxy email applique une limite de débit (429 après envois répétés) — espacer les tests d'envoi.
 - Suite pytest : 56/56 en séquentiel (`-n 0`) ; en parallèle (xdist, imposé par pytest.ini) des races sur la base partagée peuvent faire échouer des teardowns — problème de suite de tests, pas de l'app.
+
+### SEO V1 — 2026-09
+- Config centralisée du domaine : `SITE_URL` (backend/.env) + `REACT_APP_SITE_URL` et `REACT_APP_ROBOTS` (frontend/.env) ; `frontend/src/lib/seo.js` (SITE_URL, absUrl, SEO_DEFAULTS). Preview en noindex ; bascule domaine définitif = 2 variables + ligne Sitemap dans public/robots.txt.
+- Composant `Seo.jsx` : title, meta description, robots, canonical, Open Graph, Twitter Card, JSON-LD par page. index.html : lang=fr, title/meta/OG/canonical par défaut (crawlers sans JS).
+- Pages : accueil (Seo + Organization/WebSite, surchargeable via section `seo` de site_content), boutique (canonical sans paramètres + BreadcrumbList), fiche produit (title/description dynamiques sur données réelles, Product Schema sku/brand/offers EUR/availability réelle/itemCondition, BreadcrumbList + fil d'Ariane visuel), salons ; noindex sur paiement + admin.
+- `GET /api/sitemap.xml` dynamique (3 pages + produits auto) ; public/robots.txt (Disallow /admin /payment /cart /checkout + Sitemap). Images : alt descriptifs + lazy loading cartes.
+- Admin « Contenu du site » : onglet SEO (seo_title, meta_description, og_title, og_description, og_image + compteurs indicatifs 55/155), multilingue EN/ES hérité du mécanisme existant.
+- Nettoyage : 2 produits artefacts pytest (TEST_Comic Alpha/Beta) et 3 séries TEST supprimés — catalogue 13 vrais produits.
+- Tests : iteration_8.json — 100 % backend+frontend, non-régression catalogue/panier/checkout/admin/i18n/mobile. pytest 56/56 séquentiel.
+- Limites connues : SPA sans SSR (balises pages internes injectées en JS, Google les lit ; index.html porte les balises accueil en dur) ; og:image produits = couverture (pas de recadrage 1200×630) ; Merchant Center et blog hors V1 par demande.
+
 - Tests obsolètes corrigés : test_shop_perf (default BASE_URL), test_import_ia (descriptions vérifiées via endpoint détail), test_shipping_email (destinataire delivered@resend.dev forcé car l'adresse example.com de la session Stripe est rejetée par le proxy).
 
 

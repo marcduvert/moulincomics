@@ -1106,6 +1106,11 @@ DEFAULT_CONTENT = {
         "button_text": "Voir l'agenda", "button_url": "/conventions", "image": "",
     },
     "villes": ["Angoulême", "Comic Con Paris", "Lucca", "Bruxelles", "Lyon", "FIBD"],
+    "seo": {
+        "seo_title": "Moulin Comics — Comics Marvel, DC & BD de collection",
+        "meta_description": "Moulin Comics sélectionne des comics Marvel, DC Comics, comics américains et BD de collection pour les passionnés et collectionneurs.",
+        "og_title": "", "og_description": "", "og_image": "",
+    },
     "footer": {
         "description": "Comic shop spécialisé en VO. Large stock de mensuels VF — Strange, Nova, Titans. De la case à la caisse depuis toujours.",
         "address": "Paris · France", "email": "bonjour@moulincomics.fr", "phone": "",
@@ -1158,6 +1163,30 @@ async def update_content_lang(section: str, lang: str, body: dict = Body(...), a
         await db.site_content.update_one({"key": "home"}, {"$unset": {f"{section}.{lang}": ""}})
     doc = await db.site_content.find_one({"key": "home"})
     return _merge_content(doc)
+
+# ===== SEO : sitemap dynamique =====
+@api.get("/sitemap.xml")
+async def sitemap_xml():
+    """Sitemap dynamique : pages publiques + toutes les fiches produits.
+    Le domaine vient de SITE_URL (backend/.env) — le changer suffit lors du
+    branchement du domaine définitif."""
+    base = os.environ["SITE_URL"].rstrip("/")
+    parts = []
+    for pth in ("/", "/shop", "/conventions"):
+        parts.append(f"<url><loc>{base}{pth}</loc><changefreq>weekly</changefreq></url>")
+    prods = await db.products.find({}, {"created_at": 1}).sort("created_at", -1).to_list(5000)
+    for p in prods:
+        ca = p.get("created_at")
+        lastmod = ""
+        if isinstance(ca, datetime):
+            lastmod = f"<lastmod>{ca.date().isoformat()}</lastmod>"
+        elif isinstance(ca, str) and ca[:10]:
+            lastmod = f"<lastmod>{ca[:10]}</lastmod>"
+        parts.append(f"<url><loc>{base}/product/{p['_id']}</loc>{lastmod}<changefreq>weekly</changefreq></url>")
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+           + "".join(parts) + "</urlset>")
+    return Response(content=xml, media_type="application/xml")
 
 app.include_router(api)
 

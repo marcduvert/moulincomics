@@ -3,19 +3,27 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Save, Upload, Loader2, Plus, Trash2, ArrowUp, ArrowDown, Languages } from "lucide-react";
 import { api } from "../lib/api";
+import { Seo } from "../components/Seo";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
-const TABS = [["hero", "Accueil"], ["maison", "La Maison"], ["salons", "Salons"], ["footer", "Footer"]];
+const TABS = [["hero", "Accueil"], ["maison", "La Maison"], ["salons", "Salons"], ["footer", "Footer"], ["seo", "SEO"]];
 const LANGS = [["fr", "Français"], ["en", "English"], ["es", "Español"]];
 
-const Field = ({ label, value, onChange, textarea, placeholder }) => (
+const Field = ({ label, value, onChange, textarea, placeholder, count, testid }) => (
   <div className="mb-4">
     <label className="font-mono text-[10px] uppercase tracking-widest text-inksoft block mb-1">{label}</label>
     {textarea
       ? <textarea value={value || ""} onChange={(e) => onChange(e.target.value)} rows={4} placeholder={placeholder}
+          data-testid={testid}
           className="w-full border-2 border-ink rounded-md px-3 py-2 bg-papersoft font-mono text-sm outline-none" />
       : <input value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+          data-testid={testid}
           className="w-full border-2 border-ink rounded-md px-3 py-2 bg-papersoft font-mono text-sm outline-none" />}
+    {count && (
+      <p className={`font-mono text-[10px] mt-1 ${(value || "").length > count ? "text-comicred" : "text-inksoft"}`}>
+        {(value || "").length} caractères (repère ~{count})
+      </p>
+    )}
   </div>
 );
 
@@ -116,6 +124,7 @@ export default function SiteContent() {
 
   return (
     <div className="min-h-screen bg-papersoft">
+      <Seo title="Contenu du site | Moulin Comics" noindex />
       <header className="bg-ink text-paper border-b-2 border-ink sticky top-0 z-40">
         <div className="max-w-[1100px] mx-auto px-5 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -224,6 +233,22 @@ export default function SiteContent() {
                 )}
               </div>
               <div className="mt-6"><SaveBar sec="salons" /></div>
+            </>
+          )}
+
+          {tab === "seo" && (
+            <>
+              <h2 className="font-display font-black text-xl mb-2">SEO — Page d'accueil</h2>
+              <p className="font-mono text-xs text-inksoft mb-5 border-l-2 border-comicred pl-3">
+                Balises titre et description vues par Google et les réseaux sociaux. Laissés vides, les valeurs par défaut du site sont utilisées.
+                Les compteurs sont indicatifs : l'enregistrement n'est jamais bloqué.
+              </p>
+              <Field label="SEO Title" count={55} testid="seo-title-input" value={val("seo", "seo_title")} onChange={(v) => setField("seo", "seo_title", v)} placeholder={ph("seo", "seo_title")} />
+              <Field label="Meta description" textarea count={155} testid="seo-description-input" value={val("seo", "meta_description")} onChange={(v) => setField("seo", "meta_description", v)} placeholder={ph("seo", "meta_description")} />
+              <Field label="OG Title (partage réseaux sociaux)" count={55} testid="seo-og-title-input" value={val("seo", "og_title")} onChange={(v) => setField("seo", "og_title", v)} placeholder={ph("seo", "og_title") || "Par défaut : SEO Title"} />
+              <Field label="OG Description" textarea count={155} testid="seo-og-description-input" value={val("seo", "og_description")} onChange={(v) => setField("seo", "og_description", v)} placeholder={ph("seo", "og_description") || "Par défaut : Meta description"} />
+              <ImageField label="OG Image (partage réseaux sociaux)" value={val("seo", "og_image") || (lang !== "fr" ? frImg("seo") : "")} onChange={(v) => setField("seo", "og_image", v)} />
+              <SaveBar sec="seo" />
             </>
           )}
 

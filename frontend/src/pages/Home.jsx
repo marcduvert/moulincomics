@@ -5,6 +5,8 @@ import { ArrowRight } from "lucide-react";
 import { api } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
 import { useContent } from "../context/ContentContext";
+import { Seo } from "../components/Seo";
+import { SITE_URL, absUrl, SEO_DEFAULTS } from "../lib/seo";
 import { ProductCard } from "../components/ProductCard";
 import { Marquee } from "../components/Marquee";
 import { Reveal, LineReveal } from "../components/Reveal";
@@ -62,6 +64,13 @@ export default function Home() {
     ? content.villes : ["Angoulême", "Comic Con Paris", "Lucca", "Bruxelles", "Lyon", "FIBD"];
   const heroImg = hero.image || HERO;
   const salonsImg = salons.image || CONV;
+  const seoC = localized("seo", {});
+  const homeLd = [
+    { "@context": "https://schema.org", "@type": "Organization",
+      name: "Moulin Comics", url: SITE_URL, logo: absUrl("/logo.png") },
+    { "@context": "https://schema.org", "@type": "WebSite",
+      name: "Moulin Comics", url: SITE_URL, inLanguage: ["fr", "en", "es"] },
+  ];
 
   useEffect(() => {
     api.get("/products", { params: { featured: true } }).then((r) => setFeatured(r.data.slice(0, 8)));
@@ -69,6 +78,15 @@ export default function Home() {
 
   return (
     <div>
+      <Seo
+        title={seoC.seo_title || SEO_DEFAULTS.title}
+        description={seoC.meta_description || SEO_DEFAULTS.description}
+        ogTitle={seoC.og_title}
+        ogDescription={seoC.og_description}
+        image={seoC.og_image || heroImg}
+        path="/"
+        jsonLd={homeLd}
+      />
       {/* HERO */}
       <section ref={heroRef} className="relative border-b-2 border-ink overflow-hidden">
         <div className="max-w-[1400px] mx-auto grid lg:grid-cols-12">

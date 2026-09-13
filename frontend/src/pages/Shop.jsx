@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
 import { ProductCard } from "../components/ProductCard";
+import { Seo } from "../components/Seo";
+import { absUrl } from "../lib/seo";
 
 // Module-level cache with short TTL: fast navigation, but refreshes so new admin
 // products appear without a hard reload.
@@ -60,8 +62,24 @@ export default function Shop() {
     });
   }, [allProducts, category, serie, search, q]);
 
+  const shopLd = {
+    "@context": "https://schema.org", "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: t.nav.home || "Accueil", item: absUrl("/") },
+      { "@type": "ListItem", position: 2, name: t.shop.title, item: absUrl("/shop") },
+    ],
+  };
+
   return (
     <div>
+      <Seo
+        title={serie ? `${serie} — ${t.shop.title} | Moulin Comics` : `${t.shop.title} — Comics VO & VF | Moulin Comics`}
+        description={serie
+          ? `${t.shop.title} Moulin Comics : comics et BD de la série ${serie}.`
+          : "Comics Marvel, DC et indés en version originale, mensuels VF Strange, Nova, Titans — tout le stock Moulin Comics."}
+        path="/shop"
+        jsonLd={shopLd}
+      />
       <div className="border-b-2 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-12 sm:py-16">
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-comicred mb-2">{t.shop.eyebrow}</p>
