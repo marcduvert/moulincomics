@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText, ArrowUpDown, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText, ArrowUpDown, ChevronUp, ChevronDown, Truck } from "lucide-react";
 import { api, fmtPrice, API } from "../lib/api";
 import { Seo } from "../components/Seo";
 
@@ -23,6 +23,33 @@ export default function Admin() {
   const [orderFul, setOrderFul] = useState("all");
   const [orderSort, setOrderSort] = useState({ key: "created_at", dir: -1 });
   const [selectedOrders, setSelectedOrders] = useState([]);
+  const [shipCfg, setShipCfg] = useState({ mondial_relay_price: "", home_delivery_price: "" });
+  const [mrStatus, setMrStatus] = useState(null);
+
+  const saveShippingCfg = async () => {
+    try {
+      const body = {
+        mondial_relay_price: parseFloat(shipCfg.mondial_relay_price) || 0,
+        home_delivery_price: parseFloat(shipCfg.home_delivery_price) || 0,
+      };
+      await api.put("/admin/content/shipping", body);
+      toast.success("Tarifs de livraison enregistrés");
+    } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
+  };
+
+  const SHIPPING_STATUS_LABELS = {
+    a_preparer: "À préparer", preparee: "Préparée", expediee: "Expédiée",
+    en_transit: "En transit", disponible_relais: "Disponible au Point Relais",
+    livree: "Livrée", incident: "Incident", annulee: "Annulée",
+  };
+
+  const updateShipping = async (sessionId, patch) => {
+    try {
+      await api.put(`/admin/orders/${sessionId}/shipping`, patch);
+      setOrders((prev) => prev.map((o) => (o.session_id === sessionId ? { ...o, ...patch } : o)));
+      toast.success("Livraison mise à jour");
+    } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
+  };
   const [seriesList, setSeriesList] = useState([]);
   const [newSeries, setNewSeries] = useState("");
   const [salons, setSalons] = useState([]);
@@ -107,6 +134,14 @@ export default function Admin() {
     api.get("/admin/orders").then((r) => setOrders(r.data)).catch(() => {});
     api.get("/admin/series").then((r) => setSeriesList(r.data)).catch(() => {});
     api.get("/salons").then((r) => setSalons(r.data)).catch(() => {});
+    api.get("/content").then((r) => {
+      const s = r.data?.shipping || {};
+      setShipCfg({
+        mondial_relay_price: s.mondial_relay_price ?? "",
+        home_delivery_price: s.home_delivery_price ?? "",
+      });
+    }).catch(() => {});
+    api.get("/admin/mondial-relay/status").then((r) => setMrStatus(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -257,7 +292,41 @@ export default function Admin() {
           <button onClick={() => setTab("salons")} data-testid="tab-salons" className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink ${tab === "salons" ? "bg-ink text-paper" : "bg-paper"}`}>
             <MapPin size={14} /> Salons ({salons.length})
           </button>
+          <button onClick={() => setTab("shipping")} data-testid="tab-shipping" className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink ${tab === "shipping" ? "bg-ink text-paper" : "bg-paper"}`}>
+            <Truck size={14} /> Livraison
+          </button>
         </div>
+
+        {tab === "shipping" && (
+          <>
+            <h1 className="font-display font-black tracking-tighter text-2xl mb-4">Paramètres — Livraison</h1>
+            <div className="bg-paper border-2 border-ink rounded-md p-6 max-w-xl">
+              <p className="font-mono text-xs text-inksoft mb-5 border-l-2 border-comicred pl-3">
+                Ces tarifs s'affichent au checkout et sont vérifiés côté serveur à chaque commande.
+              </p>
+              <div className="border-2 border-ink rounded-md p-4 mb-4">
+                <p className="font-display font-bold text-sm mb-1">Mondial Relay — Point Relais / Locker</p>
+                <p className="font-mono text-[10px] text-inksoft uppercase mb-2">France métropolitaine</p>
+                <label className="font-mono text-[10px] uppercase tracking-widest text-inksoft block mb-1">Prix TTC (€)</label>
+                <input type="number" step="0.10" min="0" value={shipCfg.mondial_relay_price} data-testid="shipping-relay-price"
+                  onChange={(e) => setShipCfg((p) => ({ ...p, mondial_relay_price: e.target.value }))}
+                  className="w-32 border-2 border-ink rounded-md px-3 py-2 bg-papersoft font-mono text-sm outline-none" />
+              </div>
+              <div className="border-2 border-ink rounded-md p-4 mb-4">
+                <p className="font-display font-bold text-sm mb-1">Livraison à domicile</p>
+                <p className="font-mono text-[10px] text-inksoft uppercase mb-2">À l'adresse du client</p>
+                <label className="font-mono text-[10px] uppercase tracking-widest text-inksoft block mb-1">Prix TTC (€)</label>
+                <input type="number" step="0.10" min="0" value={shipCfg.home_delivery_price} data-testid="shipping-home-price"
+                  onChange={(e) => setShipCfg((p) => ({ ...p, home_delivery_price: e.target.value }))}
+                  className="w-32 border-2 border-ink rounded-md px-3 py-2 bg-papersoft font-mono text-sm outline-none" />
+              </div>
+              <button onClick={saveShippingCfg} data-testid="shipping-save"
+                className="flex items-center gap-2 bg-ink text-paper font-mono text-xs uppercase tracking-widest px-5 py-3 rounded-md border-2 border-ink hover:bg-comicred transition-colors">
+                Enregistrer les paramètres
+              </button>
+            </div>
+          </>
+        )}
 
         {tab === "stock" && (
           <>
@@ -475,6 +544,60 @@ export default function Admin() {
                             {o.billing?.address
                               ? <>{o.billing.name && <p className="font-bold">{o.billing.name}</p>}{fmtAddr(o.billing.address).map((l, i) => <p key={i}>{l}</p>)}</>
                               : <p className="text-inksoft">Non renseignée</p>}
+                          </div>
+                        </div>
+                        <div className="mt-4 border-t border-ink/15 pt-3" data-testid={`order-shipping-${o.session_id}`}>
+                          <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Livraison</p>
+                          <div className="flex flex-wrap items-start gap-6 text-xs">
+                            <div>
+                              {o.shipping_method === "mondial_relay" ? (
+                                <>
+                                  <p className="font-bold mb-1"><span className="bg-comicblue text-paper px-2 py-0.5 uppercase text-[10px] border border-ink">Mondial Relay — {o.relay_point_type || "Point Relais"}</span></p>
+                                  <p className="font-bold">{o.relay_point_name}</p>
+                                  <p>{o.relay_point_address}</p>
+                                  <p>{o.relay_point_postal_code} {o.relay_point_city}</p>
+                                  <p className="text-inksoft mt-1">Identifiant : {o.relay_point_id}</p>
+                                </>
+                              ) : o.shipping_method === "home_delivery" ? (
+                                <p className="font-bold"><span className="bg-comicyellow px-2 py-0.5 uppercase text-[10px] border border-ink">Livraison à domicile</span></p>
+                              ) : (
+                                <p className="text-inksoft">Mode non renseigné (commande antérieure)</p>
+                              )}
+                              {o.shipping_price != null && <p className="mt-1 text-inksoft">Frais : {fmtPrice(o.shipping_price)}</p>}
+                            </div>
+                            <div>
+                              <p className="text-inksoft mb-1">Statut :</p>
+                              <select value={o.shipping_status || "a_preparer"}
+                                data-testid={`order-shipping-status-${o.session_id}`}
+                                onChange={(e) => updateShipping(o.session_id, { shipping_status: e.target.value })}
+                                className="border-2 border-ink rounded-md px-2 py-1 text-xs bg-papersoft">
+                                {Object.entries(SHIPPING_STATUS_LABELS).map(([k, l]) => (
+                                  <option key={k} value={k}>{l}</option>
+                                ))}
+                              </select>
+                              <div className="mt-2 flex items-center gap-2">
+                                <input placeholder="N° de suivi" defaultValue={o.tracking_number || ""}
+                                  data-testid={`order-tracking-${o.session_id}`}
+                                  onBlur={(e) => e.target.value.trim() !== (o.tracking_number || "") && updateShipping(o.session_id, { tracking_number: e.target.value })}
+                                  className="border-2 border-ink rounded-md px-2 py-1 text-xs bg-papersoft w-36" />
+                                {o.tracking_number && (
+                                  <a href={`https://www.mondialrelay.fr/suivi-de-colis/?NumeroExpedition=${encodeURIComponent(o.tracking_number)}`}
+                                    target="_blank" rel="noreferrer" data-testid={`order-tracking-link-${o.session_id}`}
+                                    className="font-mono text-[10px] uppercase underline text-comicblue">Voir le suivi</a>
+                                )}
+                              </div>
+                              {o.shipping_method === "mondial_relay" && (
+                                mrStatus?.api2_configured
+                                  ? <button data-testid={`order-create-shipment-${o.session_id}`}
+                                      onClick={() => api.post(`/admin/orders/${o.session_id}/create-shipment`).then(() => toast.success("Expédition créée")).catch((e) => toast.error(e.response?.data?.detail || "Erreur"))}
+                                      className="mt-2 flex items-center gap-1.5 border-2 border-ink rounded-md px-3 py-1.5 font-mono text-[10px] uppercase hover:bg-papersoft">
+                                      <Truck size={12} /> Créer l'expédition Mondial Relay
+                                    </button>
+                                  : <p className="mt-2 font-mono text-[10px] text-inksoft italic" data-testid={`order-shipment-unavailable-${o.session_id}`}>
+                                      Création d'étiquette : disponible une fois le compte marchand Mondial Relay connecté
+                                    </p>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="mt-4 border-t border-ink/15 pt-3">

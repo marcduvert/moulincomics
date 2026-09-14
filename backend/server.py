@@ -31,6 +31,89 @@ EMAIL_BASE_URL = "https://integrations.emergentagent.com"
 EMAIL_KEY = os.environ["EMERGENT_EMAIL_KEY"]
 EMAIL_FROM_NAME = os.environ["EMAIL_FROM_NAME"]
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
+import asyncio
+import zeep
+
+# ---------- Mondial Relay (API1 SOAP : recherche Points Relais) ----------
+# Identifiants en variables d'environnement uniquement (jamais côté frontend).
+# Valeurs actuelles = identifiants de test officiels Mondial Relay (développement) ;
+# pour la production : remplacer par l'enseigne + clé privée du compte marchand.
+MR_ENSEIGNE = os.environ.get("MONDIAL_RELAY_ENSEIGNE")
+MR_PRIVATE_KEY = os.environ.get("MONDIAL_RELAY_PRIVATE_KEY")
+MR_API1_WSDL = os.environ.get("MONDIAL_RELAY_API1_WSDL", "https://api.mondialrelay.fr/WebService.asmx?WSDL")
+# API2 (expéditions/étiquettes) : nécessite le compte marchand Connect — non configuré en V1
+MR_API2_LOGIN = os.environ.get("MONDIAL_RELAY_API2_LOGIN")
+MR_API2_PASSWORD = os.environ.get("MONDIAL_RELAY_API2_PASSWORD")
+MR_API2_CUSTOMER_ID = os.environ.get("MONDIAL_RELAY_API2_CUSTOMER_ID")
+
+def mr_api1_configured() -> bool:
+    return bool(MR_ENSEIGNE and MR_PRIVATE_KEY)
+
+def mr_api2_configured() -> bool:
+    return bool(MR_API2_LOGIN and MR_API2_PASSWORD and MR_API2_CUSTOMER_ID)
+
+def _mr_hash(values: list) -> str:
+    raw = "".join("" if v is None else str(v) for v in values) + MR_PRIVATE_KEY
+    return hashlib.md5(raw.encode("utf-8")).hexdigest().upper()
+
+def _fmt_hours(slots) -> str:
+    try:
+        vals = [str(s) for s in slots]
+    except TypeError:
+        return ""
+    parts = []
+    for i in range(0, len(vals) - 1, 2):
+        o, c = vals[i], vals[i + 1]
+        if o != "0000" and c != "0000":
+            parts.append(f"{o[:2]}:{o[2:]}-{c[:2]}:{c[2:]}")
+    return " / ".join(parts)
+
+def _mr_search_points(country: str, postal_code: str, city: str) -> list:
+    """WSI4_PointRelais_Recherche — synchrone (zeep), à appeler via asyncio.to_thread."""
+    params = [MR_ENSEIGNE, country, "", city, postal_code, "", "", "", "", "24R",
+              0, 20, "", "", 20]
+    security = _mr_hash(params)
+    client = zeep.Client(MR_API1_WSDL)
+    resp = client.service.WSI4_PointRelais_Recherche(
+        Enseigne=params[0], Pays=params[1], NumPointRelais=params[2], Ville=params[3],
+        CP=params[4], Latitude=params[5], Longitude=params[6], Taille=params[7],
+        Poids=params[8], Action=params[9], DelaiEnvoi=params[10],
+        RayonRecherche=params[11], TypeActivite=params[12], NACE=params[13],
+        NombreResultats=params[14], Security=security)
+    stat = getattr(resp, "STAT", "99")
+    if stat != "0":
+        raise RuntimeError(f"Mondial Relay STAT={stat}")
+    pr = getattr(resp, "PointsRelais", None)
+    raw = getattr(pr, "PointRelais_Details", []) if pr else []
+    if raw and not isinstance(raw, list):
+        raw = [raw]
+    out = []
+    for p in raw or []:
+        name = getattr(p, "LgAdr1", "") or ""
+        type_act = getattr(p, "TypeActivite", "") or ""
+        is_locker = "locker" in name.lower() or type_act == "APM"
+        addr_lines = [getattr(p, f"LgAdr{i}", "") for i in (2, 3, 4)]
+        address = ", ".join(a for a in addr_lines if a)
+        days = [("monday", "Horaires_Lundi"), ("tuesday", "Horaires_Mardi"),
+                ("wednesday", "Horaires_Mercredi"), ("thursday", "Horaires_Jeudi"),
+                ("friday", "Horaires_Vendredi"), ("saturday", "Horaires_Samedi"),
+                ("sunday", "Horaires_Dimanche")]
+        hours = {d: _fmt_hours(getattr(p, f, [])) for d, f in days}
+        hours = {d: h for d, h in hours.items() if h}
+        dist = getattr(p, "Distance", "") or ""
+        out.append({
+            "id": getattr(p, "Num", ""), "name": name,
+            "type": "Locker" if is_locker else "Point Relais",
+            "address": address,
+            "postal_code": getattr(p, "CP", "") or "", "city": getattr(p, "Ville", "") or "",
+            "country": getattr(p, "Pays", "") or country,
+            "latitude": getattr(p, "Latitude", "") or "",
+            "longitude": getattr(p, "Longitude", "") or "",
+            "distance_m": int(float(dist)) if str(dist).replace(".", "").isdigit() else None,
+            "opening_hours": hours,
+        })
+    return out
+
 
 _SHORTENERS = ("bit.ly", "tinyurl.com", "t.co", "is.gd", "cutt.ly", "goo.gl", "rebrand.ly")
 _CRED_ASK = ("reply with your password", "reply with the code", "send your password", "cvv",
@@ -127,6 +210,13 @@ def _order_email_html(order: dict, headline: str, message: str) -> str:
     city_line = " ".join(v for v in (a.get("postal_code"), a.get("city")) if v)
     addr_lines = [x for x in (ship.get("name"), a.get("line1"), a.get("line2"), city_line, a.get("country")) if x]
     addr = "<br>".join(escape(str(x)) for x in addr_lines) or "—"
+    if order.get("shipping_method") == "mondial_relay" and order.get("relay_point_name"):
+        relay_lines = [order.get("relay_point_name"), order.get("relay_point_address"),
+                       " ".join(v for v in (order.get("relay_point_postal_code"), order.get("relay_point_city")) if v)]
+        addr = ("<strong>Mondial Relay — " + escape(order.get("relay_point_type") or "Point Relais") + "</strong><br>"
+                + "<br>".join(escape(str(x)) for x in relay_lines if x))
+    elif order.get("shipping_method") == "home_delivery":
+        addr = "<strong>Livraison à domicile</strong><br>" + addr
     total = f"{float(order.get('amount', 0)):.2f} €"
     brand = escape(EMAIL_FROM_NAME)
     return (
@@ -142,7 +232,7 @@ def _order_email_html(order: dict, headline: str, message: str) -> str:
         '<table role="presentation" width="100%">' + rows + ""
         '<tr><td style="padding:10px 0;font-size:15px;font-weight:bold">Total</td>'
         '<td style="padding:10px 0;font-size:15px;font-weight:bold;text-align:right">' + total + '</td></tr></table>'
-        '<p style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#c8102e;margin:20px 0 6px">Adresse de livraison</p>'
+        '<p style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#c8102e;margin:20px 0 6px">Livraison</p>'
         '<p style="font-size:14px;line-height:1.5">' + addr + '</p>'
         '<p style="font-size:13px;margin-top:20px">Merci pour votre confiance et bonne lecture !</p>'
         '</td></tr>'
@@ -331,9 +421,22 @@ class CartItem(BaseModel):
     product_id: str
     quantity: int = Field(1, ge=1, le=99)
 
+class RelayPoint(BaseModel):
+    id: str
+    name: str
+    type: str = ""
+    address: str = ""
+    postal_code: str
+    city: str
+    country: str = "FR"
+    latitude: str = ""
+    longitude: str = ""
+
 class CheckoutRequest(BaseModel):
     items: List[CartItem]
     origin_url: str
+    shipping_method: Optional[str] = None
+    relay_point: Optional[RelayPoint] = None
 
 # ---------- App ----------
 app = FastAPI()
@@ -999,12 +1102,54 @@ async def create_checkout(req: CheckoutRequest):
         summary.append({"product_id": item.product_id, "title": prod["title"],
                         "quantity": item.quantity, "price": unit})
 
+    # --- Livraison : méthode et tarif contrôlés côté serveur (jamais le prix du frontend) ---
+    ship_doc: dict = {}
+    if req.shipping_method:
+        if req.shipping_method not in SHIPPING_METHODS:
+            raise HTTPException(400, "Méthode de livraison inconnue")
+        cfg = await _shipping_config()
+        if req.shipping_method == "mondial_relay":
+            if not mr_api1_configured():
+                raise HTTPException(503, "MONDIAL_RELAY_NOT_CONFIGURED")
+            if not req.relay_point or not req.relay_point.id:
+                raise HTTPException(400, "Veuillez sélectionner un Point Relais Mondial Relay avant de continuer.")
+            rp = req.relay_point
+            ship_doc = {
+                "shipping_method": "mondial_relay",
+                "shipping_price": cfg["mondial_relay_price"],
+                "shipping_country": "FR",
+                "relay_point_id": rp.id, "relay_point_name": rp.name, "relay_point_type": rp.type,
+                "relay_point_address": rp.address, "relay_point_postal_code": rp.postal_code,
+                "relay_point_city": rp.city, "relay_point_country": rp.country,
+                "relay_point_latitude": rp.latitude, "relay_point_longitude": rp.longitude,
+            }
+        else:
+            ship_doc = {"shipping_method": "home_delivery",
+                        "shipping_price": cfg["home_delivery_price"],
+                        "shipping_country": ""}
+        shipping_label = ("Livraison — Mondial Relay Point Relais" if req.shipping_method == "mondial_relay"
+                          else "Livraison à domicile")
+        total += ship_doc["shipping_price"]
+        line_items.append({
+            "price_data": {
+                "currency": "eur",
+                "unit_amount": int(round(ship_doc["shipping_price"] * 100)),
+                "product_data": {"name": shipping_label},
+            },
+            "quantity": 1,
+        })
+    ship_doc.setdefault("shipping_status", "a_preparer")
+    ship_doc.setdefault("tracking_number", None)
+    ship_doc.setdefault("shipping_label_url", None)
+
     kwargs = dict(
         line_items=line_items,
         mode="payment",
         shipping_address_collection={"allowed_countries": ["FR", "BE", "CH", "LU", "DE", "ES", "IT", "GB", "NL"]},
         success_url=f"{req.origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{req.origin_url}/payment/cancel",
+        metadata={"shipping_method": req.shipping_method or "",
+                  "relay_point_id": ship_doc.get("relay_point_id", "")},
     )
     try:
         session = stripe.checkout.Session.create(
@@ -1016,6 +1161,7 @@ async def create_checkout(req: CheckoutRequest):
         "session_id": session.id, "items": summary, "amount": total, "currency": "eur",
         "status": "initiated", "payment_status": "pending",
         "fulfillment_status": "en_attente",
+        **ship_doc,
         "created_at": datetime.now(timezone.utc), "updated_at": datetime.now(timezone.utc),
     })
     return {"checkout_url": session.url, "session_id": session.id}
@@ -1046,7 +1192,14 @@ async def payment_status(session_id: str):
             pass
     return {"session_id": record["session_id"], "status": record["status"],
             "payment_status": record["payment_status"], "amount": record.get("amount"),
-            "items": record.get("items", [])}
+            "items": record.get("items", []),
+            "shipping_method": record.get("shipping_method"),
+            "shipping_price": record.get("shipping_price"),
+            "relay_point_name": record.get("relay_point_name"),
+            "relay_point_type": record.get("relay_point_type"),
+            "relay_point_address": record.get("relay_point_address"),
+            "relay_point_postal_code": record.get("relay_point_postal_code"),
+            "relay_point_city": record.get("relay_point_city")}
 
 async def _decrement_stock(session_id: str):
     rec = await db.payment_transactions.find_one({"session_id": session_id})
@@ -1111,6 +1264,10 @@ DEFAULT_CONTENT = {
         "meta_description": "Moulin Comics sélectionne des comics Marvel, DC Comics, comics américains et BD de collection pour les passionnés et collectionneurs.",
         "og_title": "", "og_description": "", "og_image": "",
     },
+    "shipping": {
+        "mondial_relay_price": 4.90,
+        "home_delivery_price": 7.90,
+    },
     "footer": {
         "description": "Comic shop spécialisé en VO. Large stock de mensuels VF — Strange, Nova, Titans. De la case à la caisse depuis toujours.",
         "address": "Paris · France", "email": "bonjour@moulincomics.fr", "phone": "",
@@ -1163,6 +1320,85 @@ async def update_content_lang(section: str, lang: str, body: dict = Body(...), a
         await db.site_content.update_one({"key": "home"}, {"$unset": {f"{section}.{lang}": ""}})
     doc = await db.site_content.find_one({"key": "home"})
     return _merge_content(doc)
+
+# ===== Livraison : méthodes + Mondial Relay =====
+SHIPPING_METHODS = ("mondial_relay", "home_delivery")
+SHIPPING_STATUSES = ("a_preparer", "preparee", "expediee", "en_transit",
+                     "disponible_relais", "livree", "incident", "annulee")
+
+async def _shipping_config() -> dict:
+    doc = await db.site_content.find_one({"key": "home"}) or {}
+    stored = doc.get("shipping") or {}
+    cfg = dict(DEFAULT_CONTENT["shipping"])
+    for k in cfg:
+        if isinstance(stored.get(k), (int, float)):
+            cfg[k] = float(stored[k])
+    return cfg
+
+@api.get("/shipping/methods")
+async def shipping_methods():
+    cfg = await _shipping_config()
+    return {
+        "methods": [
+            {"id": "mondial_relay", "label": "Mondial Relay — Point Relais / Locker",
+             "price": cfg["mondial_relay_price"], "requires_relay": True,
+             "available": mr_api1_configured(), "countries": ["FR"]},
+            {"id": "home_delivery", "label": "Livraison à domicile",
+             "price": cfg["home_delivery_price"], "requires_relay": False,
+             "available": True, "countries": ["FR", "BE", "IT", "ES", "DE", "GB", "US"]},
+        ]
+    }
+
+@api.get("/mondial-relay/points")
+async def mondial_relay_points(postal_code: str = "", city: str = ""):
+    if not mr_api1_configured():
+        raise HTTPException(503, "MONDIAL_RELAY_NOT_CONFIGURED")
+    postal_code = postal_code.strip()
+    city = city.strip()
+    if not postal_code and not city:
+        raise HTTPException(400, "Code postal ou ville requis")
+    if postal_code and (not postal_code.isdigit() or len(postal_code) != 5):
+        raise HTTPException(400, "Code postal invalide")
+    try:
+        points = await asyncio.to_thread(_mr_search_points, "FR", postal_code, city)
+    except Exception as e:
+        logger.error(f"mondial-relay search error: {type(e).__name__}")
+        raise HTTPException(502, "Le service Mondial Relay est momentanément indisponible. Réessayez dans un instant.")
+    return {"points": points}
+
+@api.get("/admin/mondial-relay/status")
+async def mondial_relay_status(admin: dict = Depends(get_current_admin)):
+    return {"api1_configured": mr_api1_configured(), "api2_configured": mr_api2_configured()}
+
+class ShippingUpdate(BaseModel):
+    shipping_status: Optional[str] = None
+    tracking_number: Optional[str] = None
+
+@api.put("/admin/orders/{session_id}/shipping")
+async def update_order_shipping(session_id: str, body: ShippingUpdate,
+                                admin: dict = Depends(get_current_admin)):
+    if body.shipping_status is not None and body.shipping_status not in SHIPPING_STATUSES:
+        raise HTTPException(400, "Statut d'expédition invalide")
+    updates = {}
+    if body.shipping_status is not None:
+        updates["shipping_status"] = body.shipping_status
+    if body.tracking_number is not None:
+        updates["tracking_number"] = body.tracking_number.strip()
+    if not updates:
+        raise HTTPException(400, "Aucune donnée")
+    updates["updated_at"] = datetime.now(timezone.utc)
+    res = await db.payment_transactions.update_one({"session_id": session_id}, {"$set": updates})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Commande introuvable")
+    return {"ok": True, **updates}
+
+@api.post("/admin/orders/{session_id}/create-shipment")
+async def create_shipment(session_id: str, admin: dict = Depends(get_current_admin)):
+    """Préparé pour l'API2 Mondial Relay (expédition + étiquette).
+    Actif uniquement lorsque les identifiants marchands API2 sont configurés."""
+    if not mr_api2_configured():
+        raise HTTPException(503, "MONDIAL_RELAY_NOT_CONFIGURED")
+    raise HTTPException(501, "Création d'expédition non encore activée")
 
 # ===== SEO : sitemap dynamique =====
 @api.get("/health")

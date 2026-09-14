@@ -83,6 +83,16 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Vérifications : /health → 200, 56/56 pytest, deployment_agent status=pass.
 - Rappel : la bascule SEO vers moulincomics.com (SITE_URL + REACT_APP_ROBOTS) reste en attente de la décision utilisateur (question posée, pas de réponse avant interruption).
 
+
+### Mondial Relay V1 (deux modes de livraison) — 2026-09
+- Checkout en 2 étapes dans CartDrawer : panier → mode de livraison. Deux options : Point Relais/Locker Mondial Relay (France) et Livraison à domicile ; tarifs 4,90/7,90 € stockés dans `site_content.shipping`, éditables dans Admin → onglet Livraison, **vérifiés côté serveur** à chaque checkout (jamais le prix du frontend). Ligne « Livraison » ajoutée à la session Stripe ; total serveur exact.
+- Commande enrichie : shipping_method, shipping_price, shipping_country, relay_point_* (id, nom, type, adresse, CP, ville, pays, lat/lng), shipping_status (8 états : a_preparer→annulee), tracking_number, shipping_label_url.
+- API Mondial Relay officielle : API1 SOAP WSI4_PointRelais_Recherche (zeep, signature MD5 ordre contractuel). **État : MONDIAL_RELAY_NOT_CONFIGURED** — le compte test public BDTEST13 est désactivé par MR (STAT 95 sur les 2 endpoints officiels) ; `MONDIAL_RELAY_ENSEIGNE`/`MONDIAL_RELAY_PRIVATE_KEY` vides dans backend/.env → à remplir avec les identifiants marchands (espace Mondial Relay Connect → Configuration des API). Dès qu'ils sont renseignés, le sélecteur de relais s'active sans changement de code.
+- Endpoints : GET /api/shipping/methods, GET /api/mondial-relay/points (503 si non configuré), GET /api/admin/mondial-relay/status, PUT /api/admin/orders/{sid}/shipping, POST /api/admin/orders/{sid}/create-shipment (503 tant qu'API2 non configurée — bouton admin masqué).
+- UI : blocage paiement si MR sans relais (« Veuillez sélectionner un Point Relais Mondial Relay avant de continuer. »), page succès avec bloc livraison/relais, admin commandes avec badge méthode + relais + statut expédition + n° suivi + lien « Voir le suivi », email de confirmation avec bloc Livraison. i18n FR/EN/ES.
+- Extensibilité : shipping_method extensible (colissimo, shop2shop) via SHIPPING_METHODS + config.
+- Tests : iteration_9.json (14/14 backend + 100% frontend + mobile) ; paiement Stripe e2e vérifié (session avec ligne Livraison 7,90 €, total exact, page succès avec bloc livraison). pytest total : 70/70.
+
 - P1: gestion des frais de port / retrait salon.
 - P2: comptes clients + historique de commandes.
 - P2: recherche avancée / tri par prix, wishlist.

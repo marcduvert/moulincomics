@@ -1,0 +1,24 @@
+{
+  "summary": "Mondial Relay V1 (MONDIAL_RELAY_NOT_CONFIGURED mode) end-to-end tested. Backend pytest (14/14 passed) covering /api/shipping/methods (4.90/7.90, MR available=false / Home available=true), /api/mondial-relay/points 503 not_configured + invalid CP, /api/payments/checkout home_delivery => Stripe session (22+7.90=29.90 total), mondial_relay => 503, unknown method => 400, legacy (no shipping_method) => 200, admin PUT /api/admin/orders/{sid}/shipping (401 sans auth, 400 statut invalide, 404 sid inconnu), POST /api/admin/orders/{sid}/create-shipment => 503, GET /api/admin/mondial-relay/status (api1=false, api2=false), et tarif admin (home 7.9 -> 8.9 -> répercuté sur /shipping/methods -> restauré à 7.9). UI desktop: fiche produit Deadpool vs Punisher -> add-to-cart -> panier -> 'checkout-button' -> étape livraison: shipping-method-mondial_relay désactivé (disabled=true) avec note relay-not-configured 'La livraison Mondial Relay arrive très bientôt — choisissez la livraison à domicile pour le moment.', shipping-method-home_delivery sélectionné -> shipping-line=7,90 €, grand-total=29,90 €, clic checkout-pay-button => redirection réelle vers checkout.stripe.com/c/pay/cs_test_... OK. Admin: onglet tab-shipping visible (STOCK/COMMANDES/SÉRIES/SALONS/LIVRAISON), inputs shipping-relay-price=4.9, shipping-home-price=7.9, bouton shipping-save présent. Détail commande: bloc Livraison avec badge 'LIVRAISON À DOMICILE', 'Frais : 7,90 €', sélecteur order-shipping-status-{sid} (À préparer), champ order-tracking-{sid}. Persistance vérifiée via API: PUT status=preparee + tracking=TESTTRK123 => GET admin/orders confirme les valeurs persistées (puis restauration). Mobile 390x844: étape livraison lisible, 2 options bien affichées, note relay-not-configured, home sélectionnée, sous-total/livraison/total lisibles, bouton PAYER AVEC STRIPE visible et cliquable. i18n: relayNotConfigured présent FR/EN/ES dans LanguageContext.jsx.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_shipping_mondial_relay.py",
+    "/app/test_reports/pytest/shipping_mr.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "GET /api/mondial-relay/points sans paramètre renvoie 503 (MR non configuré) au lieu de 400. Comportement ok car la vérif de configuration est prioritaire ; à re-tester en 400 dès que MONDIAL_RELAY_ENSEIGNE/PRIVATE_KEY seront renseignés.",
+    "Le paiement Stripe e2e complet (retour /payment/success avec success-home-delivery) n'a pas été validé automatiquement (redirection vers stripe.com uniquement) : la carte 4242 nécessite interaction humaine côté Stripe Hosted Checkout. Vérifié en revanche que la session Stripe est bien créée avec ship_doc (montant serveur 29,90 €) et que le bloc livraison est câblé côté admin.",
+    "Le sélecteur data-testid=order-shipping-status-{sid} est présent mais order-tracking-{sid} n'a été détecté que lorsque le row est étendu ; RAS fonctionnellement, juste noter que ces éléments sont dans le détail déplié.",
+    "'Traitement' (paiement/expédition) reste 'En attente / PENDING' sur toutes les commandes de test (aucune n'a été payée via Stripe checkout). Prévoir un nettoyage périodique des sessions Stripe non payées ou un statut visible 'abandonné'."
+  ],
+  "updated_files": ["/app/backend/tests/test_shipping_mondial_relay.py"],
+  "success_rate": {"backend": "100% (14/14 pytest)", "frontend": "100% (checkout flow, admin shipping tab, order shipping block, mobile)"},
+  "test_credentials": "Admin marcduvert@gmail.com / 11Joinville-",
+  "seed_data_creation": "Aucune donnée seed créée. Sessions Stripe cs_test_... créées par tests laissées en PENDING (jamais payées). Un ordre existant a été modifié PUT shipping (preparee+TESTTRK123) puis restauré à a_preparer / tracking vide.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Mondial Relay V1 en mode MONDIAL_RELAY_NOT_CONFIGURED est stable. Backend regression file: /app/backend/tests/test_shipping_mondial_relay.py (relance via pytest -v). Une fois que l'utilisateur fournira MONDIAL_RELAY_ENSEIGNE + MONDIAL_RELAY_PRIVATE_KEY dans backend/.env, le test test_not_configured devra basculer sur un vrai appel WSDL (mocker ou retirer). Le paiement Stripe complet (retour success avec success-home-delivery / success-relay) reste à valider manuellement via carte 4242 (redirection OK confirmée).",
+  "rca of the issue": "N/A — implémentation Mondial Relay V1 conforme au cahier des charges."
+}

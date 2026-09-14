@@ -44,7 +44,25 @@ export default function PaymentSuccess() {
               {data?.items?.map((it, i) => (
                 <div key={i} className="flex justify-between"><span>{it.title} × {it.quantity}</span><span>{fmtPrice(it.price * it.quantity)}</span></div>
               ))}
+              {data?.shipping_price != null && (
+                <div className="flex justify-between text-inksoft"><span>{t.cart.shipping}</span><span>{fmtPrice(data.shipping_price)}</span></div>
+              )}
             </div>
+            {data?.shipping_method === "mondial_relay" && data?.relay_point_name && (
+              <div className="mt-4 border-2 border-ink rounded-md p-4 text-left" data-testid="success-relay">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-comicred mb-1">
+                  {t.cart.shipping} : Mondial Relay — {data.relay_point_type || "Point Relais"}
+                </p>
+                <p className="font-display font-bold text-sm">{data.relay_point_name}</p>
+                <p className="font-mono text-xs text-inksoft">{data.relay_point_address}</p>
+                <p className="font-mono text-xs text-inksoft">{data.relay_point_postal_code} {data.relay_point_city}</p>
+              </div>
+            )}
+            {data?.shipping_method === "home_delivery" && (
+              <p className="mt-4 font-mono text-xs text-inksoft text-left" data-testid="success-home-delivery">
+                {t.cart.shipping} : {t.cart.methodHome}
+              </p>
+            )}
             <Link to="/shop" className="inline-block mt-8 bg-ink text-paper font-mono uppercase text-sm tracking-widest px-6 py-3 hover:bg-comicred transition-colors">
               {t.pay.continue}
             </Link>
