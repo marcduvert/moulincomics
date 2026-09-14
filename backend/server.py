@@ -1165,6 +1165,10 @@ async def update_content_lang(section: str, lang: str, body: dict = Body(...), a
     return _merge_content(doc)
 
 # ===== SEO : sitemap dynamique =====
+@api.get("/health")
+async def api_health():
+    return {"status": "ok"}
+
 @api.get("/sitemap.xml")
 async def sitemap_xml():
     """Sitemap dynamique : pages publiques + toutes les fiches produits.
@@ -1189,6 +1193,11 @@ async def sitemap_xml():
     return Response(content=xml, media_type="application/xml")
 
 app.include_router(api)
+
+@app.get("/health")
+async def health():
+    """Sonde de santé Kubernetes — légère, sans dépendance à la base."""
+    return {"status": "ok"}
 
 app.add_middleware(
     CORSMiddleware,

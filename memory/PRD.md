@@ -76,6 +76,13 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 
 ## Backlog
 - P1: upload d'images de couverture (object storage) au lieu d'URL.
+
+### Correctifs déploiement production — 2026-09
+- Ajout de `GET /health` (app principale, sans DB) + `GET /api/health` — la sonde Kubernetes retournait 404 en boucle et bloquait le déploiement.
+- `.gitignore` : retrait des motifs `.env`/`.env.*`/`*.env` (les .env sont nécessaires au conteneur ; credentials.json, *.key, test_credentials.md restent exclus).
+- Vérifications : /health → 200, 56/56 pytest, deployment_agent status=pass.
+- Rappel : la bascule SEO vers moulincomics.com (SITE_URL + REACT_APP_ROBOTS) reste en attente de la décision utilisateur (question posée, pas de réponse avant interruption).
+
 - P1: gestion des frais de port / retrait salon.
 - P2: comptes clients + historique de commandes.
 - P2: recherche avancée / tri par prix, wishlist.
