@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ShoppingBag, Check } from "lucide-react";import { api, fmtPrice } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
@@ -10,6 +10,7 @@ import { absUrl } from "../lib/seo";
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const nav = useNavigate();
   const { t, lang } = useLang();
   const [p, setP] = useState(null);
   const [related, setRelated] = useState([]);
@@ -18,14 +19,19 @@ export default function ProductDetail() {
   useEffect(() => {
     window.scrollTo(0, 0);
     api.get(`/products/${id}`).then((r) => {
+      // Redirection 301 côté client : ancienne URL technique ou ancien slug → URL SEO canonique
+      if (r.data.slug && r.data.slug !== id) {
+        nav(`/product/${r.data.slug}`, { replace: true });
+        return;
+      }
       setP(r.data);
       if (r.data.series) {
         api.get("/products", { params: { series: r.data.series } })
-          .then((rr) => setRelated(rr.data.filter((x) => x.id !== id).slice(0, 4)));
+          .then((rr) => setRelated(rr.data.filter((x) => x.id !== r.data.id).slice(0, 4)));
       } else {
         setRelated([]);
       }
-    });
+    }).catch(() => setP(null));
   }, [id]);
 
   if (!p) return <div className="min-h-[60vh] flex items-center justify-center font-mono text-sm">{t.shop.loading}</div>;
@@ -46,7 +52,10 @@ export default function ProductDetail() {
   if (p.year) descBits.push(`(${p.year})`);
   if (p.condition) descBits.push(`état : ${p.condition}`);
   descBits.push(p.stock > 0 ? `disponible à ${fmtPrice(p.price)}` : "actuellement épuisé");
-  const seoDesc = descBits.join(", ") + ".";
+  const seoDesc = localizedDesc
+    ? (localizedDesc.length > 158 ? localizedDesc.slice(0, 155).trimEnd() + "…" : localizedDesc)
+    : descBits.join(", ") + ".";
+  const pslug = p.slug || p.id;
   const productLd = {
     "@context": "https://schema.org", "@type": "Product",
     name: p.title + (p.issue && !p.title.includes(`#${p.issue}`) ? ` #${p.issue}` : ""),
@@ -56,7 +65,7 @@ export default function ProductDetail() {
     ...(p.publisher && { brand: { "@type": "Brand", name: p.publisher } }),
     offers: {
       "@type": "Offer",
-      url: absUrl(`/product/${p.id}`),
+      url: absUrl(`/product/${pslug}`),
       priceCurrency: "EUR",
       price: Number(p.price || 0).toFixed(2),
       availability: p.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
@@ -77,7 +86,7 @@ export default function ProductDetail() {
 
   return (
     <div>
-      <Seo title={seoTitle} description={seoDesc} path={`/product/${p.id}`}
+      <Seo title={seoTitle} description={seoDesc} path={`/product/${pslug}`}
         image={p.cover_image} type="product" jsonLd={[productLd, breadcrumbLd]} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 pt-6">
         <nav aria-label="Fil d'Ariane" data-testid="breadcrumb"

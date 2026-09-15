@@ -12,7 +12,7 @@ export const ProductCard = ({ product, index = 0 }) => {
     viewport={{ once: true, margin: "-40px" }}
     transition={{ duration: 0.5, delay: (index % 4) * 0.06 }}
   >
-    <Link to={`/product/${product.id}`} data-testid={`product-card-${product.id}`}
+    <Link to={`/product/${product.slug || product.id}`} data-testid={`product-card-${product.id}`}
       className="group block border-2 border-ink bg-papersoft hover:shadow-hard transition-shadow duration-300">
       <div className="relative aspect-[3/4] overflow-hidden bg-papersoft border-b-2 border-ink">
         <img src={product.cover_image} loading="lazy"

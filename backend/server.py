@@ -32,7 +32,35 @@ EMAIL_KEY = os.environ["EMERGENT_EMAIL_KEY"]
 EMAIL_FROM_NAME = os.environ["EMAIL_FROM_NAME"]
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
 import asyncio
+import unicodedata
 import zeep
+
+# ---------- Slugs SEO produits ----------
+def _slugify(title: str, issue=None) -> str:
+    s = str(title or "")
+    if issue and str(issue) not in s:
+        s = f"{s} {issue}"
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    s = re.sub(r"[^a-zA-Z0-9]+", "-", s.lower()).strip("-")
+    return s or "produit"
+
+async def _unique_slug(base: str, exclude_id=None) -> str:
+    slug, i = base, 2
+    while True:
+        q = {"$or": [{"slug": slug}, {"old_slugs": slug}]}
+        if exclude_id:
+            q["_id"] = {"$ne": exclude_id}
+        if not await db.products.find_one(q):
+            return slug
+        slug = f"{base}-{i}"
+        i += 1
+
+async def _ensure_product_slugs():
+    """Migration idempotente : attribue un slug unique aux produits qui n'en ont pas."""
+    async for p in db.products.find({"slug": {"$exists": False}}):
+        slug = await _unique_slug(_slugify(p.get("title"), p.get("issue")), exclude_id=p["_id"])
+        await db.products.update_one({"_id": p["_id"]},
+                                     {"$set": {"slug": slug}, "$setOnInsert": {}})
 
 # ---------- Mondial Relay (API1 SOAP : recherche Points Relais) ----------
 # Identifiants en variables d'environnement uniquement (jamais côté frontend).
@@ -466,7 +494,13 @@ async def list_products(category: Optional[str] = None, series: Optional[str] = 
 
 @api.get("/products/{product_id}")
 async def get_product(product_id: str):
-    doc = await db.products.find_one({"_id": ObjectId(product_id)})
+    """Résout par identifiant interne, slug actuel ou ancien slug.
+    La réponse indique toujours le slug canonique (champ slug)."""
+    doc = None
+    if ObjectId.is_valid(product_id):
+        doc = await db.products.find_one({"_id": ObjectId(product_id)})
+    if not doc:
+        doc = await db.products.find_one({"$or": [{"slug": product_id}, {"old_slugs": product_id}]})
     if not doc:
         raise HTTPException(404, "Produit introuvable")
     return serialize(doc)
@@ -531,14 +565,24 @@ class SalonBody(BaseModel):
     country: str = ""
     name: str = ""
     note: str = ""
+    description: str = ""
+    website: str = ""
+    photo: str = ""
+    ordre: Optional[int] = None
 
 def _salon_out(d: dict) -> dict:
     return {"id": str(d["_id"]), "date_label": d.get("date_label", ""), "city": d.get("city", ""),
-            "country": d.get("country", ""), "name": d.get("name", ""), "note": d.get("note", "")}
+            "country": d.get("country", ""), "name": d.get("name", ""), "note": d.get("note", ""),
+            "description": d.get("description", ""), "website": d.get("website", ""),
+            "photo": d.get("photo", ""), "ordre": d.get("ordre"),
+            "created_at": d["created_at"].isoformat() if isinstance(d.get("created_at"), datetime) else d.get("created_at")}
 
 @api.get("/salons")
 async def list_salons():
-    docs = await db.salons.find().sort("created_at", 1).to_list(500)
+    docs = await db.salons.find().to_list(500)
+    # Tri : ordre explicite d'abord, sinon les plus récentes d'abord
+    docs.sort(key=lambda d: (d.get("ordre") is None, d.get("ordre") or 0,
+                             -(d["created_at"].timestamp() if isinstance(d.get("created_at"), datetime) else 0)))
     return [_salon_out(d) for d in docs]
 
 @api.post("/admin/salons")
@@ -587,16 +631,28 @@ async def me(admin: dict = Depends(get_current_admin)):
 async def create_product(body: ProductCreate, admin: dict = Depends(get_current_admin)):
     doc = Product(**body.model_dump()).model_dump(by_alias=True, exclude={"id"})
     doc["created_at"] = doc["created_at"].isoformat()
+    doc["slug"] = await _unique_slug(_slugify(doc.get("title"), doc.get("issue")))
     res = await db.products.insert_one(doc)
     new = await db.products.find_one({"_id": res.inserted_id})
     return serialize(new)
 
 @api.put("/admin/products/{product_id}")
 async def update_product(product_id: str, body: ProductCreate, admin: dict = Depends(get_current_admin)):
-    await db.products.update_one({"_id": ObjectId(product_id)}, {"$set": body.model_dump()})
-    doc = await db.products.find_one({"_id": ObjectId(product_id)})
-    if not doc:
+    existing = await db.products.find_one({"_id": ObjectId(product_id)})
+    if not existing:
         raise HTTPException(404, "Produit introuvable")
+    updates = body.model_dump()
+    # Slug : régénéré seulement si le titre/n° change ; l'ancien slug est conservé
+    # dans old_slugs (redirection 301 côté frontend, jamais de chaîne).
+    new_slug = _slugify(updates.get("title"), updates.get("issue"))
+    cur_slug = existing.get("slug")
+    if not cur_slug:
+        updates["slug"] = await _unique_slug(new_slug, exclude_id=existing["_id"])
+    elif new_slug != cur_slug:
+        updates["slug"] = await _unique_slug(new_slug, exclude_id=existing["_id"])
+        await db.products.update_one({"_id": existing["_id"]}, {"$addToSet": {"old_slugs": cur_slug}})
+    await db.products.update_one({"_id": ObjectId(product_id)}, {"$set": updates})
+    doc = await db.products.find_one({"_id": ObjectId(product_id)})
     return serialize(doc)
 
 @api.delete("/admin/products/{product_id}")
@@ -1017,9 +1073,20 @@ async def list_orders(admin: dict = Depends(get_current_admin)):
         except Exception:
             pass
     out = []
+    # Lien fiche publique depuis les commandes : slugs des produits commandés
+    pids = list({i.get("product_id") for d in docs for i in d.get("items", []) if i.get("product_id")})
+    slug_map = {}
+    oids = [ObjectId(p) for p in pids if ObjectId.is_valid(p)]
+    if oids:
+        async for p in db.products.find({"_id": {"$in": oids}}, {"slug": 1}):
+            slug_map[str(p["_id"])] = p.get("slug")
     for d in docs:
         d.pop("_id", None)
         d.setdefault("fulfillment_status", "a_traiter")
+        for i in d.get("items", []):
+            slug = slug_map.get(i.get("product_id"))
+            if slug:
+                i["slug"] = slug
         for k in ("created_at", "updated_at", "shipped_at"):
             if isinstance(d.get(k), datetime):
                 d[k] = d[k].isoformat()
@@ -1502,7 +1569,7 @@ async def sitemap_xml():
     parts = []
     for pth in ("/", "/shop", "/conventions"):
         parts.append(f"<url><loc>{base}{pth}</loc><changefreq>weekly</changefreq></url>")
-    prods = await db.products.find({}, {"created_at": 1}).sort("created_at", -1).to_list(5000)
+    prods = await db.products.find({}, {"created_at": 1, "slug": 1}).sort("created_at", -1).to_list(5000)
     for p in prods:
         ca = p.get("created_at")
         lastmod = ""
@@ -1510,7 +1577,7 @@ async def sitemap_xml():
             lastmod = f"<lastmod>{ca.date().isoformat()}</lastmod>"
         elif isinstance(ca, str) and ca[:10]:
             lastmod = f"<lastmod>{ca[:10]}</lastmod>"
-        parts.append(f"<url><loc>{base}/product/{p['_id']}</loc>{lastmod}<changefreq>weekly</changefreq></url>")
+        parts.append(f"<url><loc>{base}/product/{p.get('slug') or p['_id']}</loc>{lastmod}<changefreq>weekly</changefreq></url>")
     xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
            + "".join(parts) + "</urlset>")
@@ -1590,6 +1657,7 @@ async def startup():
     await seed_products()
     await seed_series()
     await seed_salons()
+    await _ensure_product_slugs()
     # Migration idempotente : ancien vocabulaire « Traitement » → nouvel état COMMANDE
     await db.payment_transactions.update_many(
         {"fulfillment_status": "en_attente"}, {"$set": {"fulfillment_status": "a_traiter"}})

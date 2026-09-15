@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText, ArrowUpDown, ChevronUp, ChevronDown, Truck } from "lucide-react";
+import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText, ArrowUpDown, ChevronUp, ChevronDown, Truck, X } from "lucide-react";
 import { api, fmtPrice, API } from "../lib/api";
 import { Seo } from "../components/Seo";
 
@@ -25,6 +25,8 @@ export default function Admin() {
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [shipCfg, setShipCfg] = useState({ mondial_relay_price: "", home_delivery_price: "" });
   const [mrStatus, setMrStatus] = useState(null);
+
+  const [zoomImg, setZoomImg] = useState(null);
 
   const saveShippingCfg = async () => {
     try {
@@ -203,7 +205,19 @@ export default function Admin() {
     await api.delete(`/admin/series/${s.id}`); toast.success("Supprimée"); load();
   };
 
-  const SALON_EMPTY = { date_label: "", city: "", country: "", name: "", note: "" };
+  const SALON_EMPTY = { date_label: "", city: "", country: "", name: "", note: "", description: "", website: "", photo: "", ordre: null };
+  const [salonUploading, setSalonUploading] = useState(false);
+  const uploadSalonPhoto = async (file) => {
+    if (!file) return;
+    setSalonUploading(true);
+    try {
+      const fd = new FormData(); fd.append("file", file);
+      const { data } = await api.post("/admin/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      setSalonForm((f) => ({ ...f, photo: `${API}/files/${data.path}` }));
+      toast.success("Photo chargée");
+    } catch (e) { toast.error(e.response?.data?.detail || "Échec de l'upload"); }
+    finally { setSalonUploading(false); }
+  };
   const saveSalon = async (e) => {
     e.preventDefault();
     try {
@@ -434,8 +448,16 @@ export default function Admin() {
                         <input type="checkbox" checked={selectedIds.includes(p.id)} onChange={() => toggleSelect(p.id)} data-testid={`select-${p.id}`} />
                       </td>
                       <td className="p-3 flex items-center gap-2">
-                        <img src={p.cover_image} alt="" className="w-8 h-10 object-cover" />
-                        <span className="line-clamp-1">{p.title}</span>
+                        <img src={p.cover_image} alt="" onClick={() => setZoomImg({ src: p.cover_image, alt: p.title })}
+                          data-testid={`product-thumb-${p.id}`}
+                          className="w-8 h-10 object-cover cursor-zoom-in hover:opacity-80 transition-opacity" />
+                        <div className="min-w-0">
+                          <a href={`/product/${p.slug || p.id}`} target="_blank" rel="noreferrer"
+                            data-testid={`product-view-${p.id}`}
+                            className="line-clamp-1 hover:text-comicblue hover:underline" title="Voir le produit ↗">{p.title}</a>
+                          <a href={`/product/${p.slug || p.id}`} target="_blank" rel="noreferrer"
+                            className="font-mono text-[9px] uppercase text-inksoft hover:text-comicblue">Voir le produit ↗</a>
+                        </div>
                       </td>
                       <td className="p-3">{p.category}</td>
                       <td className="p-3">{p.series || "—"}</td>
@@ -529,7 +551,16 @@ export default function Admin() {
                           ? <><span className="font-bold">{o.customer.name}</span><br/><span className="text-inksoft">{o.customer.email || ""}</span></>
                           : <span className="text-inksoft">—</span>}
                       </td>
-                      <td className="p-3 text-xs max-w-[240px]">{(o.items || []).map((i) => `${i.title} ×${i.quantity}`).join(", ")}</td>
+                      <td className="p-3 text-xs max-w-[240px]">{(o.items || []).map((i, idx) => (
+                        <span key={idx}>
+                          {idx > 0 && ", "}
+                          {i.slug
+                            ? <a href={`/product/${i.slug}`} target="_blank" rel="noreferrer"
+                                data-testid={`order-item-link-${i.product_id}`}
+                                className="hover:text-comicblue hover:underline">{i.title} ×{i.quantity}</a>
+                            : <span>{i.title} ×{i.quantity}</span>}
+                        </span>
+                      ))}</td>
                       <td className="p-3 text-right">{fmtPrice(o.amount || 0)}</td>
                       <td className="p-3">
                         <span className={`text-[10px] uppercase px-2 py-1 border ${o.payment_status === "paid" ? "bg-green-200 border-ink" : "border-ink/30 text-inksoft"}`}>
@@ -668,7 +699,13 @@ export default function Admin() {
                         <div className="mt-4 border-t border-ink/15 pt-3">
                           <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Détail des articles</p>
                           {(o.items || []).map((i, idx) => (
-                            <p key={idx} className="text-xs">{i.title} ×{i.quantity} — {fmtPrice((i.price || 0) * i.quantity)}</p>
+                            <p key={idx} className="text-xs">
+                              {i.slug
+                                ? <a href={`/product/${i.slug}`} target="_blank" rel="noreferrer"
+                                    className="hover:text-comicblue hover:underline">{i.title}</a>
+                                : i.title}
+                              {" "}×{i.quantity} — {fmtPrice((i.price || 0) * i.quantity)}
+                            </p>
                           ))}
                         </div>
                       </td>
@@ -838,24 +875,61 @@ export default function Admin() {
       {salonForm && (
         <div className="fixed inset-0 bg-ink/60 z-50 flex items-center justify-center p-4" onClick={() => setSalonForm(null)}>
           <form onClick={(e) => e.stopPropagation()} onSubmit={saveSalon} data-testid="salon-form"
-            className="bg-paper border-2 border-ink rounded-md w-full max-w-md p-6">
+            className="bg-paper border-2 border-ink rounded-md w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="font-display font-black text-xl mb-5">{salonForm.id ? "Modifier le salon" : "Nouveau salon"}</h2>
             <div className="grid grid-cols-2 gap-3 font-mono text-sm">
               {[["date_label", "Dates (ex. 24–27 JAN 2026)", "col-span-2"], ["city", "Ville"], ["country", "Pays"],
-                ["name", "Événement", "col-span-2"], ["note", "Note", "col-span-2"]].map(([k, l, cls]) => (
+                ["name", "Événement", "col-span-2"], ["website", "Site officiel (URL)", "col-span-2"],
+                ["ordre", "Ordre d'affichage (vide = automatique)", "col-span-2"], ["note", "Note", "col-span-2"]].map(([k, l, cls]) => (
                 <div key={k} className={cls || ""}>
                   <label className="text-[10px] uppercase tracking-widest text-inksoft">{l}</label>
-                  <input data-testid={`salon-field-${k}`} required={k === "city" || k === "name"} type="text"
-                    value={salonForm[k]} onChange={(e) => setSalonForm({ ...salonForm, [k]: e.target.value })}
+                  <input data-testid={`salon-field-${k}`} required={k === "city" || k === "name"}
+                    type={k === "ordre" ? "number" : "text"}
+                    value={salonForm[k] ?? ""}
+                    onChange={(e) => setSalonForm({ ...salonForm, [k]: k === "ordre" ? (e.target.value === "" ? null : parseInt(e.target.value, 10)) : e.target.value })}
                     className="w-full border-2 border-ink px-2 py-2 mt-1 bg-papersoft outline-none rounded-md" />
                 </div>
               ))}
+              <div className="col-span-2">
+                <label className="text-[10px] uppercase tracking-widest text-inksoft">Description</label>
+                <textarea data-testid="salon-field-description" rows={3} value={salonForm.description || ""}
+                  onChange={(e) => setSalonForm({ ...salonForm, description: e.target.value })}
+                  className="w-full border-2 border-ink px-2 py-2 mt-1 bg-papersoft outline-none rounded-md" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] uppercase tracking-widest text-inksoft">Photo</label>
+                <div className="flex items-center gap-3 mt-1">
+                  <div className="w-16 h-20 border-2 border-ink bg-papersoft shrink-0 overflow-hidden flex items-center justify-center">
+                    {salonForm.photo ? <img src={salonForm.photo} alt="" className="w-full h-full object-cover" />
+                      : <span className="text-[9px] text-inksoft text-center px-1">Aucune</span>}
+                  </div>
+                  <label data-testid="salon-photo-upload"
+                    className="flex-1 cursor-pointer border-2 border-dashed border-ink rounded-md px-3 py-4 flex items-center justify-center gap-2 hover:bg-papersoft transition-colors text-xs uppercase tracking-widest">
+                    {salonUploading ? <><Loader2 size={14} className="animate-spin" /> Chargement…</>
+                      : <><Upload size={14} /> {salonForm.photo ? "Remplacer la photo" : "Charger une photo"}</>}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={salonUploading}
+                      onChange={(e) => uploadSalonPhoto(e.target.files?.[0])} />
+                  </label>
+                </div>
+              </div>
             </div>
             <div className="flex gap-2 mt-6">
               <button type="button" onClick={() => setSalonForm(null)} className="flex-1 border-2 border-ink py-3 font-mono text-xs uppercase rounded-md">Annuler</button>
               <button type="submit" data-testid="save-salon-btn" className="flex-1 bg-ink text-paper py-3 font-mono text-xs uppercase rounded-md hover:bg-comicred transition-colors">Enregistrer</button>
             </div>
           </form>
+        </div>
+      )}
+      {zoomImg && (
+        <div className="fixed inset-0 bg-ink/80 z-[90] flex items-center justify-center p-4" onClick={() => setZoomImg(null)}
+          data-testid="image-zoom-modal">
+          <div className="relative max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setZoomImg(null)} data-testid="image-zoom-close" aria-label="Fermer"
+              className="absolute -top-3 -right-3 bg-comicred text-paper border-2 border-ink rounded-full p-2 z-10 hover:bg-ink transition-colors">
+              <X size={16} />
+            </button>
+            <img src={zoomImg.src} alt={zoomImg.alt} className="w-full max-h-[80vh] object-contain border-2 border-ink bg-paper" />
+          </div>
         </div>
       )}
     </div>

@@ -73,6 +73,7 @@ const T = {
       agenda: "Agenda 2026", empty: "Aucun salon programmé pour le moment.",
       standTitle: "VENEZ CHINER À NOTRE STAND",
       standP: "Chaque salon est l'occasion de sortir des pièces rares de nos réserves. Comics VO fraîchement importés, mensuels VF d'époque et éditions collector introuvables en ligne. Passez nous voir, on parle cases.",
+      officialSite: "Site officiel",
     },
     pay: {
       checking: "Vérification du paiement…", thanks: "MERCI !",
@@ -156,6 +157,7 @@ const T = {
       agenda: "2026 Schedule", empty: "No event scheduled at the moment.",
       standTitle: "COME DIG THROUGH OUR BOOTH",
       standP: "Every event is a chance to pull rare pieces from our reserves. Freshly imported OV comics, vintage French monthlies and collector editions you won't find online. Drop by, let's talk comics.",
+      officialSite: "Official website",
     },
     pay: {
       checking: "Verifying payment…", thanks: "THANK YOU!",
@@ -239,6 +241,7 @@ const T = {
       agenda: "Agenda 2026", empty: "Ningún salón programado por ahora.",
       standTitle: "VEN A REBUSCAR EN NUESTRO STAND",
       standP: "Cada salón es la ocasión de sacar piezas raras de nuestras reservas. Cómics VO recién importados, mensuales franceses de época y ediciones de coleccionista que no encontrarás en línea. Pásate, hablemos de viñetas.",
+      officialSite: "Sitio oficial",
     },
     pay: {
       checking: "Verificando el pago…", thanks: "¡GRACIAS!",

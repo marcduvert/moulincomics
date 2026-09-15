@@ -51,13 +51,28 @@ export default function Conventions() {
           )}
           {events.map((e, i) => (
             <Reveal key={e.id || i} delay={i * 0.05}>
-              <div className={`grid md:grid-cols-12 gap-2 md:gap-6 items-center p-5 sm:p-6 font-mono ${i < events.length - 1 ? "border-b-2 border-ink" : ""} hover:bg-papersoft transition-colors`}>
-                <div className="md:col-span-3 text-comicred text-sm uppercase tracking-wider">{e.date_label}</div>
+              <div data-testid={`salon-${e.id}`} className={`grid md:grid-cols-12 gap-2 md:gap-6 md:items-center p-5 sm:p-6 font-mono ${i < events.length - 1 ? "border-b-2 border-ink" : ""} hover:bg-papersoft transition-colors`}>
+                {e.photo && (
+                  <img src={e.photo} alt={`${e.name} — ${e.city}`} loading="lazy"
+                    className="md:col-span-1 w-24 md:w-full aspect-[4/3] object-cover border-2 border-ink" />
+                )}
+                <div className={`${e.photo ? "md:col-span-2" : "md:col-span-3"} text-comicred text-sm uppercase tracking-wider`}>{e.date_label}</div>
                 <div className="md:col-span-3 flex items-center gap-2 font-display font-bold text-lg">
                   <MapPin size={16} /> {e.city}{e.country ? `, ${e.country}` : ""}
                 </div>
-                <div className="md:col-span-4 text-sm">{e.name}</div>
-                <div className="md:col-span-2 text-xs uppercase text-inksoft">{e.note}</div>
+                <div className={`${e.photo ? "md:col-span-4" : "md:col-span-4"} text-sm`}>
+                  {e.name}
+                  {e.description && <p className="text-xs text-inksoft mt-1 leading-relaxed">{e.description}</p>}
+                </div>
+                <div className="md:col-span-2 text-xs uppercase text-inksoft">
+                  {e.note}
+                  {e.website && (
+                    <a href={e.website} target="_blank" rel="noreferrer" data-testid={`salon-website-${e.id}`}
+                      className="block mt-2 text-comicblue underline hover:text-comicred">
+                      {t.conventions.officialSite} ↗
+                    </a>
+                  )}
+                </div>
               </div>
             </Reveal>
           ))}
