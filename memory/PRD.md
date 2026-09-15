@@ -104,6 +104,14 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Admin édition produit : récupère la fiche complète (GET /products/{id}) → traductions EN/ES préremplies, jamais écrasées.
 - Tests : iteration_10.json — 100 % backend+frontend, non-régression complète. Revue : PUT /admin/products exige tous les champs (risque théorique hors UI, documenté).
 
+### Clarification gestion des commandes — 2026-09
+- Deux niveaux distincts : COMMANDE (`fulfillment_status` : a_traiter → en_preparation → prete_expedition → expediee → terminee / annulee) = action du gérant ; STATUT DE LIVRAISON (`shipping_status`, 8 états inchangés) = position du colis. Champs DB conservés, seules les valeurs migrées.
+- Synchronisation backend avec garde-fou anti-retour (ORDER_RANK) : livraison preparee→commande prete_expedition ; expediee/en_transit/disponible_relais→expediee (+email client une fois, +shipped_at) ; livree→terminee ; exceptions incident→a_traiter, annulee→annulee. Actions couplées inverse : prete_expedition→livraison preparee ; expediee→livraison expediee ; annulee→livraison annulee.
+- Liste : colonne COMMANDE (badge + action rapide « Commencer la préparation » / « Marquer comme prête » / « Marquer comme expédiée », « ✓ Commande terminée »), plus de double dropdown, filtre 6 états. Détail : sections PAIEMENT / COMMANDE / LIVRAISON / STATUT DE LIVRAISON / SUIVI (transporteur, n° suivi + lien, date d'expédition).
+- Migration idempotente au startup : en_attente→a_traiter, livree→terminee, défauts posés. Aucune donnée supprimée.
+- Tests : iteration_11.json — 12/12 backend (chaîne complète, garde-fou, exceptions, email idempotent) + 100 % frontend (cross-sync UI en direct). shipped_at jamais écrasé si déjà posé.
+
+
 - P1: gestion des frais de port / retrait salon.
 - P2: comptes clients + historique de commandes.
 - P2: recherche avancée / tri par prix, wishlist.

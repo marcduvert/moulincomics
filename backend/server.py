@@ -1069,7 +1069,8 @@ async def update_order_status(session_id: str, body: FulfillmentUpdate,
     elif new_state == "expediee":
         if cur_ship in ("a_preparer", "preparee"):
             updates["shipping_status"] = "expediee"
-        updates["shipped_at"] = now
+        if not order.get("shipped_at"):
+            updates["shipped_at"] = now
     elif new_state == "annulee":
         updates["shipping_status"] = "annulee"
     await db.payment_transactions.update_one({"session_id": session_id}, {"$set": updates})
