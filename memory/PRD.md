@@ -93,6 +93,17 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Extensibilité : shipping_method extensible (colissimo, shop2shop) via SHIPPING_METHODS + config.
 - Tests : iteration_9.json (14/14 backend + 100% frontend + mobile) ; paiement Stripe e2e vérifié (session avec ligne Livraison 7,90 €, total exact, page succès avec bloc livraison). pytest total : 70/70.
 
+
+### Batch UX/RGPD/Contact — 2026-09
+- Bandeau jaune home : noms de séries du catalogue (GET /api/series, administrables via onglet Séries) ; bandeau noir = villes (administrables via Contenu du site).
+- Menu : BIENVENUE (1re position, lien /) + CONTACT (page /contact : formulaire nom/email/objet/message, validation, envoi réel au gérant via Resend existant, reply-to visiteur ; POST /api/contact).
+- CTA « Voir l'agenda » : /conventions#agenda avec scroll fluide (id=agenda, scroll-mt-20).
+- Bannière RGPD : accepter/refuser, localStorage mc_cookie_consent, réouverture via lien footer « Préférences cookies ». Aucun cookie non nécessaire aujourd'hui (pas d'analytics).
+- Catalogue : badge « dernier ex. » supprimé → EN STOCK (vert, stock>0) / ÉPUISÉ (rouge, stock=0) ; filtre « En stock » (?stock=1) combinable. i18n FR/EN/ES.
+- Titre « La maison » éditable (site_content maison.title, onglet La Maison de Contenu du site).
+- Admin édition produit : récupère la fiche complète (GET /products/{id}) → traductions EN/ES préremplies, jamais écrasées.
+- Tests : iteration_10.json — 100 % backend+frontend, non-régression complète. Revue : PUT /admin/products exige tous les champs (risque théorique hors UI, documenté).
+
 - P1: gestion des frais de port / retrait salon.
 - P2: comptes clients + historique de commandes.
 - P2: recherche avancée / tri par prix, wishlist.
