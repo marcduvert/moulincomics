@@ -420,7 +420,14 @@ export default function Admin() {
                       <td className="p-3 text-right">{fmtPrice(p.price)}</td>
                       <td className={`p-3 text-right ${p.stock <= 1 ? "text-comicred" : ""}`}>{p.stock}</td>
                       <td className="p-3 text-right whitespace-nowrap">
-                        <button onClick={() => setForm({ ...p })} data-testid={`edit-${p.id}`} className="p-1.5 hover:text-comicblue"><Pencil size={15} /></button>
+                        <button onClick={async () => {
+                          // La liste est allégée (sans descriptions) : récupérer la fiche complète
+                          // pour préremplir les traductions EN/ES existantes et ne jamais les écraser.
+                          try {
+                            const { data } = await api.get(`/products/${p.id}`);
+                            setForm({ ...EMPTY, ...data });
+                          } catch { setForm({ ...EMPTY, ...p }); }
+                        }} data-testid={`edit-${p.id}`} className="p-1.5 hover:text-comicblue"><Pencil size={15} /></button>
                         <button onClick={() => del(p.id)} data-testid={`delete-${p.id}`} className="p-1.5 hover:text-comicred"><Trash2 size={15} /></button>
                       </td>
                     </tr>

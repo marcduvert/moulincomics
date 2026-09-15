@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 const T = {
   fr: {
-    nav: { home: "Accueil", shop: "Boutique", vo: "VO", vf: "VF", salons: "Salons" },
+    nav: { home: "Accueil", welcome: "Bienvenue", shop: "Boutique", vo: "VO", vf: "VF", salons: "Salons", contact: "Contact" },
     hero: {
       eyebrow: "Comic Shop · VO & VF · Paris",
       l1: "Moulin Comics —", l2: "Votre prochaine pièce", l3: "de collection est ici",
@@ -24,7 +24,7 @@ const T = {
     },
     shop: {
       eyebrow: "Le stock", title: "BOUTIQUE", searchPh: "Rechercher un titre, une série…",
-      all: "Tout", loading: "Chargement…", empty: "Aucun résultat.", allSeries: "Toutes séries",
+      all: "Tout", loading: "Chargement…", empty: "Aucun résultat.", allSeries: "Toutes séries", inStockOnly: "En stock",
     },
     product: {
       back: "Retour", condition: "État", stock: "Stock", publisher: "Éditeur", year: "Année",
@@ -49,7 +49,20 @@ const T = {
       relayNotConfigured: "La livraison Mondial Relay arrive très bientôt — choisissez la livraison à domicile pour le moment.",
       hours: "Horaires",
     },
-    card: { lastCopy: "Dernier ex." },
+    card: { lastCopy: "Dernier ex.", inStock: "En stock", soldOut: "Épuisé" },
+    contact: {
+      title: "Contact", intro: "Une question sur un comic, une commande ou un salon ? Écrivez-nous.",
+      name: "Nom", email: "Email", subject: "Objet", message: "Message", send: "Envoyer",
+      sending: "Envoi…", success: "Message envoyé — nous vous répondrons rapidement.",
+      error: "L'envoi a échoué. Réessayez dans un instant.",
+      invalidEmail: "Adresse email invalide", required: "Merci de remplir tous les champs.",
+    },
+    cookie: {
+      title: "Cookies & confidentialité",
+      text: "Nous utilisons uniquement des cookies nécessaires au fonctionnement du site (panier, langue). Aucun cookie de mesure ou publicitaire n'est déposé sans votre accord.",
+      accept: "Tout accepter", refuse: "Refuser les cookies non nécessaires",
+      reopen: "Préférences cookies",
+    },
     footer: {
       desc: "Comic shop spécialisé en VO. Large stock de mensuels VF — Strange, Nova, Titans. De la case à la caisse depuis toujours.",
       explore: "Explorer", contact: "Contact", manager: "Espace gérant",
@@ -72,7 +85,7 @@ const T = {
     },
   },
   en: {
-    nav: { home: "Home", shop: "Shop", vo: "OV", vf: "French", salons: "Events" },
+    nav: { home: "Home", welcome: "Welcome", shop: "Shop", vo: "OV", vf: "French", salons: "Events", contact: "Contact" },
     hero: {
       eyebrow: "Comic Shop · OV & French · Paris",
       l1: "Moulin Comics —", l2: "Your next collector's", l3: "piece is here",
@@ -94,7 +107,7 @@ const T = {
     },
     shop: {
       eyebrow: "The stock", title: "SHOP", searchPh: "Search a title, a series…",
-      all: "All", loading: "Loading…", empty: "No results.", allSeries: "All series",
+      all: "All", loading: "Loading…", empty: "No results.", allSeries: "All series", inStockOnly: "In stock",
     },
     product: {
       back: "Back", condition: "Condition", stock: "Stock", publisher: "Publisher", year: "Year",
@@ -119,7 +132,20 @@ const T = {
       relayNotConfigured: "Mondial Relay delivery is coming very soon — please choose home delivery for now.",
       hours: "Opening hours",
     },
-    card: { lastCopy: "Last one" },
+    card: { lastCopy: "Last one", inStock: "In stock", soldOut: "Sold out" },
+    contact: {
+      title: "Contact", intro: "A question about a comic, an order or an event? Write to us.",
+      name: "Name", email: "Email", subject: "Subject", message: "Message", send: "Send",
+      sending: "Sending…", success: "Message sent — we will reply shortly.",
+      error: "Sending failed. Please try again in a moment.",
+      invalidEmail: "Invalid email address", required: "Please fill in all fields.",
+    },
+    cookie: {
+      title: "Cookies & privacy",
+      text: "We only use cookies that are necessary for the site to work (cart, language). No analytics or advertising cookies are set without your consent.",
+      accept: "Accept all", refuse: "Refuse non-essential cookies",
+      reopen: "Cookie preferences",
+    },
     footer: {
       desc: "Original-version comic shop. Vast stock of French monthlies — Strange, Nova, Titans. From the panel to the till, always.",
       explore: "Explore", contact: "Contact", manager: "Manager area",
@@ -142,7 +168,7 @@ const T = {
     },
   },
   es: {
-    nav: { home: "Inicio", shop: "Tienda", vo: "VO", vf: "VF", salons: "Salones" },
+    nav: { home: "Inicio", welcome: "Bienvenido", shop: "Tienda", vo: "VO", vf: "VF", salons: "Salones", contact: "Contacto" },
     hero: {
       eyebrow: "Comic Shop · VO & VF · París",
       l1: "Moulin Comics —", l2: "Tu próxima pieza", l3: "de colección está aquí",
@@ -164,7 +190,7 @@ const T = {
     },
     shop: {
       eyebrow: "El stock", title: "TIENDA", searchPh: "Buscar un título, una serie…",
-      all: "Todo", loading: "Cargando…", empty: "Sin resultados.", allSeries: "Todas las series",
+      all: "Todo", loading: "Cargando…", empty: "Sin resultados.", allSeries: "Todas las series", inStockOnly: "En stock",
     },
     product: {
       back: "Volver", condition: "Estado", stock: "Stock", publisher: "Editorial", year: "Año",
@@ -189,7 +215,20 @@ const T = {
       relayNotConfigured: "La entrega Mondial Relay llegará muy pronto — elija la entrega a domicilio por ahora.",
       hours: "Horarios",
     },
-    card: { lastCopy: "Último ej." },
+    card: { lastCopy: "Último ej.", inStock: "En stock", soldOut: "Agotado" },
+    contact: {
+      title: "Contacto", intro: "¿Una pregunta sobre un cómic, un pedido o un salón? Escríbenos.",
+      name: "Nombre", email: "Email", subject: "Asunto", message: "Mensaje", send: "Enviar",
+      sending: "Enviando…", success: "Mensaje enviado — le responderemos pronto.",
+      error: "El envío ha fallado. Inténtelo de nuevo en un instante.",
+      invalidEmail: "Dirección de email inválida", required: "Por favor, rellene todos los campos.",
+    },
+    cookie: {
+      title: "Cookies y privacidad",
+      text: "Solo utilizamos cookies necesarias para el funcionamiento del sitio (carrito, idioma). No se instalan cookies de medición o publicidad sin su consentimiento.",
+      accept: "Aceptar todo", refuse: "Rechazar cookies no necesarias",
+      reopen: "Preferencias de cookies",
+    },
     footer: {
       desc: "Tienda de cómics especializada en VO. Amplio stock de mensuales franceses — Strange, Nova, Titans. De la viñeta a la caja, desde siempre.",
       explore: "Explorar", contact: "Contacto", manager: "Zona gerente",

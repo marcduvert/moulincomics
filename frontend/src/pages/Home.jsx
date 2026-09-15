@@ -18,6 +18,7 @@ export default function Home() {
   const { t, lang } = useLang();
   const { content } = useContent();
   const [featured, setFeatured] = useState([]);
+  const [seriesNames, setSeriesNames] = useState([]);
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const y = useTransform(scrollYProgress, [0, 1], [0, 160]);
@@ -34,7 +35,7 @@ export default function Home() {
   const salonsDefaults = {
     eyebrow: t.convTeaser.eyebrow, title: t.convTeaser.title,
     description: t.convTeaser.p, button_text: t.convTeaser.cta,
-    button_url: "/conventions", image: "",
+    button_url: "/conventions#agenda", image: "",
   };
   const clean = (o) => Object.fromEntries(Object.entries(o || {})
     .filter(([k, v]) => v !== "" && v != null && k !== "en" && k !== "es"));
@@ -60,6 +61,7 @@ export default function Home() {
     ? maisonBase.blocks
     : (maisonBase[lang]?.blocks?.length ? maisonBase[lang].blocks : null);
   const chapters = (maisonBlocks && maisonBlocks.length) ? maisonBlocks : defaultBlocks;
+  const maisonTitle = (lang === "fr" ? maisonBase.title : (maisonBase[lang]?.title || maisonBase.title)) || t.manifesto.title;
   const villes = (content?.villes && content.villes.length)
     ? content.villes : ["Angoulême", "Comic Con Paris", "Lucca", "Bruxelles", "Lyon", "FIBD"];
   const heroImg = hero.image || HERO;
@@ -74,6 +76,7 @@ export default function Home() {
 
   useEffect(() => {
     api.get("/products", { params: { featured: true } }).then((r) => setFeatured(r.data.slice(0, 8)));
+    api.get("/series").then((r) => setSeriesNames(r.data)).catch(() => {});
   }, []);
 
   return (
@@ -129,7 +132,7 @@ export default function Home() {
         </div>
       </section>
 
-      <Marquee items={villes} />
+      <Marquee items={seriesNames.length ? seriesNames : villes} />
 
       {/* FEATURED */}
       <section className="max-w-[1400px] mx-auto px-4 sm:px-8 py-16 sm:py-24">
@@ -150,7 +153,7 @@ export default function Home() {
       {/* MANIFESTO */}
       <section className="bg-ink text-paper border-y-2 border-ink">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-16 sm:py-24">
-          <Reveal><h2 className="font-anton text-4xl sm:text-6xl uppercase mb-14">{t.manifesto.title}</h2></Reveal>
+          <Reveal><h2 className="font-anton text-4xl sm:text-6xl uppercase mb-14">{maisonTitle}</h2></Reveal>
           <div className="grid md:grid-cols-3 gap-10 md:gap-6">
             {chapters.map((c, i) => (
               <Reveal key={c.n || i} delay={i * 0.1} className="border-t border-paper/20 pt-6">

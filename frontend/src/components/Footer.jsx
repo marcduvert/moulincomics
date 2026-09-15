@@ -39,12 +39,18 @@ export const Footer = () => {
           {f.phone && <li>{f.phone}</li>}
           {f.address && <li>{f.address}</li>}
           {f.social && <li className="text-paper/50">{f.social}</li>}
+          <li><Link to="/contact" className="hover:text-comicyellow">{t.nav.contact}</Link></li>
           <li><Link to="/admin/login" className="hover:text-comicyellow">{t.footer.manager}</Link></li>
         </ul>
       </div>
     </div>
     <div className="border-t border-paper/15 py-4 text-center font-mono text-xs text-paper/40">
       © {new Date().getFullYear()} MOULIN COMICS — {t.footer.rights}
+      {" · "}
+      <button onClick={() => window.dispatchEvent(new Event("open-cookie-consent"))}
+        data-testid="cookie-reopen" className="underline hover:text-comicyellow">
+        {t.cookie.reopen}
+      </button>
     </div>
   </footer>
   );

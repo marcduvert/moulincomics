@@ -17,6 +17,8 @@ import AdminLogin from "./pages/AdminLogin";
 import Admin from "./pages/Admin";
 import ImportIA from "./pages/ImportIA";
 import SiteContent from "./pages/SiteContent";
+import Contact from "./pages/Contact";
+import { CookieConsent } from "./components/CookieConsent";
 
 const Storefront = ({ children }) => {
   useLenis();
@@ -27,6 +29,7 @@ const Storefront = ({ children }) => {
       {children}
       <Footer />
       <CartDrawer />
+      <CookieConsent />
     </>
   );
 };
@@ -51,6 +54,7 @@ const Layout = () => {
         <Route path="/shop" element={<Shop />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/conventions" element={<Conventions />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/payment/success" element={<PaymentSuccess />} />
         <Route path="/payment/cancel" element={<PaymentCancel />} />
       </Routes>

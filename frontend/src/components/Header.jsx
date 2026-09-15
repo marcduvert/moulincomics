@@ -11,10 +11,12 @@ export const Header = () => {
   const [m, setM] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const links = [
+    { to: "/", label: t.nav.welcome },
     { to: "/shop", label: t.nav.shop },
     { to: "/shop?category=VO", label: t.nav.vo },
     { to: "/shop?category=VF", label: t.nav.vf },
     { to: "/conventions", label: t.nav.salons },
+    { to: "/contact", label: t.nav.contact },
   ];
   return (
     <header className="sticky top-0 z-50 bg-paper border-b-2 border-ink">

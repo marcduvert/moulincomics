@@ -180,7 +180,8 @@ export default function SiteContent() {
 
           {tab === "maison" && (
             <>
-              <h2 className="font-display font-black text-xl mb-4">Section « La Maison » — 3 blocs</h2>
+              <h2 className="font-display font-black text-xl mb-4">Section « La Maison » — titre + 3 blocs</h2>
+              <Field label="Titre de la section (affiché sur la home)" value={val("maison", "title")} onChange={(v) => setField("maison", "title", v)} placeholder={ph("maison", "title")} />
               {mblocks.map((b, i) => (
                 <div key={i} className="border-2 border-ink rounded-md p-4 mb-4">
                   <p className="font-mono text-[10px] uppercase text-comicred mb-2">Bloc {i + 1}</p>

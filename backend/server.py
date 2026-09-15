@@ -1248,7 +1248,7 @@ DEFAULT_CONTENT = {
         "secondary_text": "Les Spider-Man", "secondary_url": "/shop?series=Spider-Man",
         "image": "",
     },
-    "maison": {"blocks": [
+    "maison": {"title": "La maison", "blocks": [
         {"n": "01", "title": "La VO d'abord", "text": "Comic shop spécialisé en version originale. Marvel, DC, indés — les titres qui définissent le médium, dans leur langue d'origine."},
         {"n": "02", "title": "Le fonds VF", "text": "Un large stock de mensuels : les bons vieux Strange, Nova et Titans de l'ère Lug & Semic. La nostalgie a une adresse."},
         {"n": "03", "title": "Sur les salons", "text": "On sillonne les conventions d'Europe avec une sélection triée sur le volet. Retrouvez-nous case après case."},
@@ -1320,6 +1320,47 @@ async def update_content_lang(section: str, lang: str, body: dict = Body(...), a
         await db.site_content.update_one({"key": "home"}, {"$unset": {f"{section}.{lang}": ""}})
     doc = await db.site_content.find_one({"key": "home"})
     return _merge_content(doc)
+
+# ===== Livraison : méthodes + Mondial Relay =====
+class ContactMessage(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    email: str = Field(min_length=5, max_length=200)
+    subject: str = Field(min_length=2, max_length=150)
+    message: str = Field(min_length=5, max_length=5000)
+
+@api.post("/contact")
+async def contact(body: ContactMessage):
+    """Formulaire de contact public — envoyé au gérant via le système d'email existant.
+    Le destinataire est fixe côté serveur ; l'email du visiteur passe en reply-to."""
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", body.email):
+        raise HTTPException(400, "Adresse email invalide")
+    subj = re.sub(r"[\r\n]+", " ", body.subject).strip()
+    html = (
+        '<table role="presentation" width="100%" style="background:#f5f2ea;padding:24px 0">'
+        '<tr><td align="center"><table role="presentation" width="560" style="background:#ffffff;border:2px solid #141414;font-family:Arial,sans-serif;color:#141414">'
+        '<tr><td style="background:#141414;color:#f5f2ea;padding:16px 24px;font-size:18px;font-weight:bold;letter-spacing:2px">'
+        + escape(EMAIL_FROM_NAME) + ' — Contact</td></tr>'
+        '<tr><td style="padding:24px">'
+        '<p style="font-size:14px"><strong>Nom :</strong> ' + escape(body.name) + '</p>'
+        '<p style="font-size:14px"><strong>Email :</strong> ' + escape(body.email) + '</p>'
+        '<p style="font-size:14px"><strong>Objet :</strong> ' + escape(subj) + '</p>'
+        '<p style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#c8102e;margin:20px 0 6px">Message</p>'
+        '<p style="font-size:14px;line-height:1.6;white-space:pre-wrap">' + escape(body.message) + '</p>'
+        '</td></tr>'
+        '<tr><td style="padding:14px 24px;font-size:11px;color:#888;border-top:1px solid #eee">'
+        'Répondez directement à cet email pour répondre au visiteur.'
+        '</td></tr></table></td></tr></table>'
+    )
+    try:
+        await send_email(to=os.environ["ADMIN_EMAIL"].strip(),
+                         subject=f"Contact site — {subj}"[:150],
+                         html=html, reply_to=body.email)
+    except ValueError as e:
+        raise HTTPException(400, "Message refusé par le filtre de sécurité")
+    except Exception as e:
+        logger.error(f"contact email error: {type(e).__name__}")
+        raise HTTPException(502, "L'envoi du message a échoué. Réessayez dans un instant.")
+    return {"ok": True}
 
 # ===== Livraison : méthodes + Mondial Relay =====
 SHIPPING_METHODS = ("mondial_relay", "home_delivery")

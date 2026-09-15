@@ -21,9 +21,13 @@ export const ProductCard = ({ product, index = 0 }) => {
         <span className="absolute top-0 left-0 bg-ink text-paper font-mono text-[10px] uppercase tracking-widest px-2 py-1">
           {product.category}
         </span>
-        {product.stock <= 1 && (
-          <span className="absolute top-0 right-0 bg-comicred text-paper font-mono text-[10px] uppercase px-2 py-1">
-            {t.card.lastCopy}
+        {product.stock > 0 ? (
+          <span data-testid={`stock-badge-${product.id}`} className="absolute top-0 right-0 bg-green-600 text-paper font-mono text-[10px] uppercase px-2 py-1">
+            {t.card.inStock}
+          </span>
+        ) : (
+          <span data-testid={`stock-badge-${product.id}`} className="absolute top-0 right-0 bg-comicred text-paper font-mono text-[10px] uppercase px-2 py-1">
+            {t.card.soldOut}
           </span>
         )}
       </div>

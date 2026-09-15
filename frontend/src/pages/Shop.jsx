@@ -51,16 +51,18 @@ export default function Shop() {
 
   const filtered = useMemo(() => {
     const needle = (search || q).trim().toLowerCase();
+    const inStock = params.get("stock") === "1";
     return allProducts.filter((p) => {
       if (category && p.category !== category) return false;
       if (serie && (p.series || "") !== serie) return false;
+      if (inStock && !(p.stock > 0)) return false;
       if (needle) {
         const hay = `${p.title || ""} ${p.series || ""} ${p.publisher || ""}`.toLowerCase();
         if (!hay.includes(needle)) return false;
       }
       return true;
     });
-  }, [allProducts, category, serie, search, q]);
+  }, [allProducts, category, serie, search, q, params]);
 
   const shopLd = {
     "@context": "https://schema.org", "@type": "BreadcrumbList",
@@ -99,6 +101,10 @@ export default function Shop() {
                 {c.l}
               </button>
             ))}
+            <button data-testid="filter-in-stock" onClick={() => setParam("stock", params.get("stock") === "1" ? "" : "1")}
+              className={`font-mono text-xs uppercase tracking-widest px-4 py-2.5 border-2 border-ink transition-colors ${params.get("stock") === "1" ? "bg-green-600 text-paper" : "hover:bg-papersoft"}`}>
+              {t.shop.inStockOnly}
+            </button>
           </div>
         </div>
 

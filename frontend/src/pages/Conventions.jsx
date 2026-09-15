@@ -13,6 +13,14 @@ export default function Conventions() {
   const { t } = useLang();
   const [events, setEvents] = useState([]);
   useEffect(() => { api.get("/salons").then((r) => setEvents(r.data)).catch(() => {}); }, []);
+  useEffect(() => {
+    if (window.location.hash === "#agenda") {
+      const timer = setTimeout(() => {
+        document.getElementById("agenda")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, []);
   return (
     <div>
       <Seo
@@ -35,7 +43,7 @@ export default function Conventions() {
 
       <Marquee items={["Rencontres", "Dédicaces", "Chine", "Collector", "VO", "VF", "Salons"]} />
 
-      <section className="max-w-[1400px] mx-auto px-4 sm:px-8 py-16 sm:py-24">
+      <section id="agenda" className="max-w-[1400px] mx-auto px-4 sm:px-8 py-16 sm:py-24 scroll-mt-20">
         <h2 className="font-anton text-3xl sm:text-4xl uppercase mb-10">{t.conventions.agenda}</h2>
         <div className="border-2 border-ink">
           {events.length === 0 && (
