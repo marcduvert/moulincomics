@@ -51,7 +51,7 @@ def test_update_order_status_roundtrip(admin_session):
     if not orders:
         pytest.skip("no orders to test status update")
     sid = orders[0]["session_id"]
-    original = orders[0].get("fulfillment_status", "en_attente")
+    original = orders[0].get("fulfillment_status", "a_traiter")
     # set to en_attente
     r = admin_session.put(f"{BASE_URL}/api/admin/orders/{sid}/status",
                           json={"fulfillment_status": "expediee"}, timeout=20)

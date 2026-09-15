@@ -43,11 +43,42 @@ export default function Admin() {
     livree: "Livrée", incident: "Incident", annulee: "Annulée",
   };
 
+  const ORDER_LABELS = {
+    a_traiter: "À traiter", en_preparation: "En préparation", prete_expedition: "Prête à expédier",
+    expediee: "Expédiée", terminee: "Terminée", annulee: "Annulée / Remboursée",
+  };
+  const ORDER_BADGE = {
+    a_traiter: "bg-comicred text-paper border-ink",
+    en_preparation: "bg-comicyellow border-ink",
+    prete_expedition: "bg-comicblue text-paper border-ink",
+    expediee: "bg-comicblue text-paper border-ink",
+    terminee: "bg-green-600 text-paper border-ink",
+    annulee: "border-ink/30 text-inksoft",
+  };
+  const NEXT_ACTION = {
+    a_traiter: { label: "Commencer la préparation", to: "en_preparation" },
+    en_preparation: { label: "Marquer comme prête", to: "prete_expedition" },
+    prete_expedition: { label: "Marquer comme expédiée", to: "expediee" },
+  };
+
+  const updateStatus = async (sessionId, status) => {
+    try {
+      const { data } = await api.put(`/admin/orders/${sessionId}/status`, { fulfillment_status: status });
+      setOrders((prev) => prev.map((o) => (o.session_id === sessionId
+        ? { ...o, fulfillment_status: data.fulfillment_status, shipping_status: data.shipping_status } : o)));
+      toast.success(data.email_sent ? "Commande mise à jour — email d'expédition envoyé au client" : "Commande mise à jour");
+    } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
+  };
+
   const updateShipping = async (sessionId, patch) => {
     try {
-      await api.put(`/admin/orders/${sessionId}/shipping`, patch);
-      setOrders((prev) => prev.map((o) => (o.session_id === sessionId ? { ...o, ...patch } : o)));
-      toast.success("Livraison mise à jour");
+      const { data } = await api.put(`/admin/orders/${sessionId}/shipping`, patch);
+      setOrders((prev) => prev.map((o) => (o.session_id === sessionId
+        ? { ...o, ...(patch.tracking_number !== undefined ? { tracking_number: data.tracking_number } : {}),
+            ...(data.shipping_status ? { shipping_status: data.shipping_status } : {}),
+            ...(data.fulfillment_status ? { fulfillment_status: data.fulfillment_status } : {}),
+            ...(data.shipped_at ? { shipped_at: data.shipped_at } : {}) } : o)));
+      toast.success(data.email_sent ? "Livraison mise à jour — email d'expédition envoyé au client" : "Livraison mise à jour");
     } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
   };
   const [seriesList, setSeriesList] = useState([]);
@@ -201,14 +232,6 @@ export default function Admin() {
     if (!window.confirm("Supprimer cette référence ?")) return;
     await api.delete(`/admin/products/${id}`);
     toast.success("Supprimé"); load();
-  };
-
-  const updateStatus = async (sessionId, status) => {
-    try {
-      const { data } = await api.put(`/admin/orders/${sessionId}/status`, { fulfillment_status: status });
-      setOrders((prev) => prev.map((o) => (o.session_id === sessionId ? { ...o, fulfillment_status: status } : o)));
-      toast.success(data.email_sent ? "Statut mis à jour — email d'expédition envoyé au client" : "Statut mis à jour");
-    } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
   };
 
   const toggleSort = (k) => setOrderSort((p) => (p.key === k ? { key: k, dir: -p.dir } : { key: k, dir: 1 }));
@@ -453,10 +476,10 @@ export default function Admin() {
               </select>
               <select data-testid="orders-filter-ful" value={orderFul} onChange={(e) => setOrderFul(e.target.value)}
                 className="border-2 border-ink rounded-md px-3 py-2 font-mono text-xs bg-paper">
-                <option value="all">Traitement : tous</option>
-                <option value="en_attente">En attente</option>
-                <option value="expediee">Expédiée</option>
-                <option value="livree">Livrée</option>
+                <option value="all">Commande : toutes</option>
+                {Object.entries(ORDER_LABELS).map(([k, l]) => (
+                  <option key={k} value={k}>{l}</option>
+                ))}
               </select>
               {selectedOrders.length > 0 && (
                 <button onClick={deleteSelected} data-testid="orders-delete-selected"
@@ -479,14 +502,15 @@ export default function Admin() {
                     <th className="text-left p-3">Articles</th>
                     <Th k="amount" className="!text-right">Montant</Th>
                     <th className="text-left p-3">Paiement</th>
-                    <th className="text-left p-3">Traitement</th>
+                    <th className="text-left p-3">Commande</th>
                   </tr>
                 </thead>
                 <tbody>
                   {viewOrders.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-inksoft">Aucune commande.</td></tr>}
                   {viewOrders.map((o) => {
-                    const fs = o.fulfillment_status || "en_attente";
-                    const badge = { en_attente: "border-ink/30 text-inksoft", expediee: "bg-comicblue text-paper border-ink", livree: "bg-comicyellow border-ink" }[fs];
+                    const fs = o.fulfillment_status || "a_traiter";
+                    const badge = ORDER_BADGE[fs] || "border-ink/30 text-inksoft";
+                    const next = NEXT_ACTION[fs];
                     const open = openOrder === o.session_id;
                     return (
                     <Fragment key={o.session_id}>
@@ -513,18 +537,23 @@ export default function Admin() {
                         </span>
                       </td>
                       <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[10px] uppercase px-2 py-1 border ${badge}`}>
-                            {{ en_attente: "En attente", expediee: "Expédiée", livree: "Livrée" }[fs]}
-                          </span>
-                          <select data-testid={`order-status-${o.session_id}`} value={fs}
-                            onChange={(e) => updateStatus(o.session_id, e.target.value)}
-                            className="border-2 border-ink rounded-md px-2 py-1 text-xs bg-papersoft">
-                            <option value="en_attente">En attente</option>
-                            <option value="expediee">Expédiée</option>
-                            <option value="livree">Livrée</option>
-                          </select>
-                        </div>
+                        <span className={`inline-block text-[10px] uppercase px-2 py-1 border ${badge}`}
+                          data-testid={`order-state-${o.session_id}`}>
+                          {ORDER_LABELS[fs] || fs}
+                        </span>
+                        {fs === "terminee" && (
+                          <p className="font-mono text-[10px] text-green-700 mt-1">✓ Commande terminée</p>
+                        )}
+                        {fs === "expediee" && o.tracking_number && (
+                          <p className="font-mono text-[10px] text-inksoft mt-1">Suivi : {o.tracking_number}</p>
+                        )}
+                        {next && (
+                          <button onClick={() => updateStatus(o.session_id, next.to)}
+                            data-testid={`order-action-${o.session_id}`}
+                            className="mt-1.5 block font-mono text-[10px] uppercase tracking-wider text-comicblue underline hover:text-comicred">
+                            → {next.label}
+                          </button>
+                        )}
                       </td>
                     </tr>
                     {open && (
@@ -554,9 +583,32 @@ export default function Admin() {
                           </div>
                         </div>
                         <div className="mt-4 border-t border-ink/15 pt-3" data-testid={`order-shipping-${o.session_id}`}>
-                          <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Livraison</p>
-                          <div className="flex flex-wrap items-start gap-6 text-xs">
+                          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6 text-xs">
                             <div>
+                              <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Paiement</p>
+                              <span className={`text-[10px] uppercase px-2 py-1 border ${o.payment_status === "paid" ? "bg-green-200 border-ink" : "border-ink/30 text-inksoft"}`}>
+                                {o.payment_status === "paid" ? "Payé" : o.payment_status}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Commande</p>
+                              <span className={`inline-block text-[10px] uppercase px-2 py-1 border ${badge}`}>{ORDER_LABELS[fs] || fs}</span>
+                              <select value={fs} data-testid={`order-status-${o.session_id}`}
+                                onChange={(e) => updateStatus(o.session_id, e.target.value)}
+                                className="mt-2 block border-2 border-ink rounded-md px-2 py-1 text-xs bg-papersoft">
+                                {Object.entries(ORDER_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                              </select>
+                              {next && (
+                                <button onClick={() => updateStatus(o.session_id, next.to)}
+                                  data-testid={`order-action-detail-${o.session_id}`}
+                                  className="mt-2 block font-mono text-[10px] uppercase tracking-wider text-comicblue underline hover:text-comicred">
+                                  → {next.label}
+                                </button>
+                              )}
+                              {fs === "terminee" && <p className="font-mono text-[10px] text-green-700 mt-2">✓ Commande terminée</p>}
+                            </div>
+                            <div>
+                              <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Livraison</p>
                               {o.shipping_method === "mondial_relay" ? (
                                 <>
                                   <p className="font-bold mb-1"><span className="bg-comicblue text-paper px-2 py-0.5 uppercase text-[10px] border border-ink">Mondial Relay — {o.relay_point_type || "Point Relais"}</span></p>
@@ -573,7 +625,7 @@ export default function Admin() {
                               {o.shipping_price != null && <p className="mt-1 text-inksoft">Frais : {fmtPrice(o.shipping_price)}</p>}
                             </div>
                             <div>
-                              <p className="text-inksoft mb-1">Statut :</p>
+                              <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Statut de livraison</p>
                               <select value={o.shipping_status || "a_preparer"}
                                 data-testid={`order-shipping-status-${o.session_id}`}
                                 onChange={(e) => updateShipping(o.session_id, { shipping_status: e.target.value })}
@@ -582,17 +634,23 @@ export default function Admin() {
                                   <option key={k} value={k}>{l}</option>
                                 ))}
                               </select>
+                              <p className="text-inksoft mt-2 text-[10px]">Met à jour « Commande » automatiquement si cohérent.</p>
+                            </div>
+                            <div>
+                              <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Suivi</p>
+                              <p className="text-inksoft">Transporteur : {o.shipping_method === "mondial_relay" ? "Mondial Relay" : o.shipping_method === "home_delivery" ? "Courrier suivi" : "—"}</p>
                               <div className="mt-2 flex items-center gap-2">
                                 <input placeholder="N° de suivi" defaultValue={o.tracking_number || ""}
                                   data-testid={`order-tracking-${o.session_id}`}
                                   onBlur={(e) => e.target.value.trim() !== (o.tracking_number || "") && updateShipping(o.session_id, { tracking_number: e.target.value })}
-                                  className="border-2 border-ink rounded-md px-2 py-1 text-xs bg-papersoft w-36" />
+                                  className="border-2 border-ink rounded-md px-2 py-1 text-xs bg-papersoft w-32" />
                                 {o.tracking_number && (
                                   <a href={`https://www.mondialrelay.fr/suivi-de-colis/?NumeroExpedition=${encodeURIComponent(o.tracking_number)}`}
                                     target="_blank" rel="noreferrer" data-testid={`order-tracking-link-${o.session_id}`}
                                     className="font-mono text-[10px] uppercase underline text-comicblue">Voir le suivi</a>
                                 )}
                               </div>
+                              {o.shipped_at && <p className="text-inksoft mt-1 text-[10px]">Expédiée le {new Date(o.shipped_at).toLocaleDateString("fr-FR")}</p>}
                               {o.shipping_method === "mondial_relay" && (
                                 mrStatus?.api2_configured
                                   ? <button data-testid={`order-create-shipment-${o.session_id}`}

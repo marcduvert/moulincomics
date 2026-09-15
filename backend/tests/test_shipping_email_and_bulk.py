@@ -38,11 +38,11 @@ def test_shipping_email_first_transition_sends(admin_session, mongo_col):
     order = mongo_col.find_one({"session_id": ALICE_SID})
     if not order:
         pytest.skip("Alice E2E order not in DB")
-    # Reset: unset shipping_email_sent, put fulfillment back to en_attente,
+    # Reset: unset shipping_email_sent, put fulfillment back to a_traiter,
     # and force a deliverable test recipient (Stripe checkout may have stored an
     # example.com address, which the email proxy rejects with 422).
     mongo_col.update_one({"session_id": ALICE_SID},
-                         {"$set": {"fulfillment_status": "en_attente",
+                         {"$set": {"fulfillment_status": "a_traiter",
                                    "customer.email": "delivered@resend.dev"},
                           "$unset": {"shipping_email_sent": ""}})
     r = admin_session.put(f"{BASE_URL}/api/admin/orders/{ALICE_SID}/status",
@@ -60,7 +60,7 @@ def test_shipping_email_second_transition_no_duplicate(admin_session, mongo_col)
     # currently order is expediee + flag set from previous test.
     # First reset status to en_attente but leave shipping_email_sent True.
     mongo_col.update_one({"session_id": ALICE_SID},
-                         {"$set": {"fulfillment_status": "en_attente",
+                         {"$set": {"fulfillment_status": "a_traiter",
                                    "shipping_email_sent": True}})
     r = admin_session.put(f"{BASE_URL}/api/admin/orders/{ALICE_SID}/status",
                           json={"fulfillment_status": "expediee"}, timeout=20)
@@ -70,20 +70,20 @@ def test_shipping_email_second_transition_no_duplicate(admin_session, mongo_col)
     assert data["email_sent"] is False, f"expected no duplicate email, got {data}"
 
 
-def test_status_change_to_en_attente_no_email(admin_session, mongo_col):
+def test_status_change_to_a_traiter_no_email(admin_session, mongo_col):
     r = admin_session.put(f"{BASE_URL}/api/admin/orders/{ALICE_SID}/status",
-                          json={"fulfillment_status": "en_attente"}, timeout=20)
+                          json={"fulfillment_status": "a_traiter"}, timeout=20)
     assert r.status_code == 200
     assert r.json()["email_sent"] is False
 
 
-def test_status_change_to_livree_no_email(admin_session, mongo_col):
-    # reset shipping_email_sent to simulate never-sent, transition livree
+def test_status_change_to_terminee_no_email(admin_session, mongo_col):
+    # reset shipping_email_sent to simulate never-sent, transition terminee
     mongo_col.update_one({"session_id": ALICE_SID},
                          {"$unset": {"shipping_email_sent": ""},
-                          "$set": {"fulfillment_status": "en_attente"}})
+                          "$set": {"fulfillment_status": "a_traiter"}})
     r = admin_session.put(f"{BASE_URL}/api/admin/orders/{ALICE_SID}/status",
-                          json={"fulfillment_status": "livree"}, timeout=20)
+                          json={"fulfillment_status": "terminee"}, timeout=20)
     assert r.status_code == 200
     assert r.json()["email_sent"] is False
     doc = mongo_col.find_one({"session_id": ALICE_SID})
@@ -108,10 +108,10 @@ def test_bulk_delete_removes_sessions(admin_session, mongo_col):
     # Insert 2 dummy pending orders directly
     dummies = [
         {"session_id": "TEST_bulk_del_1", "amount": 1.0, "currency": "eur",
-         "payment_status": "pending", "fulfillment_status": "en_attente",
+         "payment_status": "pending", "fulfillment_status": "a_traiter",
          "items": [], "created_at": "2026-01-01T00:00:00+00:00"},
         {"session_id": "TEST_bulk_del_2", "amount": 2.0, "currency": "eur",
-         "payment_status": "pending", "fulfillment_status": "en_attente",
+         "payment_status": "pending", "fulfillment_status": "a_traiter",
          "items": [], "created_at": "2026-01-01T00:00:00+00:00"},
     ]
     mongo_col.insert_many(dummies)

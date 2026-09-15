@@ -1019,13 +1019,32 @@ async def list_orders(admin: dict = Depends(get_current_admin)):
     out = []
     for d in docs:
         d.pop("_id", None)
-        d.setdefault("fulfillment_status", "en_attente")
-        if isinstance(d.get("created_at"), datetime):
-            d["created_at"] = d["created_at"].isoformat()
-        if isinstance(d.get("updated_at"), datetime):
-            d["updated_at"] = d["updated_at"].isoformat()
+        d.setdefault("fulfillment_status", "a_traiter")
+        for k in ("created_at", "updated_at", "shipped_at"):
+            if isinstance(d.get(k), datetime):
+                d[k] = d[k].isoformat()
         out.append(d)
     return out
+
+async def _maybe_send_shipping_email(session_id: str) -> bool:
+    """Email d'expédition au client, une seule fois par commande (flag posé avant envoi)."""
+    order = await db.payment_transactions.find_one({"session_id": session_id})
+    if not order or order.get("shipping_email_sent"):
+        return False
+    to = (order.get("customer") or {}).get("email")
+    if not to:
+        return False
+    await db.payment_transactions.update_one(
+        {"session_id": session_id}, {"$set": {"shipping_email_sent": True}})
+    try:
+        await send_email(to=to,
+                         subject="Votre commande Moulin Comics est expédiée",
+                         html=_shipping_email_html(order))
+        return True
+    except Exception:
+        await db.payment_transactions.update_one(
+            {"session_id": session_id}, {"$unset": {"shipping_email_sent": ""}})
+        raise
 
 class FulfillmentUpdate(BaseModel):
     fulfillment_status: str
@@ -1033,37 +1052,35 @@ class FulfillmentUpdate(BaseModel):
 @api.put("/admin/orders/{session_id}/status")
 async def update_order_status(session_id: str, body: FulfillmentUpdate,
                               admin: dict = Depends(get_current_admin)):
-    if body.fulfillment_status not in {"en_attente", "expediee", "livree"}:
+    """État COMMANDE (ce que le gérant doit faire). Actions couplées :
+    prete_expedition → livraison preparee ; expediee → livraison expediee + date + email ;
+    annulee → livraison annulee."""
+    if body.fulfillment_status not in ORDER_STATES:
         raise HTTPException(400, "Statut invalide")
     order = await db.payment_transactions.find_one({"session_id": session_id})
     if not order:
         raise HTTPException(404, "Commande introuvable")
-    await db.payment_transactions.update_one(
-        {"session_id": session_id},
-        {"$set": {"fulfillment_status": body.fulfillment_status,
-                  "updated_at": datetime.now(timezone.utc)}})
+    now = datetime.now(timezone.utc)
+    new_state = body.fulfillment_status
+    updates = {"fulfillment_status": new_state, "updated_at": now}
+    cur_ship = order.get("shipping_status") or "a_preparer"
+    if new_state == "prete_expedition" and cur_ship == "a_preparer":
+        updates["shipping_status"] = "preparee"
+    elif new_state == "expediee":
+        if cur_ship in ("a_preparer", "preparee"):
+            updates["shipping_status"] = "expediee"
+        updates["shipped_at"] = now
+    elif new_state == "annulee":
+        updates["shipping_status"] = "annulee"
+    await db.payment_transactions.update_one({"session_id": session_id}, {"$set": updates})
     email_sent = False
-    if (body.fulfillment_status == "expediee"
-            and order.get("fulfillment_status") != "expediee"
-            and not order.get("shipping_email_sent")):
+    if new_state == "expediee" and order.get("fulfillment_status") != "expediee":
         try:
-            to = (order.get("customer") or {}).get("email")
-            if to:
-                # Marquer avant l'envoi pour éviter tout doublon ; annuler si l'envoi échoue
-                await db.payment_transactions.update_one(
-                    {"session_id": session_id}, {"$set": {"shipping_email_sent": True}})
-                try:
-                    await send_email(to=to,
-                                     subject="Votre commande Moulin Comics est expédiée",
-                                     html=_shipping_email_html(order))
-                    email_sent = True
-                except Exception:
-                    await db.payment_transactions.update_one(
-                        {"session_id": session_id}, {"$unset": {"shipping_email_sent": ""}})
-                    raise
+            email_sent = await _maybe_send_shipping_email(session_id)
         except Exception as e:
             logging.getLogger(__name__).error(f"shipping email error: {e}")
-    return {"ok": True, "fulfillment_status": body.fulfillment_status, "email_sent": email_sent}
+    return {"ok": True, "fulfillment_status": new_state,
+            "shipping_status": updates.get("shipping_status", cur_ship), "email_sent": email_sent}
 
 class OrdersBulkDelete(BaseModel):
     session_ids: List[str]
@@ -1160,7 +1177,7 @@ async def create_checkout(req: CheckoutRequest):
     await db.payment_transactions.insert_one({
         "session_id": session.id, "items": summary, "amount": total, "currency": "eur",
         "status": "initiated", "payment_status": "pending",
-        "fulfillment_status": "en_attente",
+        "fulfillment_status": "a_traiter",
         **ship_doc,
         "created_at": datetime.now(timezone.utc), "updated_at": datetime.now(timezone.utc),
     })
@@ -1366,6 +1383,15 @@ async def contact(body: ContactMessage):
 SHIPPING_METHODS = ("mondial_relay", "home_delivery")
 SHIPPING_STATUSES = ("a_preparer", "preparee", "expediee", "en_transit",
                      "disponible_relais", "livree", "incident", "annulee")
+# État de la commande (ce que le gérant doit faire) — vocabulaire de fulfillment_status
+ORDER_STATES = ("a_traiter", "en_preparation", "prete_expedition", "expediee", "terminee", "annulee")
+ORDER_RANK = {s: i for i, s in enumerate(ORDER_STATES)}
+# Synchronisation STATUT DE LIVRAISON -> COMMANDE (jamais de retour arrière,
+# sauf incident/annulée qui sont des exceptions explicites)
+SHIP_TO_ORDER = {"preparee": "prete_expedition", "expediee": "expediee", "en_transit": "expediee",
+                 "disponible_relais": "expediee", "livree": "terminee",
+                 "incident": "a_traiter", "annulee": "annulee"}
+SHIP_FORCE = {"incident", "annulee"}
 
 async def _shipping_config() -> dict:
     doc = await db.site_content.find_one({"key": "home"}) or {}
@@ -1418,20 +1444,40 @@ class ShippingUpdate(BaseModel):
 @api.put("/admin/orders/{session_id}/shipping")
 async def update_order_shipping(session_id: str, body: ShippingUpdate,
                                 admin: dict = Depends(get_current_admin)):
+    """STATUT DE LIVRAISON détaillé. Synchronise l'état COMMANDE selon SHIP_TO_ORDER
+    (jamais de retour arrière, sauf incident/annulée explicites)."""
     if body.shipping_status is not None and body.shipping_status not in SHIPPING_STATUSES:
         raise HTTPException(400, "Statut d'expédition invalide")
-    updates = {}
+    order = await db.payment_transactions.find_one({"session_id": session_id})
+    if not order:
+        raise HTTPException(404, "Commande introuvable")
+    now = datetime.now(timezone.utc)
+    updates = {"updated_at": now}
+    email_sent = False
     if body.shipping_status is not None:
         updates["shipping_status"] = body.shipping_status
+        if body.shipping_status == "expediee":
+            updates["shipped_at"] = now
+        target = SHIP_TO_ORDER.get(body.shipping_status)
+        if target:
+            cur_order = order.get("fulfillment_status") or "a_traiter"
+            if (body.shipping_status in SHIP_FORCE
+                    or ORDER_RANK[target] > ORDER_RANK.get(cur_order, 0)):
+                updates["fulfillment_status"] = target
     if body.tracking_number is not None:
         updates["tracking_number"] = body.tracking_number.strip()
-    if not updates:
+    if len(updates) == 1:
         raise HTTPException(400, "Aucune donnée")
-    updates["updated_at"] = datetime.now(timezone.utc)
-    res = await db.payment_transactions.update_one({"session_id": session_id}, {"$set": updates})
-    if res.matched_count == 0:
-        raise HTTPException(404, "Commande introuvable")
-    return {"ok": True, **updates}
+    await db.payment_transactions.update_one({"session_id": session_id}, {"$set": updates})
+    if updates.get("fulfillment_status") == "expediee" and order.get("fulfillment_status") != "expediee":
+        try:
+            email_sent = await _maybe_send_shipping_email(session_id)
+        except Exception as e:
+            logging.getLogger(__name__).error(f"shipping email error: {e}")
+    for k, v in updates.items():
+        if isinstance(v, datetime):
+            updates[k] = v.isoformat()
+    return {"ok": True, "email_sent": email_sent, **updates}
 
 @api.post("/admin/orders/{session_id}/create-shipment")
 async def create_shipment(session_id: str, admin: dict = Depends(get_current_admin)):
@@ -1543,6 +1589,15 @@ async def startup():
     await seed_products()
     await seed_series()
     await seed_salons()
+    # Migration idempotente : ancien vocabulaire « Traitement » → nouvel état COMMANDE
+    await db.payment_transactions.update_many(
+        {"fulfillment_status": "en_attente"}, {"$set": {"fulfillment_status": "a_traiter"}})
+    await db.payment_transactions.update_many(
+        {"fulfillment_status": "livree"}, {"$set": {"fulfillment_status": "terminee"}})
+    await db.payment_transactions.update_many(
+        {"fulfillment_status": {"$exists": False}}, {"$set": {"fulfillment_status": "a_traiter"}})
+    await db.payment_transactions.update_many(
+        {"shipping_status": {"$exists": False}}, {"$set": {"shipping_status": "a_preparer"}})
     try:
         init_storage()
         logger.info("Storage initialized")
