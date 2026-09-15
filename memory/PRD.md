@@ -113,6 +113,16 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 
 
 - P1: gestion des frais de port / retrait salon.
+
+### Batch V2 : slugs SEO + salons enrichis + admin UX — 2026-09
+- **Slugs produits** : champ `slug` (minuscules, sans accents, tirets, unique via suffixe -2) + `old_slugs` (historique, redirection sans chaîne). Migration startup idempotente pour les existants. `GET /api/products/{id|slug|ancien-slug}` résout les trois ; le frontend redirige instantanément vers l'URL canonique (SPA : redirect client — pas de 301 HTTP possible, l'ingress ne route que /api/* vers le backend ; la canonical porte toujours l'URL slug). Renommage admin → nouveau slug + ancien conservé dans old_slugs. Sitemap en slugs. Index Mongo slug/old_slugs.
+- **Salons** : champs description, website (lien « Site officiel ↗ » nouvel onglet, masqué si vide), photo (upload existant), ordre (tri : ordre explicite d'abord, sinon plus récentes). Design lignes conservé.
+- **Admin produits** : miniature cliquable → modal grand format ; nom + « Voir le produit ↗ » (slug, nouvel onglet).
+- **Admin commandes** : articles cliquables vers fiche publique (slug injecté par le backend ; texte simple si produit supprimé).
+- **SEO fiches** : déjà conforme (title/H1/JSON-LD) ; meta description = description localisée (FR/EN/ES) si présente sinon générée ; canonical = URL slug.
+- Garde-fou images : placeholder « Sans couverture » si cover_image vide (plus de warning src='').
+- Tests : iteration_12.json — 9/9 tests V2 + 91/91 régression totale, frontend 100 %.
+
 - P2: comptes clients + historique de commandes.
 - P2: recherche avancée / tri par prix, wishlist.
 - P2: ~~emails de confirmation de commande~~ (fait, avec email d'expédition, via Resend managé).

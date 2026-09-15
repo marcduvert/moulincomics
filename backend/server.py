@@ -1653,6 +1653,8 @@ async def startup():
     await db.products.create_index("category")
     await db.products.create_index("series")
     await db.products.create_index("created_at")
+    await db.products.create_index("slug")
+    await db.products.create_index("old_slugs")
     await seed_admin()
     await seed_products()
     await seed_series()

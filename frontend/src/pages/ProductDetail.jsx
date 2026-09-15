@@ -106,7 +106,9 @@ export default function ProductDetail() {
         <div className="lg:sticky lg:top-24 self-start">
           <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }}
             className="border-2 border-ink bg-papersoft p-4 shadow-hardlg">
-            <img src={p.cover_image} alt={seoTitle.replace(" | Moulin Comics", "")} className="w-full aspect-[3/4] object-cover blend-ink" />
+            {p.cover_image
+              ? <img src={p.cover_image} alt={seoTitle.replace(" | Moulin Comics", "")} className="w-full aspect-[3/4] object-cover blend-ink" />
+              : <div className="w-full aspect-[3/4] bg-papersoft flex items-center justify-center font-mono text-xs text-inksoft">Sans couverture</div>}
           </motion.div>
         </div>
         <div>
