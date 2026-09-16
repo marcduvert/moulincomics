@@ -3,11 +3,15 @@ import { Send, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
+import { useContent } from "../context/ContentContext";
 import { Seo } from "../components/Seo";
 import { Reveal } from "../components/Reveal";
 
 export default function Contact() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const { content } = useContent();
+  const cBase = content?.contact || {};
+  const cc = lang === "fr" ? cBase : { ...cBase, ...(cBase[lang] || {}) };
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
   const [sending, setSending] = useState(false);
 
@@ -48,7 +52,11 @@ export default function Contact() {
       </div>
       <div className="max-w-[640px] mx-auto px-4 sm:px-8 py-12 sm:py-16">
         <Reveal>
-          <p className="font-mono text-sm text-inksoft mb-8">{t.contact.intro}</p>
+          {cc.photo && (
+            <img src={cc.photo} alt="Moulin Comics — Contact" data-testid="contact-photo"
+              className="w-full aspect-[16/9] object-cover border-2 border-ink mb-8" />
+          )}
+          <p className="font-mono text-sm text-inksoft mb-8" data-testid="contact-top-text">{cc.top_text || t.contact.intro}</p>
           <form onSubmit={submit} data-testid="contact-form" className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
@@ -78,6 +86,9 @@ export default function Contact() {
               {sending ? t.contact.sending : t.contact.send}
             </button>
           </form>
+          {cc.bottom_text && (
+            <p className="font-mono text-xs text-inksoft mt-6 leading-relaxed" data-testid="contact-bottom-text">{cc.bottom_text}</p>
+          )}
         </Reveal>
       </div>
     </div>

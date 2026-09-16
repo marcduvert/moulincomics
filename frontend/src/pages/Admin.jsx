@@ -316,7 +316,7 @@ export default function Admin() {
       </header>
 
       <div className="max-w-[1300px] mx-auto px-5 py-8">
-        <div className="flex gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6">
           <button onClick={() => setTab("stock")} className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink ${tab === "stock" ? "bg-ink text-paper" : "bg-paper"}`}>
             <Package size={14} /> Stock ({products.length})
           </button>
@@ -369,7 +369,7 @@ export default function Admin() {
           <>
             <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
               <h1 className="font-display font-black tracking-tighter text-2xl">Inventaire</h1>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button onClick={() => nav("/admin/import")} data-testid="import-ia-btn"
                   className="flex items-center gap-2 bg-ink text-paper font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink hover:bg-comicblue transition-colors">
                   <Sparkles size={14} /> Import intelligent (IA)

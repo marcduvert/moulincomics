@@ -594,7 +594,7 @@ async def create_salon(body: SalonBody, admin: dict = Depends(get_current_admin)
 
 @api.put("/admin/salons/{salon_id}")
 async def update_salon(salon_id: str, body: SalonBody, admin: dict = Depends(get_current_admin)):
-    await db.salons.update_one({"_id": ObjectId(salon_id)}, {"$set": body.model_dump()})
+    await db.salons.update_one({"_id": ObjectId(salon_id)}, {"$set": body.model_dump(exclude_unset=True)})
     doc = await db.salons.find_one({"_id": ObjectId(salon_id)})
     if not doc:
         raise HTTPException(404, "Salon introuvable")
@@ -1348,6 +1348,11 @@ DEFAULT_CONTENT = {
         "seo_title": "Moulin Comics — Comics Marvel, DC & BD de collection",
         "meta_description": "Moulin Comics sélectionne des comics Marvel, DC Comics, comics américains et BD de collection pour les passionnés et collectionneurs.",
         "og_title": "", "og_description": "", "og_image": "",
+    },
+    "contact": {
+        "photo": "",
+        "top_text": "",
+        "bottom_text": "",
     },
     "shipping": {
         "mondial_relay_price": 4.90,

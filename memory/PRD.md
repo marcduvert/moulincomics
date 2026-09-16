@@ -123,6 +123,14 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Garde-fou images : placeholder « Sans couverture » si cover_image vide (plus de warning src='').
 - Tests : iteration_12.json — 9/9 tests V2 + 91/91 régression totale, frontend 100 %.
 
+
+### Micro-optimisations (salons/contact/mobile) — 2026-09
+- Salon : clic photo → popup grand format (X / clic extérieur) ; titre agenda → « Agenda de nos salons » (FR/EN/ES) ; ancre #agenda avec titre visible en haut (scroll-mt-24).
+- Contact : nouvelle section `contact` dans site_content (photo, top_text, bottom_text) — rubrique Contact dans Contenu du site (upload existant), affichage auto sur /contact (photo masquée si vide).
+- Admin mobile : flex-wrap sur barre d'onglets + rangée d'actions (plus de débordement 390px).
+- Sécurité : PUT /admin/salons en exclude_unset (un PUT partiel ne vide plus les autres champs). Salon résiduel vide de test supprimé.
+- Vérifications ciblées navigateur (popup, ancre, contact, mobile) — pas de suite de régression complète (demande explicite).
+
 - P2: comptes clients + historique de commandes.
 - P2: recherche avancée / tri par prix, wishlist.
 - P2: ~~emails de confirmation de commande~~ (fait, avec email d'expédition, via Resend managé).

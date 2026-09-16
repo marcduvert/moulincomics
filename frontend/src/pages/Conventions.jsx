@@ -3,7 +3,7 @@ import { api } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
 import { Marquee } from "../components/Marquee";
 import { Reveal } from "../components/Reveal";
-import { MapPin } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 import { Seo } from "../components/Seo";
 
 const CONV = "https://images.pexels.com/photos/36398813/pexels-photo-36398813.jpeg?auto=compress&cs=tinysrgb&w=1200";
@@ -12,6 +12,7 @@ const CROWD = "https://images.unsplash.com/photo-1578434972378-e3c393d983db?crop
 export default function Conventions() {
   const { t } = useLang();
   const [events, setEvents] = useState([]);
+  const [zoomImg, setZoomImg] = useState(null);
   useEffect(() => { api.get("/salons").then((r) => setEvents(r.data)).catch(() => {}); }, []);
   useEffect(() => {
     if (window.location.hash === "#agenda") {
@@ -43,7 +44,7 @@ export default function Conventions() {
 
       <Marquee items={["Rencontres", "Dédicaces", "Chine", "Collector", "VO", "VF", "Salons"]} />
 
-      <section id="agenda" className="max-w-[1400px] mx-auto px-4 sm:px-8 py-16 sm:py-24 scroll-mt-20">
+      <section id="agenda" className="max-w-[1400px] mx-auto px-4 sm:px-8 py-16 sm:py-24 scroll-mt-24">
         <h2 className="font-anton text-3xl sm:text-4xl uppercase mb-10">{t.conventions.agenda}</h2>
         <div className="border-2 border-ink">
           {events.length === 0 && (
@@ -54,7 +55,9 @@ export default function Conventions() {
               <div data-testid={`salon-${e.id}`} className={`grid md:grid-cols-12 gap-2 md:gap-6 md:items-center p-5 sm:p-6 font-mono ${i < events.length - 1 ? "border-b-2 border-ink" : ""} hover:bg-papersoft transition-colors`}>
                 {e.photo && (
                   <img src={e.photo} alt={`${e.name} — ${e.city}`} loading="lazy"
-                    className="md:col-span-1 w-24 md:w-full aspect-[4/3] object-cover border-2 border-ink" />
+                    onClick={() => setZoomImg({ src: e.photo, alt: `${e.name} — ${e.city}` })}
+                    data-testid={`salon-photo-${e.id}`}
+                    className="md:col-span-1 w-24 md:w-full aspect-[4/3] object-cover border-2 border-ink cursor-zoom-in hover:opacity-80 transition-opacity" />
                 )}
                 <div className={`${e.photo ? "md:col-span-2" : "md:col-span-3"} text-comicred text-sm uppercase tracking-wider`}>{e.date_label}</div>
                 <div className="md:col-span-3 flex items-center gap-2 font-display font-bold text-lg">
@@ -90,6 +93,19 @@ export default function Conventions() {
           </Reveal>
         </div>
       </section>
+
+      {zoomImg && (
+        <div className="fixed inset-0 bg-ink/80 z-[90] flex items-center justify-center p-4" onClick={() => setZoomImg(null)}
+          data-testid="salon-photo-modal">
+          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setZoomImg(null)} data-testid="salon-photo-close" aria-label="Fermer"
+              className="absolute -top-3 -right-3 bg-comicred text-paper border-2 border-ink rounded-full p-2 z-10 hover:bg-ink transition-colors">
+              <X size={16} />
+            </button>
+            <img src={zoomImg.src} alt={zoomImg.alt} className="w-full max-h-[80vh] object-contain border-2 border-ink bg-paper" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

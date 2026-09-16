@@ -6,7 +6,7 @@ import { api } from "../lib/api";
 import { Seo } from "../components/Seo";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
-const TABS = [["hero", "Accueil"], ["maison", "La Maison"], ["salons", "Salons"], ["footer", "Footer"], ["seo", "SEO"]];
+const TABS = [["hero", "Accueil"], ["maison", "La Maison"], ["salons", "Salons"], ["footer", "Footer"], ["contact", "Contact"], ["seo", "SEO"]];
 const LANGS = [["fr", "Français"], ["en", "English"], ["es", "Español"]];
 
 const Field = ({ label, value, onChange, textarea, placeholder, count, testid }) => (
@@ -234,6 +234,19 @@ export default function SiteContent() {
                 )}
               </div>
               <div className="mt-6"><SaveBar sec="salons" /></div>
+            </>
+          )}
+
+          {tab === "contact" && (
+            <>
+              <h2 className="font-display font-black text-xl mb-2">Page Contact</h2>
+              <p className="font-mono text-xs text-inksoft mb-5 border-l-2 border-comicred pl-3">
+                Photo et textes affichés sur la page Contact. Laissés vides, le texte par défaut du site est utilisé.
+              </p>
+              <ImageField label="Photo (affichée en haut du formulaire)" value={val("contact", "photo") || (lang !== "fr" ? frImg("contact") : "")} onChange={(v) => setField("contact", "photo", v)} />
+              <Field label="Texte en haut du formulaire" textarea value={val("contact", "top_text")} onChange={(v) => setField("contact", "top_text", v)} placeholder={ph("contact", "top_text")} />
+              <Field label="Texte en bas du formulaire" textarea value={val("contact", "bottom_text")} onChange={(v) => setField("contact", "bottom_text", v)} placeholder={ph("contact", "bottom_text")} />
+              <SaveBar sec="contact" />
             </>
           )}
 
