@@ -1004,6 +1004,7 @@ async def import_bulk_create(body: BulkCreateBody, admin: dict = Depends(get_cur
                 data[k] = ""
         prod = Product(**data).model_dump(by_alias=True, exclude={"id"})
         prod["created_at"] = prod["created_at"].isoformat()
+        prod["slug"] = await _unique_slug(_slugify(prod.get("title"), prod.get("issue")))
         await db.products.insert_one(prod)
         created += 1
         s = data.get("series", "").strip()

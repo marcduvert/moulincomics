@@ -140,6 +140,11 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Tests preview : /sitemap.xml → 200 application/xml sans fallback React, XML valide (16 URLs preview, toutes moulincomics.com, slugs uniquement, aucun ObjectId), robots.txt conforme, meta robots index,follow, test pytest sitemap OK.
 - À vérifier post-déploiement : https://moulincomics.com/sitemap.xml (XML + 21 URLs), /robots.txt, meta robots en prod.
 
+### Correctif slug à la création (import IA) — 2026-09
+- Produit ajouté par l'utilisateur en prod sans slug (URL /product/<ObjectId>) : la création manuelle générait déjà le slug (ligne create_product), mais **`POST /api/admin/import/bulk-create` insérait sans slug** ; le rattrapage `_ensure_product_slugs()` ne tourne qu'au startup (attente d'un redémarrage).
+- Fix : `prod["slug"] = await _unique_slug(_slugify(...))` avant insert dans bulk-create. Slug désormais instantané sur les 2 voies de création (manuelle + import IA) ; migration startup = filet de sécurité pour l'existant (dont le produit concerné, corrigé au prochain redémarrage backend).
+- Tests preview : bulk-create → slug `test-slug-import-7` ✓ ; création manuelle → `test-slug-manuel-3` ✓ ; produits de test supprimés ; suite pytest slugs 9/9 ; aucun artefact TEST.
+
 - P2: comptes clients + historique de commandes.
 - P2: recherche avancée / tri par prix, wishlist.
 - P2: ~~emails de confirmation de commande~~ (fait, avec email d'expédition, via Resend managé).
