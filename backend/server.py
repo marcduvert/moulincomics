@@ -1565,12 +1565,14 @@ async def create_shipment(session_id: str, admin: dict = Depends(get_current_adm
 async def api_health():
     return {"status": "ok"}
 
-@api.get("/sitemap.xml")
-async def sitemap_xml():
-    """Sitemap dynamique : pages publiques + toutes les fiches produits.
-    Le domaine vient de SITE_URL (backend/.env) — le changer suffit lors du
-    branchement du domaine définitif."""
-    base = os.environ["SITE_URL"].rstrip("/")
+# Domaine public canonique : utilisé pour le fichier sitemap.xml statique servi
+# par le frontend à la racine du domaine (l'infra ne route que /api/* vers ce
+# backend, donc /sitemap.xml est un fichier statique régénéré ici).
+PUBLIC_SITE_DOMAIN = "https://moulincomics.com"
+
+async def build_sitemap_xml(base: str) -> str:
+    """XML du sitemap : pages publiques + toutes les fiches produits (slugs)."""
+    base = base.rstrip("/")
     parts = []
     for pth in ("/", "/shop", "/conventions"):
         parts.append(f"<url><loc>{base}{pth}</loc><changefreq>weekly</changefreq></url>")
@@ -1583,10 +1585,40 @@ async def sitemap_xml():
         elif isinstance(ca, str) and ca[:10]:
             lastmod = f"<lastmod>{ca[:10]}</lastmod>"
         parts.append(f"<url><loc>{base}/product/{p.get('slug') or p['_id']}</loc>{lastmod}<changefreq>weekly</changefreq></url>")
-    xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
-           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-           + "".join(parts) + "</urlset>")
-    return Response(content=xml, media_type="application/xml")
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            + "".join(parts) + "</urlset>")
+
+@api.get("/sitemap.xml")
+async def sitemap_xml():
+    """Sitemap dynamique temps réel. Le domaine vient de SITE_URL (backend/.env)."""
+    return Response(content=await build_sitemap_xml(os.environ["SITE_URL"]),
+                    media_type="application/xml")
+
+async def write_sitemap_file():
+    """Régénère le sitemap.xml statique (domaine public canonique) servi à la
+    racine : https://moulincomics.com/sitemap.xml. Écrit dans public/ (embarqué
+    dans chaque build de déploiement) et dans build/ si présent (rafraîchit le
+    déploiement en cours sans rebuild)."""
+    try:
+        xml = await build_sitemap_xml(PUBLIC_SITE_DOMAIN)
+        frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
+        targets = [frontend_dir / "public" / "sitemap.xml"]
+        build_dir = frontend_dir / "build"
+        if build_dir.is_dir():
+            targets.append(build_dir / "sitemap.xml")
+        for target in targets:
+            if target.exists() and target.read_text(encoding="utf-8") == xml:
+                continue  # inchangé : évite une écriture (et un reload dev-server)
+            target.write_text(xml, encoding="utf-8")
+        logger.info("Sitemap statique régénéré")
+    except Exception as e:
+        logger.error(f"Sitemap statique non régénéré: {e}")
+
+async def _sitemap_file_refresher():
+    while True:
+        await asyncio.sleep(600)
+        await write_sitemap_file()
 
 app.include_router(api)
 
@@ -1679,6 +1711,10 @@ async def startup():
         logger.info("Storage initialized")
     except Exception as e:
         logger.error(f"Storage init failed: {e}")
+    # Sitemap statique (servi à /sitemap.xml sur le domaine public) :
+    # généré au démarrage puis rafraîchi toutes les 10 min.
+    await write_sitemap_file()
+    asyncio.create_task(_sitemap_file_refresher())
 
 @app.on_event("shutdown")
 async def shutdown():

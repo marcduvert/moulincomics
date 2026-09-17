@@ -81,7 +81,7 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Ajout de `GET /health` (app principale, sans DB) + `GET /api/health` — la sonde Kubernetes retournait 404 en boucle et bloquait le déploiement.
 - `.gitignore` : retrait des motifs `.env`/`.env.*`/`*.env` (les .env sont nécessaires au conteneur ; credentials.json, *.key, test_credentials.md restent exclus).
 - Vérifications : /health → 200, 56/56 pytest, deployment_agent status=pass.
-- Rappel : la bascule SEO vers moulincomics.com (SITE_URL + REACT_APP_ROBOTS) reste en attente de la décision utilisateur (question posée, pas de réponse avant interruption).
+- Rappel : la bascule SEO vers moulincomics.com (SITE_URL + REACT_APP_ROBOTS) a été faite le 2026-09-17 (voir section dédiée ci-dessous).
 
 
 ### Mondial Relay V1 (deux modes de livraison) — 2026-09
@@ -130,6 +130,15 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Admin mobile : flex-wrap sur barre d'onglets + rangée d'actions (plus de débordement 390px).
 - Sécurité : PUT /admin/salons en exclude_unset (un PUT partiel ne vide plus les autres champs). Salon résiduel vide de test supprimé.
 - Vérifications ciblées navigateur (popup, ancre, contact, mobile) — pas de suite de régression complète (demande explicite).
+
+### Bascule domaine moulincomics.com + sitemap racine — 2026-09
+- **robots.txt** : ligne Sitemap remplacée par `Sitemap: https://moulincomics.com/sitemap.xml` ; règles Allow/Disallow inchangées.
+- **Sitemap à la racine** : l'infra Emergent ne route que `/api/*` vers le backend, donc `/sitemap.xml` est un fichier statique (`frontend/public/sitemap.xml`, copié dans le build) servi en `application/xml` par le serveur frontend — vérifié : la prod sert bien les fichiers statiques existants (robots.txt, asset-manifest.json) et ne fait le fallback React que sur les fichiers absents.
+- **Régénération automatique** : `build_sitemap_xml(base)` factorisé dans server.py ; `write_sitemap_file()` écrit `public/sitemap.xml` (artefact de déploiement) + `build/sitemap.xml` si le dossier existe (fraîcheur du déploiement courant), au démarrage + toutes les 10 min (tâche asyncio), sans écriture si contenu inchangé. Domaine canonique codé en constante `PUBLIC_SITE_DOMAIN = "https://moulincomics.com"` (les secrets prod ne sont pas modifiables depuis le repo).
+- **Endpoint dynamique** `GET /api/sitemap.xml` inchangé (temps réel, base = SITE_URL). Artefact embarqué généré depuis la prod (21 URLs : 3 pages + 18 produits) pour couvrir le cas où l'écriture dans build/ serait impossible en prod.
+- **Bascule SEO finale** (validée par l'utilisateur) : `SITE_URL` (backend/.env) et `REACT_APP_SITE_URL` (frontend/.env) → https://moulincomics.com ; `REACT_APP_ROBOTS` noindex,nofollow → **index,follow**. Canonical/OG en prod pointaient déjà sur moulincomics.com.
+- Tests preview : /sitemap.xml → 200 application/xml sans fallback React, XML valide (16 URLs preview, toutes moulincomics.com, slugs uniquement, aucun ObjectId), robots.txt conforme, meta robots index,follow, test pytest sitemap OK.
+- À vérifier post-déploiement : https://moulincomics.com/sitemap.xml (XML + 21 URLs), /robots.txt, meta robots en prod.
 
 - P2: comptes clients + historique de commandes.
 - P2: recherche avancée / tri par prix, wishlist.
