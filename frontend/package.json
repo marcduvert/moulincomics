@@ -65,6 +65,7 @@
   },
   "scripts": {
     "start": "craco start",
+    "prebuild": "curl -sf --max-time 30 https://moulincomics.com/api/sitemap.xml -o public/sitemap.xml || echo 'sitemap prebuild: fetch impossible, fichier existant conserve'",
     "build": "craco build",
     "test": "craco test"
   },
