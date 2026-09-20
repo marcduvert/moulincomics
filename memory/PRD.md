@@ -172,6 +172,12 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Tests ciblés preview (10 produits TEST_ créés puis supprimés, catalogue restauré 13/8/0) : desktop top14+compteurs ✓, dropdown 2 restantes + recherche ✓, clic série → filtre exact (Wolverine 3, sans série 2) ✓, mobile 390px : 9 top + rangée scrollable sans débordement page ✓, dropdown mobile 7 items + sélection ✓. Nb : spec détaillée = 9 mobile (la checklist mentionnait « TOP 5 » — retenu 9).
 - Non déployé au moment de l'implémentation (partira au prochain déploiement).
 - Correctif mobile (même jour, CSS uniquement) : scroll horizontal supprimé → flex-wrap naturel ; ordre mobile via `max-sm:order-*` : ligne 1 = TOUTES SÉRIES + AUTRES SÉRIES ▾ (+ SANS SÉRIE si >0, wrap naturel si largeur insuffisante), 9 séries en dessous sur 2-3 lignes. Desktop et logique inchangés. Vérifié 390px : aucun débordement, AUTRES SÉRIES visible sans scroll, dropdown OK.
+- I18n des 3 boutons (même jour) : clés `shop.otherSeries` / `shop.noSeries` ajoutées FR/EN/ES (allSeries existait) ; « Autres séries ▾ » et « Sans série (X) » utilisent désormais t.shop.* — « ▾ » et le compteur restent hors traduction.
+
+### Import IA — image IA réduite à 1200 px — 2026-09
+- Contexte coûts Clé Universelle : mesuré en usage réel ≈ 0,19 crédit/couverture (~4 € les 100) ; les débits « −5 » du dashboard sont des transferts auto-recharge vers le portefeuille séparé de la clé (seuil 5), pas des pertes. Volume mesuré le 2026-09-20 : ~107 analyses (80 prod + 27 preview), 97 % en mini.
+- `downscale_for_llm()` (server.py) : copie temporaire max 1200 px (ratio conservé, JPEG q90) UNIQUEMENT pour l'envoi au modèle dans `POST /api/admin/import/analyze`. L'image produit stockée (après autocrop éventuel) garde sa résolution d'origine ; le hash du cache SHA-256 reste calculé sur l'original avant redimensionnement ; mode éco GPT-5.4-mini + escalade <80 inchangés ; prompts/frontend/données intacts. Endpoint unitaire `/admin/analyze-cover` volontairement hors périmètre (demande utilisateur).
+- Test ciblé (1 vraie couverture, 1 appel LLM) : stockée 2400×3200 conservée ✓, copie IA 900×1200 ✓, identification correcte (Conan Saga #49, confiance 98, mini, sans escalade) ✓, cache : 2ᵉ envoi = cached:true (0 appel) ✓. Passe-through byte-identique si ≤1200 px (vérifié 800×600). Traces de test purgées.
 - Vérifié en prod après déploiement : « Futures End: Batman #1 » a reçu `futures-end-batman-1` via la migration startup ✓.
 
 ### Sitemap racine — correctif artefact (2026-09, suite)

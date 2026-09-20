@@ -784,6 +784,28 @@ async def analyze_cover(file: UploadFile = File(...), admin: dict = Depends(get_
     return fields
 
 # ===== IMPORT INTELLIGENT (batch) =====
+def downscale_for_llm(data: bytes) -> bytes:
+    """Copie temporaire réduite (max 1200 px sur le plus grand côté, ratio conservé)
+    UNIQUEMENT pour l'envoi au modèle IA — l'image produit stockée conserve sa
+    résolution/qualité d'origine. Renvoie data inchangé si déjà <= 1200 px."""
+    import cv2
+    import numpy as np
+    try:
+        arr = np.frombuffer(data, np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            return data
+        h, w = img.shape[:2]
+        m = max(h, w)
+        if m <= 1200:
+            return data
+        scale = 1200.0 / m
+        resized = cv2.resize(img, (round(w * scale), round(h * scale)), interpolation=cv2.INTER_AREA)
+        ok, buf = cv2.imencode(".jpg", resized, [cv2.IMWRITE_JPEG_QUALITY, 90])
+        return buf.tobytes() if ok else data
+    except Exception:
+        return data
+
 def auto_crop_cover(data: bytes):
     """Détecte le plus grand quadrilatère (la couverture) et corrige la perspective.
     Renvoie (jpeg_bytes, 'jpg') si un recadrage fiable est trouvé, sinon (data, None)."""
@@ -932,7 +954,9 @@ async def import_analyze(file: UploadFile = File(...),
     stored = put_object(path, store_bytes, store_ct)
     await db.files.insert_one({"storage_path": stored["path"], "original_filename": file.filename,
                                "content_type": store_ct, "created_at": datetime.now(timezone.utc).isoformat()})
-    b64 = base64.b64encode(store_bytes).decode()
+    # copie réduite (<=1200 px) envoyée à l'IA pour limiter le coût — l'original stocké
+    # garde sa résolution ; le hash du cache (ci-dessus) reste calculé sur l'original.
+    b64 = base64.b64encode(downscale_for_llm(store_bytes)).decode()
     try:
         if economic:
             model_used = CHEAP_MODEL
