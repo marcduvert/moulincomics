@@ -3,6 +3,7 @@ import { X, Minus, Plus, Trash2, ArrowLeft, MapPin, Search, Loader2 } from "luci
 import { useCart } from "../context/CartContext";
 import { api, fmtPrice } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
+import { useContent } from "../context/ContentContext";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -74,6 +75,9 @@ const RelayPicker = ({ onSelect, t }) => {
 export const CartDrawer = () => {
   const { items, open, setOpen, remove, setQty, total, count } = useCart();
   const { t } = useLang();
+  const { content } = useContent();
+  const vacation = content?.vacation;
+  const shopClosed = !!vacation?.enabled;
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("cart");
   const [methods, setMethods] = useState(null);
@@ -102,6 +106,7 @@ export const CartDrawer = () => {
   const grandTotal = total + (step === "shipping" ? shippingPrice : 0);
 
   const checkout = async () => {
+    if (shopClosed) return;
     if (shippingMethod === "mondial_relay" && !relay) {
       toast.error(t.cart.relayRequired);
       return;
@@ -190,7 +195,12 @@ export const CartDrawer = () => {
                   <div className="flex justify-between font-anton text-2xl mb-4">
                     <span>{t.cart.total}</span><span>{fmtPrice(total)}</span>
                   </div>
-                  <button data-testid="checkout-button" disabled={!items.length} onClick={enterShipping}
+                  {shopClosed && (
+                    <p data-testid="vacation-notice" className="font-mono text-xs text-comicred border-2 border-comicred bg-papersoft p-3 mb-3">
+                      {vacation.message}
+                    </p>
+                  )}
+                  <button data-testid="checkout-button" disabled={!items.length || shopClosed} onClick={enterShipping}
                     className="w-full bg-comicred text-paper font-mono uppercase tracking-[0.2em] text-sm py-4 border-2 border-ink hover:bg-ink transition-colors disabled:opacity-40">
                     {t.cart.continueDelivery}
                   </button>

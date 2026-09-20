@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText, ArrowUpDown, ChevronUp, ChevronDown, Truck, X } from "lucide-react";
+import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText, ArrowUpDown, ChevronUp, ChevronDown, Truck, X, Power } from "lucide-react";
 import { api, fmtPrice, API } from "../lib/api";
 import { Seo } from "../components/Seo";
 
@@ -24,6 +24,7 @@ export default function Admin() {
   const [orderSort, setOrderSort] = useState({ key: "created_at", dir: -1 });
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [shipCfg, setShipCfg] = useState({ mondial_relay_price: "", home_delivery_price: "" });
+  const [vacCfg, setVacCfg] = useState({ enabled: false, message: "" });
   const [mrStatus, setMrStatus] = useState(null);
 
   const [zoomImg, setZoomImg] = useState(null);
@@ -36,6 +37,13 @@ export default function Admin() {
       };
       await api.put("/admin/content/shipping", body);
       toast.success("Tarifs de livraison enregistrés");
+    } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
+  };
+
+  const saveVacationCfg = async () => {
+    try {
+      await api.put("/admin/content/vacation", { enabled: !!vacCfg.enabled, message: vacCfg.message });
+      toast.success(vacCfg.enabled ? "Mode vacances activé — boutique fermée" : "Mode vacances désactivé — boutique ouverte");
     } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
   };
 
@@ -173,6 +181,8 @@ export default function Admin() {
         mondial_relay_price: s.mondial_relay_price ?? "",
         home_delivery_price: s.home_delivery_price ?? "",
       });
+      const v = r.data?.vacation || {};
+      setVacCfg({ enabled: !!v.enabled, message: v.message ?? "" });
     }).catch(() => {});
     api.get("/admin/mondial-relay/status").then((r) => setMrStatus(r.data)).catch(() => {});
   }, []);
@@ -332,6 +342,9 @@ export default function Admin() {
           <button onClick={() => setTab("shipping")} data-testid="tab-shipping" className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink ${tab === "shipping" ? "bg-ink text-paper" : "bg-paper"}`}>
             <Truck size={14} /> Livraison
           </button>
+          <button onClick={() => setTab("vacation")} data-testid="tab-vacation" className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink ${tab === "vacation" ? "bg-ink text-paper" : "bg-paper"}`}>
+            <Power size={14} /> Vacances
+          </button>
         </div>
 
         {tab === "shipping" && (
@@ -360,6 +373,39 @@ export default function Admin() {
               <button onClick={saveShippingCfg} data-testid="shipping-save"
                 className="flex items-center gap-2 bg-ink text-paper font-mono text-xs uppercase tracking-widest px-5 py-3 rounded-md border-2 border-ink hover:bg-comicred transition-colors">
                 Enregistrer les paramètres
+              </button>
+            </div>
+          </>
+        )}
+
+        {tab === "vacation" && (
+          <>
+            <h1 className="font-display font-black tracking-tighter text-2xl mb-4">Mode vacances</h1>
+            <div className="bg-paper border-2 border-ink rounded-md p-6 max-w-xl">
+              <p className="font-mono text-xs text-inksoft mb-5 border-l-2 border-comicred pl-3">
+                Quand la boutique est fermée, le catalogue et les fiches produits restent visibles, mais aucun nouvel achat ne peut être finalisé. Le blocage est appliqué côté serveur, avant toute création de paiement.
+              </p>
+              <div className="flex items-center justify-between gap-4 border-2 border-ink rounded-md p-4 mb-4">
+                <p className="font-display font-bold text-sm" data-testid="vacation-status">
+                  {vacCfg.enabled ? "🔴 Boutique fermée" : "🟢 Boutique ouverte"}
+                </p>
+                <button onClick={() => setVacCfg((p) => ({ ...p, enabled: !p.enabled }))} data-testid="vacation-toggle"
+                  aria-pressed={vacCfg.enabled} aria-label="Mode vacances"
+                  className={`relative shrink-0 w-14 h-8 rounded-full border-2 border-ink transition-colors ${vacCfg.enabled ? "bg-comicred" : "bg-papersoft"}`}>
+                  <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-paper border-2 border-ink transition-transform ${vacCfg.enabled ? "translate-x-6" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+              <div className="mb-4">
+                <label className="font-mono text-[10px] uppercase tracking-widest text-inksoft block mb-1">Message de fermeture</label>
+                <textarea value={vacCfg.message} rows={4} data-testid="vacation-message"
+                  onChange={(e) => setVacCfg((p) => ({ ...p, message: e.target.value }))}
+                  placeholder="Notre boutique est actuellement fermée pour congés. Les commandes reprendront prochainement."
+                  className="w-full border-2 border-ink rounded-md px-3 py-2 bg-papersoft font-mono text-sm outline-none" />
+                <p className="font-mono text-[10px] text-inksoft mt-1">Affiché aux clients quand la boutique est fermée. Si le champ est vide, le message par défaut est utilisé.</p>
+              </div>
+              <button onClick={saveVacationCfg} data-testid="vacation-save"
+                className="flex items-center gap-2 bg-ink text-paper font-mono text-xs uppercase tracking-widest px-5 py-3 rounded-md border-2 border-ink hover:bg-comicred transition-colors">
+                Enregistrer
               </button>
             </div>
           </>

@@ -142,8 +142,38 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 
 ### Correctif slug à la création (import IA) — 2026-09
 - Produit ajouté par l'utilisateur en prod sans slug (URL /product/<ObjectId>) : la création manuelle générait déjà le slug (ligne create_product), mais **`POST /api/admin/import/bulk-create` insérait sans slug** ; le rattrapage `_ensure_product_slugs()` ne tourne qu'au startup (attente d'un redémarrage).
-- Fix : `prod["slug"] = await _unique_slug(_slugify(...))` avant insert dans bulk-create. Slug désormais instantané sur les 2 voies de création (manuelle + import IA) ; migration startup = filet de sécurité pour l'existant (dont le produit concerné, corrigé au prochain redémarrage backend).
+- Fix : `prod["slug"] = await _unique_slug(_slugify(...))` avant insert dans bulk-create. Slug désormais instantané sur les 2 voies de création (manuelle + import IA) ; migration startup = filet de sécurité pour l'existant.
+- Confirmé en prod après redéploiement : le produit « Futures End: Batman #1 » a reçu le slug `futures-end-batman-1` (migration startup). Ancienne URL ObjectId continue de fonctionner (redirection client).
 - Tests preview : bulk-create → slug `test-slug-import-7` ✓ ; création manuelle → `test-slug-manuel-3` ✓ ; produits de test supprimés ; suite pytest slugs 9/9 ; aucun artefact TEST.
+
+### Mode vacances (fermeture des achats) — 2026-09
+- Nouvelle section `vacation` dans `site_content` : `{enabled, message}` (défaut message : « Notre boutique est actuellement fermée pour congés. Les commandes reprendront prochainement. » si champ vide). `CONTENT_SECTIONS` dérive de `DEFAULT_CONTENT` → endpoints génériques `PUT /api/admin/content/vacation` + `GET /api/content` réutilisés, aucune nouvelle route.
+- **Blocage serveur** : garde au début de `POST /api/payments/checkout` → HTTP 409 + message AVANT toute création de session Stripe. Incontournable côté client.
+- Admin : nouvel onglet « Vacances » (à côté de Livraison) dans Admin.jsx — statut 🟢 Boutique ouverte / 🔴 Boutique fermée, interrupteur ON/OFF, textarea « Message de fermeture », Enregistrer.
+- Frontend public : bandeau rouge global dans le layout Storefront (App.js) quand ON ; CartDrawer : notice + boutons commande/paiement désactivés + garde `checkout()`. Catalogue, fiches produits, prix et stocks restent visibles ; commandes admin inchangées.
+- Tests ciblés preview (pas de régression complète, demande explicite) : OFF→checkout 200 ; ON→409 avec message personnalisé ; message vide→défaut ; catalogue/fiche 200 en mode ON ; OFF→200 à nouveau ; captures bannière/panier/admin OK ; transactions de test supprimées. Preuve live accidentelle en prod : la fermeture y a bloqué le checkout avec le message personnalisé de l'utilisateur.
+
+### Mondial Relay — passage aux credentials réelles — 2026-09
+- Aucune modification de code : l'intégration existante lit `MONDIAL_RELAY_ENSEIGNE` + `MONDIAL_RELAY_PRIVATE_KEY` (Secrets Emergent, injectés en env backend, jamais exposées au frontend).
+- Les valeurs saisies par l'utilisateur dans l'onglet Secrets + Re-publish ont activé l'API1 : `available:true` sur `/api/shipping/methods`.
+- Tests prod (uniquement ceux demandés) : connexion API OK (SOAP STAT=0) ; recherche 75001 → 20 points relais réels ; sélection e2e au checkout OK (ARS INFORMATIQUE n°034439, ligne Livraison 3,50 €, total exact) ; conservation en commande OK (méthode + nom + adresse + CP/ville du relais dans `payment_transactions` ; `relay_point_id` stocké en base mais non retourné par l'endpoint de statut public — comportement préexistant). Transaction de test supprimée après vérification.
+- Note : tarifs livraison prod = 3,50 € relais / 7,50 € domicile (réglés par le gérant dans Admin → Livraison).
+- Reste P2 : API2 (création d'expédition/étiquette) nécessite `MONDIAL_RELAY_API2_LOGIN/PASSWORD/CUSTOMER_ID` — non demandé.
+
+### Sitemap racine — correctif de fraîcheur — 2026-09
+- Le 1er mécanisme (backend écrit public/sitemap.xml toutes les 10 min) embarquait les données PREVIEW dans les builds. Correctif : script `prebuild` dans package.json — `curl https://moulincomics.com/api/sitemap.xml → public/sitemap.xml` à chaque build (fallback : conserve l'existant si fetch impossible, jamais d'échec de build). Confirmé en prod : 28 URLs, catalogue réel complet.
+- Vérifié en prod après déploiement : « Futures End: Batman #1 » a reçu `futures-end-batman-1` via la migration startup ✓.
+
+### Sitemap racine — correctif artefact (2026-09, suite)
+- Le rafraîchisseur 10 min en preview écrasait `public/sitemap.xml` avec le catalogue preview (16 URLs) → artefact embarqué incomplet en prod. Correctif : `prebuild` dans package.json (`curl -sf https://moulincomics.com/api/sitemap.xml -o public/sitemap.xml || fallback`) → chaque build embarque le sitemap production à jour (le backend le génère dynamiquement, fraîcheur = à chaque déploiement). Effet de bord constaté : écriture runtime dans `build/` sans effet en prod (layout différent), d'où le choix prebuild.
+
+### Mode vacances (fermeture des achats) — 2026-09
+- Section `vacation` dans `site_content` (DEFAULT_CONTENT : `enabled: False`, `message`: défaut « Notre boutique est actuellement fermée pour congés. Les commandes reprendront prochainement. ») — réutilise `PUT /api/admin/content/{section}` et `GET /api/content` existants, persistance MongoDB.
+- Blocage serveur : garde au début de `POST /api/payments/checkout` → HTTP 409 + message (personnalisé ou défaut) AVANT toute création de session Stripe. Aucun contournement possible côté navigateur.
+- Admin.jsx : nouvel onglet « Vacances » (à côté de Livraison) — statut 🟢 Boutique ouverte / 🔴 Boutique fermée, interrupteur ON/OFF, champ « Message de fermeture » (vide = défaut), bouton Enregistrer.
+- Storefront : bandeau rouge avec le message sous le Header (App.js) quand ON ; CartDrawer : notice + bouton « Commander » désactivé + garde dans checkout(). Catalogue, fiches, prix et stocks restent visibles ; commandes admin inchangées.
+- Tests ciblés preview : OFF→checkout 200 ; ON→409 avec message personnalisé puis message par défaut (champ vidé) ; catalogue+fiche 200 en ON ; OFF→200 à nouveau ; UI : bannière, notice panier, bouton désactivé, onglet admin (🟢, toggle, champ) ; transactions de test supprimées ; état final OFF.
+- En attente : déploiement pour mise en prod (embarqué avec le prochain re-publish, qui inclura aussi credentials Mondial Relay + correctif sitemap prebuild).
 
 - P2: comptes clients + historique de commandes.
 - P2: recherche avancée / tri par prix, wishlist.

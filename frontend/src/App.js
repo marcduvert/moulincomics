@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { CartProvider } from "./context/CartContext";
 import { LanguageProvider } from "./context/LanguageContext";
-import { ContentProvider } from "./context/ContentContext";
+import { ContentProvider, useContent } from "./context/ContentContext";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { CartDrawer } from "./components/CartDrawer";
@@ -22,10 +22,18 @@ import { CookieConsent } from "./components/CookieConsent";
 
 const Storefront = ({ children }) => {
   useLenis();
+  const { content } = useContent();
+  const vac = content?.vacation;
   return (
     <>
       <div className="grain" />
       <Header />
+      {vac?.enabled && (
+        <div data-testid="vacation-banner"
+          className="bg-comicred text-paper font-mono text-xs sm:text-sm uppercase tracking-widest text-center px-4 py-3 border-b-2 border-ink">
+          {vac.message}
+        </div>
+      )}
       {children}
       <Footer />
       <CartDrawer />

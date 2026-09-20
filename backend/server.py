@@ -1166,6 +1166,10 @@ async def bulk_delete_orders(body: OrdersBulkDelete, admin: dict = Depends(get_c
 async def create_checkout(req: CheckoutRequest):
     if not req.items:
         raise HTTPException(400, "Panier vide")
+    # Mode vacances : blocage serveur AVANT toute création de session Stripe.
+    vac = _merge_content(await db.site_content.find_one({"key": "home"}) or {}).get("vacation", {})
+    if vac.get("enabled"):
+        raise HTTPException(409, vac.get("message") or DEFAULT_CONTENT["vacation"]["message"])
     line_items = []
     summary = []
     total = 0.0
@@ -1358,6 +1362,10 @@ DEFAULT_CONTENT = {
     "shipping": {
         "mondial_relay_price": 4.90,
         "home_delivery_price": 7.90,
+    },
+    "vacation": {
+        "enabled": False,
+        "message": "Notre boutique est actuellement fermée pour congés. Les commandes reprendront prochainement.",
     },
     "footer": {
         "description": "Comic shop spécialisé en VO. Large stock de mensuels VF — Strange, Nova, Titans. De la case à la caisse depuis toujours.",
