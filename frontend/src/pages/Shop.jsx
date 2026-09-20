@@ -9,9 +9,9 @@ import { absUrl } from "../lib/seo";
 // Module-level cache with short TTL: fast navigation, but refreshes so new admin
 // products appear without a hard reload.
 let PRODUCTS_CACHE = null;
-let SERIES_CACHE = null;
 let CACHE_TS = 0;
 const CACHE_TTL = 60000;
+const NO_SERIES = "__sans_serie__";
 const cacheFresh = () => PRODUCTS_CACHE != null && Date.now() - CACHE_TS < CACHE_TTL;
 
 export default function Shop() {
@@ -19,17 +19,39 @@ export default function Shop() {
   const CATS = [{ v: "", l: t.shop.all }, { v: "VO", l: "VO" }, { v: "VF", l: "VF" }];
   const [params, setParams] = useSearchParams();
   const [allProducts, setAllProducts] = useState(PRODUCTS_CACHE || []);
-  const [series, setSeries] = useState(SERIES_CACHE || []);
   const [loading, setLoading] = useState(!cacheFresh());
   const category = params.get("category") || "";
   const serie = params.get("series") || "";
   const q = params.get("q") || "";
   const [search, setSearch] = useState(q);
   const searchTimer = useRef(null);
+  const [othersOpen, setOthersOpen] = useState(false);
+  const [othersSearch, setOthersSearch] = useState("");
+  const seriesZoneRef = useRef(null);
+
+  useEffect(() => {
+    if (!othersOpen) return;
+    const close = (e) => { if (seriesZoneRef.current && !seriesZoneRef.current.contains(e.target)) setOthersOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [othersOpen]);
+
+  // Compteurs calculés à la volée depuis le catalogue courant (jamais stockés,
+  // évoluent automatiquement avec les imports). Mêmes données que le filtre existant.
+  const { ranked, counts, noSeriesCount, top, restAlpha } = useMemo(() => {
+    const c = {};
+    let none = 0;
+    for (const p of allProducts) {
+      const s = (p.series || "").trim();
+      if (s) c[s] = (c[s] || 0) + 1; else none += 1;
+    }
+    const r = Object.keys(c).sort((a, b) => c[b] - c[a] || a.localeCompare(b));
+    return { ranked: r, counts: c, noSeriesCount: none,
+             top: r.slice(0, 14), restAlpha: r.slice(9).sort((a, b) => a.localeCompare(b)) };
+  }, [allProducts]);
 
   // Fetch the full catalogue once (or when cache is stale), then filter client-side.
   useEffect(() => {
-    api.get("/series").then((r) => { SERIES_CACHE = r.data; setSeries(r.data); }).catch(() => {});
     if (!cacheFresh()) {
       api.get("/products").then((r) => { PRODUCTS_CACHE = r.data; CACHE_TS = Date.now(); setAllProducts(r.data); setLoading(false); })
         .catch(() => setLoading(false));
@@ -54,7 +76,8 @@ export default function Shop() {
     const inStock = params.get("stock") === "1";
     return allProducts.filter((p) => {
       if (category && p.category !== category) return false;
-      if (serie && (p.series || "") !== serie) return false;
+      if (serie === NO_SERIES) { if ((p.series || "").trim()) return false; }
+      else if (serie && (p.series || "") !== serie) return false;
       if (inStock && !(p.stock > 0)) return false;
       if (needle) {
         const hay = `${p.title || ""} ${p.series || ""} ${p.publisher || ""}`.toLowerCase();
@@ -75,8 +98,8 @@ export default function Shop() {
   return (
     <div>
       <Seo
-        title={serie ? `${serie} — ${t.shop.title} | Moulin Comics` : `${t.shop.title} — Comics VO & VF | Moulin Comics`}
-        description={serie
+        title={serie && serie !== NO_SERIES ? `${serie} — ${t.shop.title} | Moulin Comics` : `${t.shop.title} — Comics VO & VF | Moulin Comics`}
+        description={serie && serie !== NO_SERIES
           ? `${t.shop.title} Moulin Comics : comics et BD de la série ${serie}.`
           : "Comics Marvel, DC et indés en version originale, mensuels VF Strange, Nova, Titans — tout le stock Moulin Comics."}
         path="/shop"
@@ -108,14 +131,54 @@ export default function Shop() {
           </div>
         </div>
 
-        {series.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-10">
-            <button onClick={() => setParam("series", "")}
-              className={`font-mono text-[11px] uppercase px-3 py-1.5 border border-ink ${!serie ? "bg-comicyellow" : ""}`}>{t.shop.allSeries}</button>
-            {series.map((s) => (
-              <button key={s} data-testid={`filter-series-${s}`} onClick={() => setParam("series", s)}
-                className={`font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === s ? "bg-comicyellow" : "hover:bg-papersoft"}`}>{s}</button>
-            ))}
+        {(ranked.length > 0 || noSeriesCount > 0) && (
+          <div className="mb-10" ref={seriesZoneRef}>
+            <div className="flex items-center gap-2 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:pb-1 sm:flex-wrap" data-testid="series-filter-bar">
+              <button data-testid="filter-series-all" onClick={() => setParam("series", "")}
+                className={`shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${!serie ? "bg-comicyellow" : "hover:bg-papersoft"}`}>{t.shop.allSeries}</button>
+              {top.map((s, i) => (
+                <button key={s} data-testid={`filter-series-${s}`} onClick={() => setParam("series", s)}
+                  className={`shrink-0 ${i >= 9 ? "hidden sm:inline-block " : ""}font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === s ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
+                  {s} ({counts[s]})
+                </button>
+              ))}
+              {ranked.length > 9 && (
+                <span className={`shrink-0 ${ranked.length <= 14 ? "sm:hidden" : ""}`}>
+                  <button data-testid="filter-series-others" onClick={() => { setOthersOpen((o) => !o); setOthersSearch(""); }}
+                    aria-expanded={othersOpen}
+                    className={`font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${othersOpen || (serie && serie !== NO_SERIES && !top.includes(serie)) ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
+                    Autres séries ▾
+                  </button>
+                </span>
+              )}
+              {noSeriesCount > 0 && (
+                <button data-testid="filter-series-none" onClick={() => setParam("series", NO_SERIES)}
+                  className={`shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === NO_SERIES ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
+                  Sans série ({noSeriesCount})
+                </button>
+              )}
+            </div>
+            {othersOpen && (
+              <div data-testid="others-panel" className="mt-2 w-full sm:w-80 border-2 border-ink bg-paper">
+                <div className="p-2 border-b border-ink/15">
+                  <input data-testid="others-search" value={othersSearch} onChange={(e) => setOthersSearch(e.target.value)}
+                    placeholder="Rechercher une série..."
+                    className="w-full border border-ink px-2 py-1.5 font-mono text-xs outline-none bg-papersoft" />
+                </div>
+                <div className="max-h-72 overflow-y-auto">
+                  {restAlpha.filter((s) => s.toLowerCase().includes(othersSearch.trim().toLowerCase())).map((s) => (
+                    <button key={s} data-testid={`filter-series-${s}`}
+                      onClick={() => { setParam("series", s); setOthersOpen(false); }}
+                      className={`${ranked.indexOf(s) < 14 ? "sm:hidden " : ""}block w-full text-left font-mono text-[11px] uppercase px-3 py-2 transition-colors hover:bg-papersoft ${serie === s ? "bg-comicyellow" : ""}`}>
+                      {s} ({counts[s]})
+                    </button>
+                  ))}
+                  {restAlpha.filter((s) => s.toLowerCase().includes(othersSearch.trim().toLowerCase())).length === 0 && (
+                    <p className="font-mono text-xs text-inksoft px-3 py-3">Aucune série</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -163,6 +163,14 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 
 ### Sitemap racine — correctif de fraîcheur — 2026-09
 - Le 1er mécanisme (backend écrit public/sitemap.xml toutes les 10 min) embarquait les données PREVIEW dans les builds. Correctif : script `prebuild` dans package.json — `curl https://moulincomics.com/api/sitemap.xml → public/sitemap.xml` à chaque build (fallback : conserve l'existant si fetch impossible, jamais d'échec de build). Confirmé en prod : 28 URLs, catalogue réel complet.
+
+### Filtre Séries — affichage Top N + compteurs — 2026-09
+- Shop.jsx uniquement (aucun changement backend/DB) : compteurs calculés côté client depuis le catalogue déjà chargé (`allProducts`), tri par count desc puis alpha. Desktop : TOUTES SÉRIES + Top 14 « NOM (X) » + AUTRES SÉRIES ▾ + SANS SÉRIE (X) si >0. Mobile : même zone en rangée scrollable unique (max-sm:flex-nowrap overflow-x-auto), Top 9 visibles (rang 10-14 en `hidden sm:inline-block`), reste dans le dropdown.
+- Dropdown « Autres séries » : ordre alphabétique, compteurs, champ « Rechercher une série… » (filtre client), fermeture au clic extérieur/sélection ; items rang 10-14 masqués sur desktop (`sm:hidden`) — une seule liste pour les deux formats.
+- « SANS SÉRIE » : sentinelle `__sans_serie__` dans le MÊME prédicat de filtre existant (`?series=`), garde dans Seo pour ne pas fuiter dans le title. Aucune deuxième logique de filtrage.
+- Suppression du fetch `/api/series` devenu inutile dans Shop (compteurs dérivés des produits).
+- Tests ciblés preview (10 produits TEST_ créés puis supprimés, catalogue restauré 13/8/0) : desktop top14+compteurs ✓, dropdown 2 restantes + recherche ✓, clic série → filtre exact (Wolverine 3, sans série 2) ✓, mobile 390px : 9 top + rangée scrollable sans débordement page ✓, dropdown mobile 7 items + sélection ✓. Nb : spec détaillée = 9 mobile (la checklist mentionnait « TOP 5 » — retenu 9).
+- Non déployé au moment de l'implémentation (partira au prochain déploiement).
 - Vérifié en prod après déploiement : « Futures End: Batman #1 » a reçu `futures-end-batman-1` via la migration startup ✓.
 
 ### Sitemap racine — correctif artefact (2026-09, suite)
