@@ -1235,12 +1235,14 @@ async def create_checkout(req: CheckoutRequest):
     kwargs = dict(
         line_items=line_items,
         mode="payment",
-        shipping_address_collection={"allowed_countries": ["FR", "BE", "CH", "LU", "DE", "ES", "IT", "GB", "NL"]},
         success_url=f"{req.origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{req.origin_url}/payment/cancel",
         metadata={"shipping_method": req.shipping_method or "",
                   "relay_point_id": ship_doc.get("relay_point_id", "")},
     )
+    # Adresse de livraison Stripe demandée uniquement à domicile — inutile pour un Point Relais.
+    if req.shipping_method != "mondial_relay":
+        kwargs["shipping_address_collection"] = {"allowed_countries": ["FR", "BE", "CH", "LU", "DE", "ES", "IT", "GB", "NL"]}
     try:
         session = stripe.checkout.Session.create(
             **kwargs, automatic_tax={"enabled": True}, billing_address_collection="required")
