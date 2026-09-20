@@ -147,14 +147,14 @@ export default function Shop() {
                   <button data-testid="filter-series-others" onClick={() => { setOthersOpen((o) => !o); setOthersSearch(""); }}
                     aria-expanded={othersOpen}
                     className={`font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${othersOpen || (serie && serie !== NO_SERIES && !top.includes(serie)) ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
-                    Autres séries ▾
+                    {t.shop.otherSeries} ▾
                   </button>
                 </span>
               )}
               {noSeriesCount > 0 && (
                 <button data-testid="filter-series-none" onClick={() => setParam("series", NO_SERIES)}
                   className={`max-sm:order-3 shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === NO_SERIES ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
-                  Sans série ({noSeriesCount})
+                  {t.shop.noSeries} ({noSeriesCount})
                 </button>
               )}
             </div>
