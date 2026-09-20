@@ -171,6 +171,7 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Suppression du fetch `/api/series` devenu inutile dans Shop (compteurs dérivés des produits).
 - Tests ciblés preview (10 produits TEST_ créés puis supprimés, catalogue restauré 13/8/0) : desktop top14+compteurs ✓, dropdown 2 restantes + recherche ✓, clic série → filtre exact (Wolverine 3, sans série 2) ✓, mobile 390px : 9 top + rangée scrollable sans débordement page ✓, dropdown mobile 7 items + sélection ✓. Nb : spec détaillée = 9 mobile (la checklist mentionnait « TOP 5 » — retenu 9).
 - Non déployé au moment de l'implémentation (partira au prochain déploiement).
+- Correctif mobile (même jour, CSS uniquement) : scroll horizontal supprimé → flex-wrap naturel ; ordre mobile via `max-sm:order-*` : ligne 1 = TOUTES SÉRIES + AUTRES SÉRIES ▾ (+ SANS SÉRIE si >0, wrap naturel si largeur insuffisante), 9 séries en dessous sur 2-3 lignes. Desktop et logique inchangés. Vérifié 390px : aucun débordement, AUTRES SÉRIES visible sans scroll, dropdown OK.
 - Vérifié en prod après déploiement : « Futures End: Batman #1 » a reçu `futures-end-batman-1` via la migration startup ✓.
 
 ### Sitemap racine — correctif artefact (2026-09, suite)

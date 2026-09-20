@@ -133,17 +133,17 @@ export default function Shop() {
 
         {(ranked.length > 0 || noSeriesCount > 0) && (
           <div className="mb-10" ref={seriesZoneRef}>
-            <div className="flex items-center gap-2 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:pb-1 sm:flex-wrap" data-testid="series-filter-bar">
+            <div className="flex flex-wrap items-center gap-2" data-testid="series-filter-bar">
               <button data-testid="filter-series-all" onClick={() => setParam("series", "")}
-                className={`shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${!serie ? "bg-comicyellow" : "hover:bg-papersoft"}`}>{t.shop.allSeries}</button>
+                className={`max-sm:order-1 shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${!serie ? "bg-comicyellow" : "hover:bg-papersoft"}`}>{t.shop.allSeries}</button>
               {top.map((s, i) => (
                 <button key={s} data-testid={`filter-series-${s}`} onClick={() => setParam("series", s)}
-                  className={`shrink-0 ${i >= 9 ? "hidden sm:inline-block " : ""}font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === s ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
+                  className={`max-sm:order-4 shrink-0 ${i >= 9 ? "hidden sm:inline-block " : ""}font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === s ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
                   {s} ({counts[s]})
                 </button>
               ))}
               {ranked.length > 9 && (
-                <span className={`shrink-0 ${ranked.length <= 14 ? "sm:hidden" : ""}`}>
+                <span className={`max-sm:order-2 shrink-0 ${ranked.length <= 14 ? "sm:hidden" : ""}`}>
                   <button data-testid="filter-series-others" onClick={() => { setOthersOpen((o) => !o); setOthersSearch(""); }}
                     aria-expanded={othersOpen}
                     className={`font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${othersOpen || (serie && serie !== NO_SERIES && !top.includes(serie)) ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
@@ -153,7 +153,7 @@ export default function Shop() {
               )}
               {noSeriesCount > 0 && (
                 <button data-testid="filter-series-none" onClick={() => setParam("series", NO_SERIES)}
-                  className={`shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === NO_SERIES ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
+                  className={`max-sm:order-3 shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === NO_SERIES ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
                   Sans série ({noSeriesCount})
                 </button>
               )}
