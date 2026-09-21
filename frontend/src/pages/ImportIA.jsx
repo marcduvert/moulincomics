@@ -47,6 +47,8 @@ export default function ImportIA() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [sessions, setSessions] = useState([]);
   const [showLog, setShowLog] = useState(false);
+  const [zoomSrc, setZoomSrc] = useState(null);
+  const [seriesList, setSeriesList] = useState([]);
   const filesRef = useRef([]);
   const autoRef = useRef(false);
   const priceRef = useRef("");
@@ -60,6 +62,16 @@ export default function ImportIA() {
   useEffect(() => {
     api.get("/auth/me").then(() => { setReady(true); loadSessions(); }).catch(() => nav("/admin/login"));
   }, [nav, loadSessions]);
+  useEffect(() => {
+    api.get("/admin/series").then((r) => setSeriesList((r.data || []).map((s) => s.name ?? s))).catch(() => {});
+  }, []);
+  // Popup couverture : fermeture via Échap (croix + clic extérieur gérés dans le JSX)
+  useEffect(() => {
+    if (!zoomSrc) return;
+    const onKey = (e) => { if (e.key === "Escape") setZoomSrc(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoomSrc]);
 
   const addFiles = (fileList) => {
     const arr = Array.from(fileList).filter((f) => ACCEPT.includes(f.type));
@@ -329,9 +341,17 @@ export default function ImportIA() {
                     return (
                       <tr key={f.id} className="border-b border-ink/15 align-top" data-testid={`result-row-${f.id}`}>
                         <td className="p-2"><input type="checkbox" checked={f.selected} onChange={(e) => patch(f.id, { selected: e.target.checked })} data-testid={`row-check-${f.id}`} /></td>
-                        <td className="p-2"><img src={f.url} alt="" className="w-10 h-14 object-cover border border-ink" /></td>
+                        <td className="p-2"><img src={f.url} alt="" onClick={() => setZoomSrc(f.url)} data-testid={`cover-thumb-${f.id}`} title="Agrandir"
+                          className="w-10 h-14 object-cover border border-ink cursor-zoom-in hover:opacity-80 transition-opacity" /></td>
                         <td className="p-2 min-w-[180px]"><input className={inp} value={f.result.title} onChange={(e) => patchResult(f.id, "title", e.target.value)} /></td>
-                        <td className="p-2 min-w-[100px]"><input className={inp} value={f.result.series} onChange={(e) => patchResult(f.id, "series", e.target.value)} /></td>
+                        <td className="p-2 min-w-[120px]">
+                          <select className={inp} value={f.result.series} data-testid={`series-select-${f.id}`}
+                            onChange={(e) => patchResult(f.id, "series", e.target.value)}>
+                            <option value="">Sans série</option>
+                            {f.result.series && !seriesList.includes(f.result.series) && <option value={f.result.series}>{f.result.series}</option>}
+                            {seriesList.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </td>
                         <td className="p-2 w-16"><input className={inp} value={f.result.issue} onChange={(e) => patchResult(f.id, "issue", e.target.value)} /></td>
                         <td className="p-2 min-w-[100px]"><input className={inp} value={f.result.publisher} onChange={(e) => patchResult(f.id, "publisher", e.target.value)} /></td>
                         <td className="p-2 w-16"><input className={inp} value={f.result.year} onChange={(e) => patchResult(f.id, "year", e.target.value)} /></td>
@@ -368,6 +388,19 @@ export default function ImportIA() {
         {/* ERRORS with retry note */}
         {stats.errors > 0 && !analyzing && (
           <p className="font-mono text-xs text-comicred mt-4">{stats.errors} image(s) en erreur. Cliquez à nouveau sur « Analyser les BD » pour reprendre uniquement celles-ci.</p>
+        )}
+
+        {/* POPUP COUVERTURE : image originale déjà chargée, proportions conservées */}
+        {zoomSrc && (
+          <div data-testid="cover-zoom-modal" onClick={() => setZoomSrc(null)}
+            className="fixed inset-0 z-50 bg-ink/80 flex items-center justify-center p-4">
+            <button onClick={() => setZoomSrc(null)} data-testid="cover-zoom-close" aria-label="Fermer"
+              className="absolute top-4 right-4 bg-paper text-ink border-2 border-ink rounded-full p-2 hover:bg-comicred hover:text-paper transition-colors">
+              <X size={18} />
+            </button>
+            <img src={zoomSrc} alt="Couverture" onClick={(e) => e.stopPropagation()}
+              className="max-w-[90vw] max-h-[85vh] object-contain border-2 border-paper bg-paper" />
+          </div>
         )}
       </div>
     </div>

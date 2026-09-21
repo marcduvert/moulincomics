@@ -183,6 +183,11 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Backend : `PATCH /api/admin/products/{id}` (ProductPatch price/series/stock, partiel, validations prix ≥0 et stock entier ≥0, prix arrondi 2 déc.) — n'écrase jamais les autres champs (évite le risque de stock périmé du PUT complet).
 - Frontend Admin.jsx : composants `InlineField` (prix/stock — Entrée ou blur → save, Échap → annule, spinner discret → « Enregistré » → erreur avec restauration de l'ancienne valeur) et `SeriesCell` (select : « Sans série » + séries de la gestion Séries, « Autre série » incluse car présente en base ; valeur courante hors liste affichée en option de secours). Mise à jour locale via setProducts, aucun rechargement. Prix : virgule ou point acceptés (affichage français à virgule, stocké numérique). Stock 0 → Épuisé automatique côté boutique (logique existante). Icône crayon inchangée.
 - Tests : API (PATCH prix 7,50→float ✓, négatifs rejetés 400 avec message FR ✓, stock 0 ✓, série ✓, champs intacts ✓) + UI admin vérifiée par l'utilisateur ; produit de test restauré à l'identique.
+
+### Import IA — popup couverture + choix manuel de la série — 2026-09
+- ImportIA.jsx uniquement. Popup : clic miniature → image originale déjà chargée (objectURL local, aucune copie ni appel IA), proportions conservées (object-contain 90vw/85vh), fermeture croix + Échap + clic extérieur.
+- Série : input remplacé par select — options = « Sans série » + séries de la gestion Séries (`GET /admin/series` ; « Autre série » apparaît automatiquement si présente en base), valeur IA présélectionnée si elle correspond (sinon ajoutée en option de secours pour ne rien perdre). Choix manuel = simple patchResult (0 appel IA), prioritaire à l'import (bulk-create envoie result.series tel quel).
+- Tests ciblés (1 couverture, 1 seul appel LLM) : popup 3 fermetures ✓, select 24 options ✓, IA « Conan Saga » présélectionnée ✓, changement manuel → Wolverine ✓, import → série « Wolverine » vérifiée en MongoDB ✓, compteur d'appels analyze inchangé après le changement manuel (61→62, soit la seule analyse) ✓. Toutes traces de test purgées (produit, cache, fichier, session).
 - Vérifié en prod après déploiement : « Futures End: Batman #1 » a reçu `futures-end-batman-1` via la migration startup ✓.
 
 ### Sitemap racine — correctif artefact (2026-09, suite)
