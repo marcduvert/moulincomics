@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, Fragment } from "react";
+import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText, ArrowUpDown, ChevronUp, ChevronDown, Truck, X, Power } from "lucide-react";
@@ -11,6 +11,94 @@ const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO"
 const fmtAddr = (a) => a
   ? [a.line1, a.line2, [a.postal_code, a.city].filter(Boolean).join(" "), a.country].filter(Boolean)
   : [];
+
+const parsePriceField = (v) => {
+  const n = parseFloat(String(v).trim().replace(",", "."));
+  if (!Number.isFinite(n) || n < 0) return { ok: false, msg: "Prix invalide : nombre positif attendu (ex. 12,50)" };
+  return { ok: true, value: Math.round(n * 100) / 100 };
+};
+
+const parseStockField = (v) => {
+  const n = Number(String(v).trim().replace(",", "."));
+  if (!Number.isInteger(n) || n < 0) return { ok: false, msg: "Stock invalide : entier supérieur ou égal à 0 attendu" };
+  return { ok: true, value: n };
+};
+
+// Édition en ligne (table Stock) : enregistre à Entrée ou à la sortie du champ,
+// indicateur discret + « Enregistré », restauration de l'ancienne valeur si erreur.
+const InlineField = ({ value, onSave, parse, format, testid }) => {
+  const fmt = format || ((x) => String(x ?? ""));
+  const [v, setV] = useState(fmt(value));
+  const [st, setSt] = useState("idle"); // idle | saving | saved | error
+  const cancel = useRef(false);
+  useEffect(() => { setV(fmt(value)); }, [value]);
+  const commit = async () => {
+    if (cancel.current) { cancel.current = false; return; }
+    const r = parse(v);
+    if (!r.ok) {
+      setV(fmt(value)); setSt("error");
+      toast.error(r.msg); setTimeout(() => setSt("idle"), 1800); return;
+    }
+    if (r.value === value) { setV(fmt(value)); return; }
+    setSt("saving");
+    try {
+      await onSave(r.value);
+      setSt("saved"); setTimeout(() => setSt("idle"), 1500);
+    } catch (e) {
+      setV(fmt(value)); setSt("error");
+      toast.error(e.response?.data?.detail || "Erreur d'enregistrement");
+      setTimeout(() => setSt("idle"), 1800);
+    }
+  };
+  return (
+    <span className="inline-flex items-center gap-1">
+      <input value={v} data-testid={testid} disabled={st === "saving"}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") { cancel.current = true; setV(fmt(value)); e.currentTarget.blur(); }
+        }}
+        className="w-16 bg-transparent border border-transparent hover:border-ink/30 focus:border-ink rounded px-1 py-0.5 font-mono text-xs text-right outline-none transition-colors" />
+      <span className="inline-flex w-16 items-center font-mono text-[9px]">
+        {st === "saving" && <Loader2 size={11} className="animate-spin text-inksoft" />}
+        {st === "saved" && <span className="text-emerald-600">Enregistré</span>}
+        {st === "error" && <span className="text-comicred">Erreur</span>}
+      </span>
+    </span>
+  );
+};
+
+// Liste déroulante série (table Stock) : enregistrement immédiat au choix.
+const SeriesCell = ({ value, options, onSave, testid }) => {
+  const [st, setSt] = useState("idle");
+  return (
+    <span className="inline-flex items-center gap-1">
+      <select value={value || ""} data-testid={testid} disabled={st === "saving"}
+        onChange={async (e) => {
+          const nv = e.target.value;
+          if (nv === (value || "")) return;
+          setSt("saving");
+          try { await onSave(nv); setSt("saved"); setTimeout(() => setSt("idle"), 1500); }
+          catch (err) {
+            setSt("error");
+            toast.error(err.response?.data?.detail || "Erreur d'enregistrement");
+            setTimeout(() => setSt("idle"), 1800);
+          }
+        }}
+        className="bg-transparent border border-transparent hover:border-ink/30 focus:border-ink rounded px-1 py-0.5 font-mono text-xs outline-none max-w-[150px] cursor-pointer">
+        <option value="">Sans série</option>
+        {value && !options.includes(value) && <option value={value}>{value}</option>}
+        {options.map((s) => <option key={s} value={s}>{s}</option>)}
+      </select>
+      <span className="inline-flex w-16 items-center font-mono text-[9px]">
+        {st === "saving" && <Loader2 size={11} className="animate-spin text-inksoft" />}
+        {st === "saved" && <span className="text-emerald-600">Enregistré</span>}
+        {st === "error" && <span className="text-comicred">Erreur</span>}
+      </span>
+    </span>
+  );
+};
 
 export default function Admin() {
   const nav = useNavigate();
@@ -28,6 +116,12 @@ export default function Admin() {
   const [mrStatus, setMrStatus] = useState(null);
 
   const [zoomImg, setZoomImg] = useState(null);
+
+  // Édition inline (table Stock) : PATCH partiel + mise à jour locale, sans rechargement.
+  const patchProduct = async (id, body) => {
+    await api.patch(`/admin/products/${id}`, body);
+    setProducts((prev) => prev.map((x) => (x.id === id ? { ...x, ...body } : x)));
+  };
 
   const saveShippingCfg = async () => {
     try {
@@ -506,10 +600,19 @@ export default function Admin() {
                         </div>
                       </td>
                       <td className="p-3">{p.category}</td>
-                      <td className="p-3">{p.series || "—"}</td>
+                      <td className="p-3">
+                        <SeriesCell value={p.series || ""} options={seriesList.map((s) => s.name)}
+                          onSave={(v) => patchProduct(p.id, { series: v })} testid={`inline-series-${p.id}`} />
+                      </td>
                       <td className="p-3 text-xs text-inksoft">{p.created_at ? new Date(p.created_at).toLocaleDateString("fr-FR") : "—"}</td>
-                      <td className="p-3 text-right">{fmtPrice(p.price)}</td>
-                      <td className={`p-3 text-right ${p.stock <= 1 ? "text-comicred" : ""}`}>{p.stock}</td>
+                      <td className="p-3 text-right whitespace-nowrap">
+                        <InlineField value={p.price} parse={parsePriceField} format={(x) => String(x ?? "").replace(".", ",")}
+                          onSave={(v) => patchProduct(p.id, { price: v })} testid={`inline-price-${p.id}`} /> €
+                      </td>
+                      <td className={`p-3 text-right whitespace-nowrap ${p.stock <= 1 ? "text-comicred" : ""}`}>
+                        <InlineField value={p.stock} parse={parseStockField}
+                          onSave={(v) => patchProduct(p.id, { stock: v })} testid={`inline-stock-${p.id}`} />
+                      </td>
                       <td className="p-3 text-right whitespace-nowrap">
                         <button onClick={async () => {
                           // La liste est allégée (sans descriptions) : récupérer la fiche complète

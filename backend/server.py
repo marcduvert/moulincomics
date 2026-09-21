@@ -655,6 +655,33 @@ async def update_product(product_id: str, body: ProductCreate, admin: dict = Dep
     doc = await db.products.find_one({"_id": ObjectId(product_id)})
     return serialize(doc)
 
+class ProductPatch(BaseModel):
+    price: float | None = None
+    series: str | None = None
+    stock: int | None = None
+
+@api.patch("/admin/products/{product_id}")
+async def patch_product(product_id: str, patch: ProductPatch, admin: dict = Depends(get_current_admin)):
+    """Édition inline (table Stock admin) : mise à jour partielle prix/série/stock.
+    N'écrase jamais les autres champs (contrairement au PUT complet)."""
+    updates = {}
+    if patch.price is not None:
+        if patch.price < 0:
+            raise HTTPException(400, "Le prix doit être supérieur ou égal à 0")
+        updates["price"] = round(float(patch.price), 2)
+    if patch.series is not None:
+        updates["series"] = patch.series.strip()
+    if patch.stock is not None:
+        if patch.stock < 0:
+            raise HTTPException(400, "Le stock doit être un entier supérieur ou égal à 0")
+        updates["stock"] = int(patch.stock)
+    if not updates:
+        raise HTTPException(400, "Aucune modification")
+    res = await db.products.update_one({"_id": ObjectId(product_id)}, {"$set": updates})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Produit introuvable")
+    return {"ok": True}
+
 @api.delete("/admin/products/{product_id}")
 async def delete_product(product_id: str, admin: dict = Depends(get_current_admin)):
     await db.products.delete_one({"_id": ObjectId(product_id)})
