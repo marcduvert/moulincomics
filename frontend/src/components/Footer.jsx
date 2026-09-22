@@ -51,6 +51,12 @@ export const Footer = () => {
         data-testid="cookie-reopen" className="underline hover:text-comicyellow">
         {t.cookie.reopen}
       </button>
+      {" · "}
+      <Link to="/mentions-legales" data-testid="footer-legal" className="underline hover:text-comicyellow">Mentions légales &amp; Confidentialité</Link>
+      {" · "}
+      <Link to="/cgv" data-testid="footer-cgv" className="underline hover:text-comicyellow">CGV</Link>
+      {" · "}
+      <Link to="/politique-livraison" data-testid="footer-shipping-policy" className="underline hover:text-comicyellow">Politique de livraison</Link>
     </div>
   </footer>
   );

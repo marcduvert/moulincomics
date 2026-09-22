@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText, ArrowUpDown, ChevronUp, ChevronDown, Truck, X, Power } from "lucide-react";
 import { api, fmtPrice, API } from "../lib/api";
 import { Seo } from "../components/Seo";
+import { RichEditor } from "../components/RichEditor";
 
 const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
   condition: "Très bon état", year: "", issue: "", description: "", description_en: "", description_es: "", cover_image: "", featured: false };
@@ -111,7 +112,7 @@ export default function Admin() {
   const [orderFul, setOrderFul] = useState("all");
   const [orderSort, setOrderSort] = useState({ key: "created_at", dir: -1 });
   const [selectedOrders, setSelectedOrders] = useState([]);
-  const [shipCfg, setShipCfg] = useState({ mondial_relay_price: "", home_delivery_price: "" });
+  const [shipCfg, setShipCfg] = useState({ mondial_relay_price: "", home_delivery_price: "", policy: "" });
   const [vacCfg, setVacCfg] = useState({ enabled: false, message: "" });
   const [mrStatus, setMrStatus] = useState(null);
 
@@ -128,9 +129,10 @@ export default function Admin() {
       const body = {
         mondial_relay_price: parseFloat(shipCfg.mondial_relay_price) || 0,
         home_delivery_price: parseFloat(shipCfg.home_delivery_price) || 0,
+        policy: shipCfg.policy,
       };
       await api.put("/admin/content/shipping", body);
-      toast.success("Tarifs de livraison enregistrés");
+      toast.success("Paramètres de livraison enregistrés");
     } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
   };
 
@@ -274,6 +276,7 @@ export default function Admin() {
       setShipCfg({
         mondial_relay_price: s.mondial_relay_price ?? "",
         home_delivery_price: s.home_delivery_price ?? "",
+        policy: s.policy ?? "",
       });
       const v = r.data?.vacation || {};
       setVacCfg({ enabled: !!v.enabled, message: v.message ?? "" });
@@ -464,6 +467,9 @@ export default function Admin() {
                   onChange={(e) => setShipCfg((p) => ({ ...p, home_delivery_price: e.target.value }))}
                   className="w-32 border-2 border-ink rounded-md px-3 py-2 bg-papersoft font-mono text-sm outline-none" />
               </div>
+              <RichEditor label="Politique de livraison" testid="shipping-policy-editor"
+                value={shipCfg.policy} onChange={(v) => setShipCfg((p) => ({ ...p, policy: v }))}
+                hint="Contenu affiché sur la page publique /politique-livraison (lien en pied de page). Titres, listes et liens possibles." />
               <button onClick={saveShippingCfg} data-testid="shipping-save"
                 className="flex items-center gap-2 bg-ink text-paper font-mono text-xs uppercase tracking-widest px-5 py-3 rounded-md border-2 border-ink hover:bg-comicred transition-colors">
                 Enregistrer les paramètres

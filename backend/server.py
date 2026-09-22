@@ -1382,6 +1382,93 @@ async def stripe_webhook(request: Request):
     return {"status": "ok"}
 
 # ===== CONTENU ÉDITORIAL (site_content) =====
+# Contenus par défaut des pages légales (éditables dans l'admin, section site_content).
+# Placeholders [À COMPLÉTER : …] pour les informations légales non connues du projet.
+LEGAL_MENTIONS_HTML = """<h2>Mentions légales</h2>
+<p><strong>Éditeur du site</strong><br>
+Moulin Comics — [À COMPLÉTER : nom / raison sociale]<br>
+[À COMPLÉTER : adresse]<br>
+SIRET : [À COMPLÉTER : SIRET]<br>
+Contact : [À COMPLÉTER : e-mail] ou via la page <a href="/contact">Contact</a></p>
+<p><strong>Directeur de la publication</strong><br>[À COMPLÉTER : nom du directeur de la publication]</p>
+<p><strong>Hébergeur</strong><br>[À COMPLÉTER : hébergeur]</p>
+<h3>Propriété intellectuelle</h3>
+<p>L'ensemble des éléments du site moulincomics.com (textes, logo, photographies) est protégé par le droit de la propriété intellectuelle. Toute reproduction ou utilisation sans autorisation écrite préalable est interdite. Les couvertures de comics présentées restent la propriété de leurs éditeurs respectifs.</p>
+<h3>Photographies des produits</h3>
+<p>Les photographies du site sont réalisées à partir des exemplaires effectivement en stock, ou présentées à titre indicatif selon les produits. L'état exact de chaque comic est celui indiqué sur sa fiche produit.</p>
+<h2>Politique de confidentialité</h2>
+<p>Moulin Comics attache une importance particulière à la protection de vos données personnelles, conformément au Règlement (UE) 2016/679 (RGPD) et à la loi Informatique et Libertés.</p>
+<h3>Données collectées</h3>
+<p>Dans le cadre des commandes et de la relation client, seules les données nécessaires sont collectées :</p>
+<ul>
+<li>nom et prénom ;</li>
+<li>adresse postale de livraison ou Point Relais choisi ;</li>
+<li>adresse e-mail ;</li>
+<li>numéro de téléphone (le cas échéant) ;</li>
+<li>contenu des messages envoyés via le formulaire de contact.</li>
+</ul>
+<p><strong>Données bancaires :</strong> les paiements sont traités directement par Stripe, prestataire de paiement sécurisé. Moulin Comics n'a jamais accès à vos données bancaires et ne les conserve pas.</p>
+<h3>Utilisation des données</h3>
+<p>Vos données servent exclusivement à :</p>
+<ul>
+<li>la gestion et la livraison de vos commandes ;</li>
+<li>les e-mails liés à votre commande (confirmation, expédition) ;</li>
+<li>la réponse à vos messages ;</li>
+<li>la prévention de la fraude et la sécurité du site.</li>
+</ul>
+<p>Elles ne sont ni vendues ni cédées à des tiers à des fins commerciales.</p>
+<h3>Durée de conservation</h3>
+<p>Les données sont conservées pendant la durée nécessaire à la gestion de vos commandes, augmentée des durées légales de conservation comptable et fiscale.</p>
+<h3>Vos droits</h3>
+<p>Vous disposez d'un droit d'accès, de rectification, d'effacement, d'opposition, de limitation et de portabilité de vos données. Pour les exercer : [À COMPLÉTER : e-mail] ou la page <a href="/contact">Contact</a>. Vous pouvez également adresser une réclamation à la CNIL (<a href="https://www.cnil.fr">www.cnil.fr</a>).</p>
+<h3>Cookies</h3>
+<p>Le site utilise des cookies strictement nécessaires à son fonctionnement (panier, préférences d'affichage). Lors de votre première visite, un bandeau vous permet d'accepter ou de refuser les cookies facultatifs ; vous pouvez modifier votre choix à tout moment depuis le lien « Préférences cookies » en pied de page.</p>
+<h3>Droit applicable</h3>
+<p>Les présentes mentions légales et la politique de confidentialité sont soumises au droit français.</p>"""
+
+LEGAL_CGV_HTML = """<p><em>Version à jour au [À COMPLÉTER : date de mise à jour].</em></p>
+<h2>Article 1 — Objet et champ d'application</h2>
+<p>Les présentes conditions générales de vente (ci-après « CGV ») régissent les ventes de comics conclues entre Moulin Comics — [À COMPLÉTER : nom / raison sociale], [À COMPLÉTER : adresse], SIRET [À COMPLÉTER : SIRET] — (ci-après « le Vendeur ») et toute personne physique agissant en qualité de consommateur (ci-après « le Client »), via le site moulincomics.com. Toute commande passée sur le site implique l'acceptation sans réserve des présentes CGV.</p>
+<h2>Article 2 — Produits</h2>
+<p>Le site propose des comics neufs et d'occasion, en version originale (VO) et en version française (VF). Chaque fiche produit précise le titre, le numéro, l'état et le prix. Les photographies sont réalisées à partir des exemplaires en stock ou présentées à titre indicatif ; l'état contractuel est celui indiqué sur la fiche produit. Les produits sont proposés dans la limite des stocks disponibles — de nombreux exemplaires sont uniques.</p>
+<h2>Article 3 — Prix</h2>
+<p>Les prix sont indiqués en euros (€). [À COMPLÉTER : mention TVA applicable]. Les frais de livraison ne sont pas inclus dans le prix des produits : ils sont calculés et affichés avant la validation définitive de la commande. Le Vendeur peut modifier ses prix à tout moment ; le prix applicable est celui en vigueur au moment de la validation de la commande.</p>
+<h2>Article 4 — Commande</h2>
+<p>Le Client passe commande via le panier du site, choisit son mode de livraison puis procède au paiement. La validation de la commande vaut acceptation des produits, des prix et des présentes CGV. Un e-mail de confirmation récapitulant la commande est adressé au Client après paiement. Le Vendeur se réserve le droit de refuser ou d'annuler une commande en cas de litige antérieur ou d'anomalie ; toute commande annulée est intégralement remboursée.</p>
+<h2>Article 5 — Paiement</h2>
+<p>Le paiement est exigible immédiatement à la commande et s'effectue en ligne par carte bancaire, via la plateforme sécurisée Stripe. Le Vendeur n'a accès à aucune donnée bancaire du Client.</p>
+<h2>Article 6 — Livraison</h2>
+<p>Les commandes sont livrées à domicile ou en Point Relais Mondial Relay, selon le choix du Client lors de la commande, à l'adresse ou au point relais qu'il a indiqué. Les modalités détaillées figurent dans la <a href="/politique-livraison">Politique de livraison</a>. Les délais sont indiqués à titre estimatif ; conformément à l'article L216-1 du Code de la consommation, en cas de dépassement du délai supérieur à trente (30) jours, le Client peut demander l'annulation de la vente et son remboursement. Le transfert des risques intervient à la remise effective du colis au Client ou au point relais choisi.</p>
+<h2>Article 7 — Droit de rétractation</h2>
+<p>Conformément aux articles L221-18 et suivants du Code de la consommation, le Client dispose de quatorze (14) jours à compter de la réception du produit pour exercer son droit de rétractation, sans avoir à se justifier. Pour l'exercer : [À COMPLÉTER : e-mail] ou la page <a href="/contact">Contact</a>. Les frais de retour sont à la charge du Client et le produit doit être retourné dans son état d'origine. Le remboursement intervient dans un délai de quatorze (14) jours à compter de la réception du retour ou de la preuve de son expédition.</p>
+<h2>Article 8 — Garanties légales</h2>
+<p>Le Client bénéficie de la garantie légale de conformité (articles L217-3 et suivants du Code de la consommation — ramenée à douze (12) mois pour les biens d'occasion) et de la garantie des vices cachés (articles 1641 et suivants du Code civil — deux (2) ans à compter de la découverte du vice). Sont exclues l'usure normale liée à la nature d'occasion du produit ainsi que les altérations postérieures à la vente ou visibles sur la fiche produit.</p>
+<h2>Article 9 — Données personnelles</h2>
+<p>Les données personnelles sont traitées conformément à la politique de confidentialité, consultable sur la page <a href="/mentions-legales">Mentions légales &amp; Confidentialité</a>.</p>
+<h2>Article 10 — Médiation et litiges</h2>
+<p>En cas de litige, le Client est invité à contacter le Vendeur en priorité via la page <a href="/contact">Contact</a>. À défaut d'accord amiable, il peut recourir gratuitement à un médiateur de la consommation : [À COMPLÉTER : médiateur de la consommation]. Plateforme européenne de règlement en ligne des litiges : <a href="https://ec.europa.eu/consumers/odr">ec.europa.eu/consumers/odr</a>.</p>
+<h2>Article 11 — Droit applicable</h2>
+<p>Les présentes CGV sont soumises au droit français. Si une clause était déclarée nulle, les autres dispositions demeurent applicables.</p>"""
+
+SHIPPING_POLICY_HTML = """<p>Cette page détaille les modalités de livraison des commandes passées sur moulincomics.com. Elle complète nos <a href="/cgv">Conditions générales de vente</a>.</p>
+<h2>Modes de livraison proposés</h2>
+<ul>
+<li><strong>Livraison à domicile</strong> — le colis est remis à l'adresse indiquée lors de la commande.</li>
+<li><strong>Point Relais Mondial Relay</strong> — vous choisissez votre point relais directement au moment de la commande ; c'est lui qui constitue la destination de livraison.</li>
+</ul>
+<h2>Tarifs</h2>
+<p>Les frais de livraison dépendent du mode choisi et sont affichés clairement dans le panier, avant tout paiement. Le tarif applicable est celui affiché au moment de la commande.</p>
+<h2>Zones desservies</h2>
+<p>La livraison en Point Relais est disponible en France. La livraison à domicile est proposée en France et dans plusieurs pays européens (la liste des pays est indiquée lors de la saisie de l'adresse de livraison). Pour toute livraison hors Union européenne, d'éventuels droits de douane ou taxes locales peuvent être exigés par le pays de destination et restent à la charge du client.</p>
+<h2>Délais</h2>
+<p>Les commandes sont préparées avec soin, avec une protection adaptée des comics, puis remises au transporteur. Les délais de préparation et d'acheminement sont donnés à titre indicatif et peuvent varier selon l'activité et le transporteur.</p>
+<h2>Suivi de commande</h2>
+<p>Un e-mail vous informe de l'expédition de votre commande. Pour toute question sur le suivi, contactez-nous via la page <a href="/contact">Contact</a> en précisant votre numéro de commande.</p>
+<h2>Réception du colis</h2>
+<p>À la réception, vérifiez l'état du colis et des produits. Toute anomalie liée au transport (colis endommagé, ouvert ou produit détérioré) doit être signalée dans les meilleurs délais — idéalement sous 3 jours ouvrés — via la page <a href="/contact">Contact</a>, afin que nous puissions effectuer les démarches auprès du transporteur. Cette procédure n'affecte en aucun cas vos garanties légales.</p>
+<h2>Responsabilité</h2>
+<p>Moulin Comics demeure responsable de la commande jusqu'à la remise effective du colis au client ou au point relais choisi.</p>"""
+
 DEFAULT_CONTENT = {
     "hero": {
         "eyebrow": "Comic Shop · VO & VF · Paris",
@@ -1415,10 +1502,15 @@ DEFAULT_CONTENT = {
     "shipping": {
         "mondial_relay_price": 4.90,
         "home_delivery_price": 7.90,
+        "policy": SHIPPING_POLICY_HTML,
     },
     "vacation": {
         "enabled": False,
         "message": "Notre boutique est actuellement fermée pour congés. Les commandes reprendront prochainement.",
+    },
+    "legal": {
+        "mentions": LEGAL_MENTIONS_HTML,
+        "cgv": LEGAL_CGV_HTML,
     },
     "footer": {
         "description": "Comic shop spécialisé en VO. Large stock de mensuels VF — Strange, Nova, Titans. De la case à la caisse depuis toujours.",
@@ -1636,7 +1728,7 @@ async def build_sitemap_xml(base: str) -> str:
     """XML du sitemap : pages publiques + toutes les fiches produits (slugs)."""
     base = base.rstrip("/")
     parts = []
-    for pth in ("/", "/shop", "/conventions"):
+    for pth in ("/", "/shop", "/conventions", "/contact", "/mentions-legales", "/cgv", "/politique-livraison"):
         parts.append(f"<url><loc>{base}{pth}</loc><changefreq>weekly</changefreq></url>")
     prods = await db.products.find({}, {"created_at": 1, "slug": 1}).sort("created_at", -1).to_list(5000)
     for p in prods:

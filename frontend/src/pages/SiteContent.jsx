@@ -4,9 +4,10 @@ import { toast } from "sonner";
 import { ArrowLeft, Save, Upload, Loader2, Plus, Trash2, ArrowUp, ArrowDown, Languages } from "lucide-react";
 import { api } from "../lib/api";
 import { Seo } from "../components/Seo";
+import { RichEditor } from "../components/RichEditor";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
-const TABS = [["hero", "Accueil"], ["maison", "La Maison"], ["salons", "Salons"], ["footer", "Footer"], ["contact", "Contact"], ["seo", "SEO"]];
+const TABS = [["hero", "Accueil"], ["maison", "La Maison"], ["salons", "Salons"], ["footer", "Footer"], ["contact", "Contact"], ["legal", "Pages légales"], ["seo", "SEO"]];
 const LANGS = [["fr", "Français"], ["en", "English"], ["es", "Español"]];
 
 const Field = ({ label, value, onChange, textarea, placeholder, count, testid }) => (
@@ -247,6 +248,22 @@ export default function SiteContent() {
               <Field label="Texte en haut du formulaire" textarea value={val("contact", "top_text")} onChange={(v) => setField("contact", "top_text", v)} placeholder={ph("contact", "top_text")} />
               <Field label="Texte en bas du formulaire" textarea value={val("contact", "bottom_text")} onChange={(v) => setField("contact", "bottom_text", v)} placeholder={ph("contact", "bottom_text")} />
               <SaveBar sec="contact" />
+            </>
+          )}
+
+          {tab === "legal" && (
+            <>
+              <h2 className="font-display font-black text-xl mb-2">Pages légales</h2>
+              <p className="font-mono text-xs text-inksoft mb-5 border-l-2 border-comicred pl-3">
+                Contenus affichés sur les pages publiques /mentions-legales et /cgv (liens discrets en pied de page). Les éléments [À COMPLÉTER : …] sont à renseigner avant la mise en ligne définitive.
+              </p>
+              <RichEditor label="Mentions légales & Politique de confidentialité" testid="legal-mentions-editor"
+                value={val("legal", "mentions")} onChange={(v) => setField("legal", "mentions", v)}
+                hint="Page publique : /mentions-legales. Titres, sous-titres, gras, listes et liens possibles ; le contenu est sécurisé automatiquement avant affichage." />
+              <RichEditor label="Conditions générales de vente (CGV)" testid="legal-cgv-editor"
+                value={val("legal", "cgv")} onChange={(v) => setField("legal", "cgv", v)}
+                hint="Page publique : /cgv" />
+              <SaveBar sec="legal" />
             </>
           )}
 

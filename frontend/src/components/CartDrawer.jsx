@@ -261,6 +261,9 @@ export const CartDrawer = () => {
                     className="w-full bg-comicred text-paper font-mono uppercase tracking-[0.2em] text-sm py-4 border-2 border-ink hover:bg-ink transition-colors disabled:opacity-40">
                     {loading ? t.cart.redirect : t.cart.pay}
                   </button>
+                  <p className="font-mono text-[10px] text-inksoft text-center mt-3" data-testid="checkout-legal-links">
+                    En commandant, vous acceptez nos <a href="/cgv" target="_blank" rel="noreferrer" className="underline hover:text-comicblue">CGV</a> — <a href="/politique-livraison" target="_blank" rel="noreferrer" className="underline hover:text-comicblue">Politique de livraison</a>
+                  </p>
                   <button onClick={() => setStep("cart")} data-testid="back-to-cart"
                     className="mt-2 w-full flex items-center justify-center gap-1.5 font-mono text-xs uppercase text-inksoft hover:text-ink">
                     <ArrowLeft size={12} /> {t.cart.backToCart}
