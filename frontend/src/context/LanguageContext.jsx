@@ -68,6 +68,11 @@ const T = {
       explore: "Explorer", contact: "Contact", manager: "Espace gérant",
       rights: "VO & VF · Paiement sécurisé Stripe",
     },
+    pages: {
+      mentionsTitle: "Mentions légales & Politique de confidentialité",
+      cgvTitle: "Conditions générales de vente",
+      shippingTitle: "Politique de livraison",
+    },
     conventions: {
       eyebrow: "Moulin Comics en tournée", title: "ON DÉBALLE NOS CAISSES PARTOUT EN EUROPE",
       agenda: "Agenda de nos salons", empty: "Aucun salon programmé pour le moment.",
@@ -152,6 +157,11 @@ const T = {
       explore: "Explore", contact: "Contact", manager: "Manager area",
       rights: "OV & French · Secure Stripe payment",
     },
+    pages: {
+      mentionsTitle: "Legal Notice & Privacy Policy",
+      cgvTitle: "Terms and Conditions of Sale",
+      shippingTitle: "Shipping Policy",
+    },
     conventions: {
       eyebrow: "Moulin Comics on tour", title: "WE UNPACK OUR CRATES ALL ACROSS EUROPE",
       agenda: "Our events schedule", empty: "No event scheduled at the moment.",
@@ -235,6 +245,11 @@ const T = {
       desc: "Tienda de cómics especializada en VO. Amplio stock de mensuales franceses — Strange, Nova, Titans. De la viñeta a la caja, desde siempre.",
       explore: "Explorar", contact: "Contacto", manager: "Zona gerente",
       rights: "VO & VF · Pago seguro Stripe",
+    },
+    pages: {
+      mentionsTitle: "Aviso legal y Política de privacidad",
+      cgvTitle: "Condiciones Generales de Venta",
+      shippingTitle: "Política de envío",
     },
     conventions: {
       eyebrow: "Moulin Comics de gira", title: "ABRIMOS NUESTRAS CAJAS POR TODA EUROPA",

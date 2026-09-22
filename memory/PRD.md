@@ -216,7 +216,15 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Bug : `/mentions-legales` et `/cgv` n'affichaient que le FR alors que `legal.en.{mentions,cgv}` et `legal.es.{mentions,cgv}` existaient en base et étaient servis par `GET /api/content`.
 - Cause : `ContentPage.jsx` lisait uniquement `legal.mentions` / `legal.cgv`, ignorant la langue active.
 - Correctif (1 seul fichier, `frontend/src/pages/ContentPage.jsx`) : hook `useLang()` + sélection `legal[lang][field]` avec repli FR. Aucun changement backend, DB, admin, routes, SEO, liens ni design ; `/politique-livraison` non touchée ; titre H1 conservé en français (contenu localisé porte son propre titre h2).
-- Test ciblé preview : FR→EN→ES→FR sur les deux pages, contenu correct et immédiat (PASS). NON DÉPLOYÉ (demande explicite).
+- Test ciblé preview : FR→EN→ES→FR sur les deux pages, contenu correct et immédiat (PASS).
+
+### Titres H1 traduits + politique de livraison EN/ES — 2026-07 (suite, validé utilisateur)
+- `LanguageContext.jsx` : nouvelle section `pages` (mentionsTitle / cgvTitle / shippingTitle) dans les 3 blocs fr/en/es ; `ContentPage.jsx` utilise `t.pages[titleKey]` pour le H1 (repli FR).
+- Politique de livraison multilingue : traductions EN (« Shipping Policy ») et ES (« Política de envío ») rédigées et enregistrées en base via `PUT /api/admin/content/shipping/{lang}` (stockage `shipping.en.policy` / `shipping.es.policy`, servi par `_merge_content`).
+- `ContentPage.jsx` : helper `localized(c, lang, sec, field)` généralisé (legal + shipping), repli FR si traduction absente.
+- Admin → Livraison (`Admin.jsx`) : sélecteur FR/EN/ES au-dessus de l'éditeur de politique (`policyLang`, champs `policy_en`/`policy_es` dans `shipCfg`). IMPORTANT : `saveShippingCfg` renvoie `en`/`es` dans le body car `PUT /admin/content/{section}` remplace toute la section — les omettre effacerait les traductions.
+- Tests preview : 3 pages publiques FR/EN/ES (H1 + contenu) PASS ; admin Livraison charge les 3 langues, tarifs 4.9/7.9 intacts. Déploiement production demandé par l'utilisateur (2026-07).
+- DÉPLOYÉ en production (2026-07) : les contenus légaux FR/EN/ES et la politique de livraison ont été copiés de la preview vers la base PRODUCTION via l'API admin (les bases preview/prod sont séparées ; tarifs prod 3.5/7.5 préservés, différents de la preview). Vérifié en ligne sur moulincomics.com : 3 pages × 3 langues PASS. Note : l'utilisateur a saisi ses propres formulations EN/ES de la politique de livraison dans l'admin production (« Política de envíos », « This page explains the shipping terms ») — elles priment et ne doivent pas être écrasées par celles de la preview.
 
 ## Credentials
 Voir /app/memory/test_credentials.md

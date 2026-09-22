@@ -5,42 +5,46 @@ import { sanitizeHtml } from "../lib/richText";
 
 // Pages publiques de contenu administrable. Le HTML provient de site_content
 // (modifiable dans l'admin) et est assaini avant affichage (sanitizeHtml).
-// Pour les pages légales, le contenu suit la langue active (FR/EN/ES) :
-// legal.en.xxx / legal.es.xxx si présents, sinon repli sur la version FR.
-const localized = (c, lang, field) =>
-  (lang !== "fr" && c?.legal?.[lang]?.[field]) || c?.legal?.[field];
+// Contenu et titre H1 suivent la langue active (FR/EN/ES) : version
+// <sec>.<lang>.<champ> si présente, sinon repli sur la version FR.
+const localized = (c, lang, sec, field) =>
+  (lang !== "fr" && c?.[sec]?.[lang]?.[field]) || c?.[sec]?.[field];
 
 const PAGES = {
   "mentions-legales": {
+    titleKey: "mentionsTitle",
     title: "Mentions légales & Politique de confidentialité",
     seoTitle: "Mentions légales & Politique de confidentialité | Moulin Comics",
     seoDesc: "Mentions légales et politique de confidentialité de Moulin Comics : éditeur, hébergement, données personnelles, cookies et droits RGPD.",
-    get: (c, lang) => localized(c, lang, "mentions"),
+    get: (c, lang) => localized(c, lang, "legal", "mentions"),
   },
   "cgv": {
+    titleKey: "cgvTitle",
     title: "Conditions générales de vente",
     seoTitle: "Conditions générales de vente | Moulin Comics",
     seoDesc: "Conditions générales de vente de Moulin Comics : commande, paiement sécurisé, livraison, rétractation et garanties légales.",
-    get: (c, lang) => localized(c, lang, "cgv"),
+    get: (c, lang) => localized(c, lang, "legal", "cgv"),
   },
   "politique-livraison": {
+    titleKey: "shippingTitle",
     title: "Politique de livraison",
     seoTitle: "Politique de livraison | Moulin Comics",
     seoDesc: "Politique de livraison de Moulin Comics : livraison à domicile et Point Relais Mondial Relay, tarifs, zones, délais et suivi.",
-    get: (c) => c?.shipping?.policy,
+    get: (c, lang) => localized(c, lang, "shipping", "policy"),
   },
 };
 
 export const ContentPage = ({ pageKey }) => {
   const { content } = useContent();
-  const { lang } = useLang();
+  const { lang, t } = useLang();
   const page = PAGES[pageKey];
   if (!page) return null;
   const html = page.get(content, lang) || "";
+  const title = t.pages?.[page.titleKey] || page.title;
   return (
     <div className="max-w-3xl mx-auto px-5 py-14" data-testid={`page-${pageKey}`}>
       <Seo title={page.seoTitle} description={page.seoDesc} path={`/${pageKey}`} />
-      <h1 className="font-display font-black tracking-tighter text-3xl sm:text-4xl mb-8">{page.title}</h1>
+      <h1 className="font-display font-black tracking-tighter text-3xl sm:text-4xl mb-8">{title}</h1>
       <div data-testid="content-page-body"
         className="font-mono text-sm leading-relaxed text-ink [&_h2]:font-display [&_h2]:font-black [&_h2]:tracking-tight [&_h2]:text-xl [&_h2]:mt-10 [&_h2]:mb-3 [&_h3]:font-bold [&_h3]:mt-6 [&_h3]:mb-2 [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3 [&_li]:mb-1 [&_a]:underline [&_a]:text-comicblue"
         dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />

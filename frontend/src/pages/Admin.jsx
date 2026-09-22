@@ -112,7 +112,8 @@ export default function Admin() {
   const [orderFul, setOrderFul] = useState("all");
   const [orderSort, setOrderSort] = useState({ key: "created_at", dir: -1 });
   const [selectedOrders, setSelectedOrders] = useState([]);
-  const [shipCfg, setShipCfg] = useState({ mondial_relay_price: "", home_delivery_price: "", policy: "" });
+  const [shipCfg, setShipCfg] = useState({ mondial_relay_price: "", home_delivery_price: "", policy: "", policy_en: "", policy_es: "" });
+  const [policyLang, setPolicyLang] = useState("fr");
   const [vacCfg, setVacCfg] = useState({ enabled: false, message: "" });
   const [mrStatus, setMrStatus] = useState(null);
 
@@ -131,6 +132,10 @@ export default function Admin() {
         home_delivery_price: parseFloat(shipCfg.home_delivery_price) || 0,
         policy: shipCfg.policy,
       };
+      // Traductions EN/ES de la politique, renvoyées dans le même enregistrement :
+      // le endpoint remplace toute la section, les omettre les effacerait.
+      if (shipCfg.policy_en) body.en = { policy: shipCfg.policy_en };
+      if (shipCfg.policy_es) body.es = { policy: shipCfg.policy_es };
       await api.put("/admin/content/shipping", body);
       toast.success("Paramètres de livraison enregistrés");
     } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
@@ -277,6 +282,8 @@ export default function Admin() {
         mondial_relay_price: s.mondial_relay_price ?? "",
         home_delivery_price: s.home_delivery_price ?? "",
         policy: s.policy ?? "",
+        policy_en: s.en?.policy ?? "",
+        policy_es: s.es?.policy ?? "",
       });
       const v = r.data?.vacation || {};
       setVacCfg({ enabled: !!v.enabled, message: v.message ?? "" });
@@ -467,8 +474,21 @@ export default function Admin() {
                   onChange={(e) => setShipCfg((p) => ({ ...p, home_delivery_price: e.target.value }))}
                   className="w-32 border-2 border-ink rounded-md px-3 py-2 bg-papersoft font-mono text-sm outline-none" />
               </div>
-              <RichEditor label="Politique de livraison" testid="shipping-policy-editor"
-                value={shipCfg.policy} onChange={(v) => setShipCfg((p) => ({ ...p, policy: v }))}
+              <div className="flex flex-wrap items-center gap-2 mb-2" data-testid="shipping-policy-lang-switcher">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-inksoft">Langue du texte :</span>
+                {[["fr", "FR"], ["en", "EN"], ["es", "ES"]].map(([code, label]) => (
+                  <button key={code} type="button" onClick={() => setPolicyLang(code)} data-testid={`shipping-policy-lang-${code}`}
+                    className={`font-mono text-xs uppercase px-2.5 py-1 rounded-md border-2 border-ink ${policyLang === code ? "bg-comicred text-paper" : "bg-paper"}`}>{label}</button>
+                ))}
+              </div>
+              {policyLang !== "fr" && (
+                <p className="font-mono text-xs text-inksoft mb-2 border-l-2 border-comicred pl-3" data-testid="shipping-policy-lang-note">
+                  Vous éditez la traduction {policyLang.toUpperCase()}. Laissée vide, la page publique affiche automatiquement le texte français.
+                </p>
+              )}
+              <RichEditor label={`Politique de livraison (${policyLang.toUpperCase()})`} testid="shipping-policy-editor"
+                value={policyLang === "fr" ? shipCfg.policy : shipCfg[`policy_${policyLang}`]}
+                onChange={(v) => setShipCfg((p) => ({ ...p, [policyLang === "fr" ? "policy" : `policy_${policyLang}`]: v }))}
                 hint="Contenu affiché sur la page publique /politique-livraison (lien en pied de page). Titres, listes et liens possibles." />
               <button onClick={saveShippingCfg} data-testid="shipping-save"
                 className="flex items-center gap-2 bg-ink text-paper font-mono text-xs uppercase tracking-widest px-5 py-3 rounded-md border-2 border-ink hover:bg-comicred transition-colors">
