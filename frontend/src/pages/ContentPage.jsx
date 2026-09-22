@@ -1,21 +1,27 @@
 import { useContent } from "../context/ContentContext";
+import { useLang } from "../context/LanguageContext";
 import { Seo } from "../components/Seo";
 import { sanitizeHtml } from "../lib/richText";
 
 // Pages publiques de contenu administrable. Le HTML provient de site_content
 // (modifiable dans l'admin) et est assaini avant affichage (sanitizeHtml).
+// Pour les pages légales, le contenu suit la langue active (FR/EN/ES) :
+// legal.en.xxx / legal.es.xxx si présents, sinon repli sur la version FR.
+const localized = (c, lang, field) =>
+  (lang !== "fr" && c?.legal?.[lang]?.[field]) || c?.legal?.[field];
+
 const PAGES = {
   "mentions-legales": {
     title: "Mentions légales & Politique de confidentialité",
     seoTitle: "Mentions légales & Politique de confidentialité | Moulin Comics",
     seoDesc: "Mentions légales et politique de confidentialité de Moulin Comics : éditeur, hébergement, données personnelles, cookies et droits RGPD.",
-    get: (c) => c?.legal?.mentions,
+    get: (c, lang) => localized(c, lang, "mentions"),
   },
   "cgv": {
     title: "Conditions générales de vente",
     seoTitle: "Conditions générales de vente | Moulin Comics",
     seoDesc: "Conditions générales de vente de Moulin Comics : commande, paiement sécurisé, livraison, rétractation et garanties légales.",
-    get: (c) => c?.legal?.cgv,
+    get: (c, lang) => localized(c, lang, "cgv"),
   },
   "politique-livraison": {
     title: "Politique de livraison",
@@ -27,9 +33,10 @@ const PAGES = {
 
 export const ContentPage = ({ pageKey }) => {
   const { content } = useContent();
+  const { lang } = useLang();
   const page = PAGES[pageKey];
   if (!page) return null;
-  const html = page.get(content) || "";
+  const html = page.get(content, lang) || "";
   return (
     <div className="max-w-3xl mx-auto px-5 py-14" data-testid={`page-${pageKey}`}>
       <Seo title={page.seoTitle} description={page.seoDesc} path={`/${pageKey}`} />

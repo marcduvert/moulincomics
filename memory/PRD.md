@@ -212,5 +212,11 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - P2: recherche avancée / tri par prix, wishlist.
 - P2: ~~emails de confirmation de commande~~ (fait, avec email d'expédition, via Resend managé).
 
+### Pages légales multilingues (affichage public FR/EN/ES) — 2026-07
+- Bug : `/mentions-legales` et `/cgv` n'affichaient que le FR alors que `legal.en.{mentions,cgv}` et `legal.es.{mentions,cgv}` existaient en base et étaient servis par `GET /api/content`.
+- Cause : `ContentPage.jsx` lisait uniquement `legal.mentions` / `legal.cgv`, ignorant la langue active.
+- Correctif (1 seul fichier, `frontend/src/pages/ContentPage.jsx`) : hook `useLang()` + sélection `legal[lang][field]` avec repli FR. Aucun changement backend, DB, admin, routes, SEO, liens ni design ; `/politique-livraison` non touchée ; titre H1 conservé en français (contenu localisé porte son propre titre h2).
+- Test ciblé preview : FR→EN→ES→FR sur les deux pages, contenu correct et immédiat (PASS). NON DÉPLOYÉ (demande explicite).
+
 ## Credentials
 Voir /app/memory/test_credentials.md
