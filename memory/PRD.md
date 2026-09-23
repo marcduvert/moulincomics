@@ -241,5 +241,9 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Public : volontairement inchangé (Shop VF/VO continue, valeurs existantes préservées).
 - Tests ciblés : cycle complet API (ajout TESTCAT → patch inline produit → renommage TESTCAT2 avec migration → suppression, produit conservé cat "" → restauration VO) + distribution finale identique (VO 43 / VF 1) + filtres publics VF/VO OK + UI onglet/table vérifiés. NON DÉPLOYÉ.
 
+### Boutique : filtres catégories dynamiques — 2026-07 (suite micro-évolution)
+- `Shop.jsx` uniquement : les boutons VO/VF codés en dur sont remplacés par les catégories administrables (`useContent().categories`), affichées seulement si ≥1 produit, avec compteur calculé à la volée (même `useMemo` de comptage que les séries, étendu avec `catCounts`). TOUT / EN STOCK / séries inchangés ; `flex-wrap` ajouté sur la rangée (mobile).
+- Vérifié preview : TOUT (44) / VF (1) / VO (40) / NOUVEAUTÉ (3) — l'utilisateur recatégorisait des produits en direct pendant le test ; clic VO → 40 cartes, TOUT → 44, EN STOCK → 43, série Alpha Flight → 6, mobile 390px sans débordement. NON DÉPLOYÉ.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

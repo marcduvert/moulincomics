@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
+import { useContent } from "../context/ContentContext";
 import { ProductCard } from "../components/ProductCard";
 import { Seo } from "../components/Seo";
 import { absUrl } from "../lib/seo";
@@ -16,7 +17,7 @@ const cacheFresh = () => PRODUCTS_CACHE != null && Date.now() - CACHE_TS < CACHE
 
 export default function Shop() {
   const { t } = useLang();
-  const CATS = [{ v: "", l: t.shop.all }, { v: "VO", l: "VO" }, { v: "VF", l: "VF" }];
+  const { content } = useContent();
   const [params, setParams] = useSearchParams();
   const [allProducts, setAllProducts] = useState(PRODUCTS_CACHE || []);
   const [loading, setLoading] = useState(!cacheFresh());
@@ -38,17 +39,27 @@ export default function Shop() {
 
   // Compteurs calculés à la volée depuis le catalogue courant (jamais stockés,
   // évoluent automatiquement avec les imports). Mêmes données que le filtre existant.
-  const { ranked, counts, noSeriesCount, top, restAlpha } = useMemo(() => {
+  const { ranked, counts, noSeriesCount, top, restAlpha, catCounts } = useMemo(() => {
     const c = {};
+    const cc = {};
     let none = 0;
     for (const p of allProducts) {
       const s = (p.series || "").trim();
       if (s) c[s] = (c[s] || 0) + 1; else none += 1;
+      const k = (p.category || "").trim();
+      if (k) cc[k] = (cc[k] || 0) + 1;
     }
     const r = Object.keys(c).sort((a, b) => c[b] - c[a] || a.localeCompare(b));
-    return { ranked: r, counts: c, noSeriesCount: none,
+    return { ranked: r, counts: c, noSeriesCount: none, catCounts: cc,
              top: r.slice(0, 14), restAlpha: r.slice(9).sort((a, b) => a.localeCompare(b)) };
   }, [allProducts]);
+
+  // Filtres catégories : liste administrable (Admin → Catégories), seules les
+  // catégories contenant ≥1 produit sont affichées, compteur calculé automatiquement.
+  const CATS = [{ v: "", l: t.shop.all, tid: "all" },
+    ...(content?.categories || [])
+      .filter((cat) => catCounts[cat] > 0)
+      .map((cat) => ({ v: cat, l: `${cat} (${catCounts[cat]})`, tid: cat }))];
 
   // Fetch the full catalogue once (or when cache is stale), then filter client-side.
   useEffect(() => {
@@ -117,9 +128,9 @@ export default function Shop() {
           <input data-testid="search-input" value={search} placeholder={t.shop.searchPh}
             onChange={(e) => onSearchChange(e.target.value)}
             className="flex-1 min-w-[200px] bg-transparent border-2 border-ink px-4 py-2.5 font-mono text-sm outline-none focus:bg-papersoft" />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {CATS.map((c) => (
-              <button key={c.l} data-testid={`filter-cat-${c.l}`} onClick={() => setParam("category", c.v)}
+              <button key={c.tid} data-testid={`filter-cat-${c.tid}`} onClick={() => setParam("category", c.v)}
                 className={`font-mono text-xs uppercase tracking-widest px-4 py-2.5 border-2 border-ink transition-colors ${category === c.v ? "bg-ink text-paper" : "hover:bg-papersoft"}`}>
                 {c.l}
               </button>
