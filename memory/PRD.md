@@ -245,6 +245,7 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - `Shop.jsx` uniquement : les boutons VO/VF codés en dur sont remplacés par les catégories administrables (`useContent().categories`), affichées seulement si ≥1 produit, avec compteur calculé à la volée (même `useMemo` de comptage que les séries, étendu avec `catCounts`). TOUT / EN STOCK / séries inchangés ; `flex-wrap` ajouté sur la rangée (mobile).
 - Vérifié preview : TOUT (44) / VF (1) / VO (40) / NOUVEAUTÉ (3) — l'utilisateur recatégorisait des produits en direct pendant le test ; clic VO → 40 cartes, TOUT → 44, EN STOCK → 43, série Alpha Flight → 6, mobile 390px sans débordement. NON DÉPLOYÉ.
 - Correctif recalcul séries : les séries/compteurs sont désormais calculés depuis les produits filtrés par la catégorie active (`catFiltered`), compteurs catégories toujours globaux ; « TOUTES SÉRIES » affiche le total du contexte et une série incompatible avec la nouvelle catégorie est réinitialisée automatiquement (useEffect sur `category`). 6/6 vérifications PASS preview.
+- « × Réinitialiser les filtres » : bouton discret aligné à droite au-dessus de la recherche (`resetFilters` : vide recherche + URL params), visible seulement si catégorie/série/EN STOCK/recherche actif, disparaît après reset. Clé i18n `shop.resetFilters` FR/EN/ES. 3/3 vérifications PASS preview.
 
 ## Credentials
 Voir /app/memory/test_credentials.md

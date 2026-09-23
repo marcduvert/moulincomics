@@ -96,6 +96,14 @@ export default function Shop() {
     setParams(next, { replace: true });
   };
 
+  // Réinitialisation discrète : visible seulement si un filtre/recherche est actif.
+  const hasFilters = !!(category || serie || params.get("stock") === "1" || (search || "").trim());
+  const resetFilters = () => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    setSearch("");
+    setParams(new URLSearchParams(), { replace: true });
+  };
+
   // Debounced sync of search text -> URL (kept for shareable links); filtering is instant below.
   const onSearchChange = (val) => {
     setSearch(val);
@@ -145,6 +153,14 @@ export default function Shop() {
       </div>
 
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-8">
+        {hasFilters && (
+          <div className="flex justify-end mb-1">
+            <button data-testid="reset-filters" onClick={resetFilters}
+              className="font-mono text-[11px] uppercase tracking-widest text-inksoft hover:text-comicred transition-colors">
+              × {t.shop.resetFilters}
+            </button>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-6 mb-8 border-b border-ink/15 pb-6">
           <input data-testid="search-input" value={search} placeholder={t.shop.searchPh}
             onChange={(e) => onSearchChange(e.target.value)}
