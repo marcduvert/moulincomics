@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText, ArrowUpDown, ChevronUp, ChevronDown, Truck, X, Power } from "lucide-react";
+import { Plus, Pencil, Trash2, LogOut, Package, Receipt, Upload, Loader2, Tags, MapPin, Sparkles, Copy, FileText, ArrowUpDown, ChevronUp, ChevronDown, Truck, X, Power, Layers } from "lucide-react";
 import { api, fmtPrice, API } from "../lib/api";
 import { Seo } from "../components/Seo";
 import { RichEditor } from "../components/RichEditor";
 
-const EMPTY = { title: "", author: "", series: "", publisher: "", category: "VO", price: "", stock: 1,
+const EMPTY = { title: "", author: "", series: "", publisher: "", category: "", price: "", stock: 1,
   condition: "Très bon état", year: "", issue: "", description: "", description_en: "", description_es: "", cover_image: "", featured: false };
 
 const fmtAddr = (a) => a
@@ -70,8 +70,8 @@ const InlineField = ({ value, onSave, parse, format, testid }) => {
   );
 };
 
-// Liste déroulante série (table Stock) : enregistrement immédiat au choix.
-const SeriesCell = ({ value, options, onSave, testid }) => {
+// Liste déroulante série/catégorie (table Stock) : enregistrement immédiat au choix.
+const SeriesCell = ({ value, options, onSave, testid, emptyLabel = "Sans série" }) => {
   const [st, setSt] = useState("idle");
   return (
     <span className="inline-flex items-center gap-1">
@@ -88,7 +88,7 @@ const SeriesCell = ({ value, options, onSave, testid }) => {
           }
         }}
         className="bg-transparent border border-transparent hover:border-ink/30 focus:border-ink rounded px-1 py-0.5 font-mono text-xs outline-none max-w-[150px] cursor-pointer">
-        <option value="">Sans série</option>
+        <option value="">{emptyLabel}</option>
         {value && !options.includes(value) && <option value={value}>{value}</option>}
         {options.map((s) => <option key={s} value={s}>{s}</option>)}
       </select>
@@ -193,6 +193,8 @@ export default function Admin() {
     } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
   };
   const [seriesList, setSeriesList] = useState([]);
+  const [catList, setCatList] = useState([]);
+  const [newCat, setNewCat] = useState("");
   const [newSeries, setNewSeries] = useState("");
   const [salons, setSalons] = useState([]);
   const [salonForm, setSalonForm] = useState(null);
@@ -277,6 +279,7 @@ export default function Admin() {
     api.get("/admin/series").then((r) => setSeriesList(r.data)).catch(() => {});
     api.get("/salons").then((r) => setSalons(r.data)).catch(() => {});
     api.get("/content").then((r) => {
+      setCatList(r.data?.categories || []);
       const s = r.data?.shipping || {};
       setShipCfg({
         mondial_relay_price: s.mondial_relay_price ?? "",
@@ -317,6 +320,33 @@ export default function Admin() {
   const delSeries = async (s) => {
     if (!window.confirm(`Supprimer la série "${s.name}" ? Les ${s.product_count} produit(s) associé(s) seront désaffectés.`)) return;
     await api.delete(`/admin/series/${s.id}`); toast.success("Supprimée"); load();
+  };
+
+  // Catégories produits (liste administrable, stockée dans site_content.categories).
+  const refreshProducts = () => api.get("/products").then((r) => setProducts(r.data)).catch(() => {});
+  const addCat = async (e) => {
+    e.preventDefault();
+    const name = newCat.trim();
+    if (!name || catList.includes(name)) return;
+    try {
+      const { data } = await api.put("/admin/content/categories", [...catList, name]);
+      setCatList(data.categories || []); setNewCat(""); toast.success("Catégorie ajoutée");
+    } catch (err) { toast.error(err.response?.data?.detail || "Erreur"); }
+  };
+  const renameCat = async (name) => {
+    const nn = window.prompt("Nouveau nom de la catégorie (les produits associés seront mis à jour) :", name);
+    if (!nn || nn.trim() === name) return;
+    try {
+      const { data } = await api.post("/admin/categories/rename", { old: name, new: nn.trim() });
+      setCatList(data.categories || []); toast.success("Catégorie renommée — produits mis à jour"); refreshProducts();
+    } catch (err) { toast.error(err.response?.data?.detail || "Erreur"); }
+  };
+  const delCat = async (name) => {
+    if (!window.confirm(`Supprimer la catégorie "${name}" ? Les produits associés passeront en « Sans catégorie » (ils ne seront pas supprimés).`)) return;
+    try {
+      const { data } = await api.post("/admin/categories/delete", { name });
+      setCatList(data.categories || []); toast.success("Catégorie supprimée — produits passés en Sans catégorie"); refreshProducts();
+    } catch (err) { toast.error(err.response?.data?.detail || "Erreur"); }
   };
 
   const SALON_EMPTY = { date_label: "", city: "", country: "", name: "", note: "", description: "", website: "", photo: "", ordre: null };
@@ -439,6 +469,9 @@ export default function Admin() {
           </button>
           <button onClick={() => setTab("series")} data-testid="tab-series" className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink ${tab === "series" ? "bg-ink text-paper" : "bg-paper"}`}>
             <Tags size={14} /> Séries ({seriesList.length})
+          </button>
+          <button onClick={() => setTab("categories")} data-testid="tab-categories" className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink ${tab === "categories" ? "bg-ink text-paper" : "bg-paper"}`}>
+            <Layers size={14} /> Catégories ({catList.length})
           </button>
           <button onClick={() => setTab("salons")} data-testid="tab-salons" className={`flex items-center gap-2 font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink ${tab === "salons" ? "bg-ink text-paper" : "bg-paper"}`}>
             <MapPin size={14} /> Salons ({salons.length})
@@ -625,7 +658,10 @@ export default function Admin() {
                             className="font-mono text-[9px] uppercase text-inksoft hover:text-comicblue">Voir le produit ↗</a>
                         </div>
                       </td>
-                      <td className="p-3">{p.category}</td>
+                      <td className="p-3">
+                        <SeriesCell value={p.category || ""} options={catList} emptyLabel="Sans catégorie"
+                          onSave={(v) => patchProduct(p.id, { category: v })} testid={`inline-category-${p.id}`} />
+                      </td>
                       <td className="p-3">
                         <SeriesCell value={p.series || ""} options={seriesList.map((s) => s.name)}
                           onSave={(v) => patchProduct(p.id, { series: v })} testid={`inline-series-${p.id}`} />
@@ -929,6 +965,44 @@ export default function Admin() {
           </>
         )}
 
+        {tab === "categories" && (
+          <>
+            <h1 className="font-display font-black tracking-tighter text-2xl mb-4">Catégories produits</h1>
+            <p className="font-mono text-xs text-inksoft mb-5 border-l-2 border-comicred pl-3 max-w-2xl">
+              Liste utilisée dans la table Stock, le formulaire produit et l'import IA.
+              Renommer met à jour les produits associés ; supprimer les passe en « Sans catégorie » (jamais supprimés).
+            </p>
+            <form onSubmit={addCat} className="flex gap-2 mb-6 max-w-md">
+              <input data-testid="new-category-input" value={newCat} onChange={(e) => setNewCat(e.target.value)}
+                placeholder="Nom de la nouvelle catégorie (ex. Manga)"
+                className="flex-1 border-2 border-ink rounded-md px-3 py-2.5 font-mono text-sm bg-paper outline-none" />
+              <button type="submit" data-testid="add-category-btn"
+                className="flex items-center gap-2 bg-comicred text-paper font-mono text-xs uppercase tracking-widest px-4 py-2.5 rounded-md border-2 border-ink hover:bg-ink transition-colors">
+                <Plus size={14} /> Ajouter
+              </button>
+            </form>
+            <div className="bg-paper border-2 border-ink rounded-md overflow-x-auto">
+              <table className="w-full font-mono text-sm min-w-[480px]">
+                <thead className="bg-ink text-paper text-[11px] uppercase tracking-widest">
+                  <tr><th className="text-left p-3">Catégorie</th><th className="text-right p-3">Actions</th></tr>
+                </thead>
+                <tbody>
+                  {catList.length === 0 && <tr><td colSpan={2} className="p-8 text-center text-inksoft">Aucune catégorie. Ajoutez-en une ci-dessus.</td></tr>}
+                  {catList.map((cat) => (
+                    <tr key={cat} className="border-b border-ink/15" data-testid={`category-row-${cat}`}>
+                      <td className="p-3 font-display font-bold">{cat}</td>
+                      <td className="p-3 text-right whitespace-nowrap">
+                        <button onClick={() => renameCat(cat)} data-testid={`category-edit-${cat}`} className="p-1.5 hover:text-comicblue"><Pencil size={15} /></button>
+                        <button onClick={() => delCat(cat)} data-testid={`category-delete-${cat}`} className="p-1.5 hover:text-comicred"><Trash2 size={15} /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
         {tab === "salons" && (
           <>
             <div className="flex justify-between items-center mb-4">
@@ -1004,8 +1078,11 @@ export default function Admin() {
               <div className="col-span-2">
                 <label className="text-[10px] uppercase tracking-widest text-inksoft">Catégorie</label>
                 <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  data-testid="product-form-category"
                   className="w-full border-2 border-ink px-2 py-2 mt-1 bg-papersoft rounded-md">
-                  <option value="VO">VO</option><option value="VF">VF</option>
+                  <option value="">Sans catégorie</option>
+                  {form.category && !catList.includes(form.category) && <option value={form.category}>{form.category}</option>}
+                  {catList.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
               <div className="col-span-2">

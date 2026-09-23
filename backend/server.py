@@ -558,6 +558,36 @@ async def admin_delete_series(series_id: str, admin: dict = Depends(get_current_
     await db.products.update_many({"series": doc["name"]}, {"$set": {"series": ""}})
     return {"ok": True}
 
+# ----- Catégories produits (liste administrable, site_content.categories) -----
+# L'ajout passe par l'endpoint générique PUT /admin/content/categories.
+# Renommage et suppression migrent les produits associés (jamais supprimés).
+@api.post("/admin/categories/rename")
+async def rename_category(body: dict = Body(...), admin: dict = Depends(get_current_admin)):
+    old = (body.get("old") or "").strip()
+    new = (body.get("new") or "").strip()
+    if not old or not new or old == new:
+        raise HTTPException(400, "Noms invalides")
+    doc = await db.site_content.find_one({"key": "home"}) or {}
+    cats = doc.get("categories") or []
+    if old not in cats:
+        raise HTTPException(404, "Catégorie introuvable")
+    cats = list(dict.fromkeys(new if c == old else c for c in cats))
+    await db.site_content.update_one({"key": "home"}, {"$set": {"categories": cats}}, upsert=True)
+    await db.products.update_many({"category": old}, {"$set": {"category": new}})
+    return {"categories": cats}
+
+@api.post("/admin/categories/delete")
+async def delete_category(body: dict = Body(...), admin: dict = Depends(get_current_admin)):
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(400, "Nom invalide")
+    doc = await db.site_content.find_one({"key": "home"}) or {}
+    cats = [c for c in (doc.get("categories") or []) if c != name]
+    await db.site_content.update_one({"key": "home"}, {"$set": {"categories": cats}}, upsert=True)
+    # Jamais de suppression de produits : ils passent simplement à « Sans catégorie ».
+    await db.products.update_many({"category": name}, {"$set": {"category": ""}})
+    return {"categories": cats}
+
 # ----- Salons (conventions) -----
 class SalonBody(BaseModel):
     date_label: str = ""
@@ -659,6 +689,7 @@ class ProductPatch(BaseModel):
     price: float | None = None
     series: str | None = None
     stock: int | None = None
+    category: str | None = None
 
 @api.patch("/admin/products/{product_id}")
 async def patch_product(product_id: str, patch: ProductPatch, admin: dict = Depends(get_current_admin)):
@@ -675,6 +706,8 @@ async def patch_product(product_id: str, patch: ProductPatch, admin: dict = Depe
         if patch.stock < 0:
             raise HTTPException(400, "Le stock doit être un entier supérieur ou égal à 0")
         updates["stock"] = int(patch.stock)
+    if patch.category is not None:
+        updates["category"] = patch.category.strip()
     if not updates:
         raise HTTPException(400, "Aucune modification")
     res = await db.products.update_one({"_id": ObjectId(product_id)}, {"$set": updates})
@@ -1472,6 +1505,9 @@ SHIPPING_POLICY_HTML = """<p>Cette page détaille les modalités de livraison de
 # FAQ publique (/faq) — initialisation unique au démarrage si la section est absente
 # (seed_faq). Chaque entrée porte ses 3 langues ; l'admin les édite ensuite librement.
 FAQ_CATEGORIES = ["Les comics", "Commande & paiement", "Livraison", "Retours & remboursements", "Moulin Comics"]
+# Catégories produits : liste administrable (Admin → Catégories), stockée dans
+# site_content.categories. Valeurs initiales posées une seule fois par seed_categories().
+PRODUCT_CATEGORIES_DEFAULT = ["VF", "VO", "Nouveauté", "Marvel", "DC", "Comics vintage", "Petits prix", "Collectors"]
 DEFAULT_FAQ_ITEMS = [
     {"category": "Les comics", "order": 1, "active": True,
      "question_fr": "Les comics vendus sur Moulin Comics sont-ils neufs ou d'occasion ?",
@@ -1654,6 +1690,7 @@ DEFAULT_CONTENT = {
     "faq": {
         "items": [],
     },
+    "categories": [],
     "footer": {
         "description": "Comic shop spécialisé en VO. Large stock de mensuels VF — Strange, Nova, Titans. De la case à la caisse depuis toujours.",
         "address": "Paris · France", "email": "bonjour@moulincomics.fr", "phone": "",
@@ -1980,6 +2017,18 @@ async def seed_salons():
         await db.salons.insert_one(s)
     logger.info("Salons seeded")
 
+async def seed_categories():
+    """Initialisation UNIQUE de la liste des catégories produits : ne s'exécute
+    que si la clé « categories » est absente de site_content. Les modifications
+    admin ultérieures (ajouts, renommages, suppressions) ne sont jamais écrasées."""
+    doc = await db.site_content.find_one({"key": "home"}, {"categories": 1})
+    if not doc or "categories" not in doc:
+        await db.site_content.update_one(
+            {"key": "home"},
+            {"$set": {"categories": PRODUCT_CATEGORIES_DEFAULT}},
+            upsert=True)
+        logger.info("Catégories produits initialisées (8 valeurs)")
+
 async def seed_faq():
     """Initialisation UNIQUE de la FAQ : ne s'exécute que si la section « faq »
     est absente du document site_content. Les modifications ultérieures faites
@@ -2006,6 +2055,7 @@ async def startup():
     await seed_series()
     await seed_salons()
     await seed_faq()
+    await seed_categories()
     await _ensure_product_slugs()
     # Migration idempotente : ancien vocabulaire « Traitement » → nouvel état COMMANDE
     await db.payment_transactions.update_many(

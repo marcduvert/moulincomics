@@ -233,5 +233,13 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Réponses FR rédigées par l'agent (maquette FAQ antérieure absente du workspace fork) — cohérentes CGV/politique ; modifiables dans l'admin.
 - Tests ciblés (5/5 PASS preview) : /faq s'ouvre (5 catégories, 19 questions), accordéon ouvre/ferme, FR→EN→ES immédiat, édition admin visible publiquement (marqueur ajouté puis restauré), mobile 390px sans débordement. NON DÉPLOYÉ (demande explicite) — la prod n'aura /faq qu'au prochain déploiement (le seed tournera alors au démarrage).
 
+### Catégories produits administrables — 2026-07 (micro-évolution)
+- Stockage : `site_content.categories` (liste de strings, réutilise la structure existante — aucune nouvelle collection). Seed unique `seed_categories()` au startup (uniquement si clé absente) : VF, VO, Nouveauté, Marvel, DC, Comics vintage, Petits prix, Collectors.
+- Backend : `ProductPatch` accepte `category` ; 2 endpoints `POST /api/admin/categories/rename` (migre les produits vers le nouveau nom) et `/delete` (produits → "" Sans catégorie, jamais supprimés). Ajout via l'existant `PUT /api/admin/content/categories`.
+- Admin.jsx : onglet « Catégories » (pattern copié de Séries : ajout/renommer/supprimer) ; table Stock : cellule catégorie inline = `SeriesCell` réutilisé avec prop `emptyLabel` ; formulaire produit : select dynamique (Sans catégorie + liste) ; EMPTY.category passe à "" (création sans catégorie par défaut).
+- ImportIA.jsx : select catégorie dynamique via `GET /api/content` (source commune) + option Sans catégorie.
+- Public : volontairement inchangé (Shop VF/VO continue, valeurs existantes préservées).
+- Tests ciblés : cycle complet API (ajout TESTCAT → patch inline produit → renommage TESTCAT2 avec migration → suppression, produit conservé cat "" → restauration VO) + distribution finale identique (VO 43 / VF 1) + filtres publics VF/VO OK + UI onglet/table vérifiés. NON DÉPLOYÉ.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

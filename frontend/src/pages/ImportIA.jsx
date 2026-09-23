@@ -49,6 +49,7 @@ export default function ImportIA() {
   const [showLog, setShowLog] = useState(false);
   const [zoomSrc, setZoomSrc] = useState(null);
   const [seriesList, setSeriesList] = useState([]);
+  const [catList, setCatList] = useState([]);
   const filesRef = useRef([]);
   const autoRef = useRef(false);
   const priceRef = useRef("");
@@ -64,6 +65,7 @@ export default function ImportIA() {
   }, [nav, loadSessions]);
   useEffect(() => {
     api.get("/admin/series").then((r) => setSeriesList((r.data || []).map((s) => s.name ?? s))).catch(() => {});
+    api.get("/content").then((r) => setCatList(r.data?.categories || [])).catch(() => {});
   }, []);
   // Popup couverture : fermeture via Échap (croix + clic extérieur gérés dans le JSX)
   useEffect(() => {
@@ -362,7 +364,9 @@ export default function ImportIA() {
                         </td>
                         <td className="p-2 w-16">
                           <select className={inp} value={f.result.category} onChange={(e) => patchResult(f.id, "category", e.target.value)}>
-                            <option value="VO">VO</option><option value="VF">VF</option>
+                            <option value="">Sans catégorie</option>
+                            {f.result.category && !catList.includes(f.result.category) && <option value={f.result.category}>{f.result.category}</option>}
+                            {catList.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                           </select>
                         </td>
                         <td className="p-2 w-16"><input type="number" step="0.01" className={inp} value={f.result.price} placeholder="0" onChange={(e) => patchResult(f.id, "price", e.target.value)} /></td>
