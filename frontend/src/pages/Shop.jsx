@@ -37,22 +37,43 @@ export default function Shop() {
     return () => document.removeEventListener("mousedown", close);
   }, [othersOpen]);
 
-  // Compteurs calculés à la volée depuis le catalogue courant (jamais stockés,
-  // évoluent automatiquement avec les imports). Mêmes données que le filtre existant.
-  const { ranked, counts, noSeriesCount, top, restAlpha, catCounts } = useMemo(() => {
-    const c = {};
+  // Compteurs catégories : toujours calculés sur le catalogue complet.
+  const catCounts = useMemo(() => {
     const cc = {};
-    let none = 0;
     for (const p of allProducts) {
-      const s = (p.series || "").trim();
-      if (s) c[s] = (c[s] || 0) + 1; else none += 1;
       const k = (p.category || "").trim();
       if (k) cc[k] = (cc[k] || 0) + 1;
     }
-    const r = Object.keys(c).sort((a, b) => c[b] - c[a] || a.localeCompare(b));
-    return { ranked: r, counts: c, noSeriesCount: none, catCounts: cc,
-             top: r.slice(0, 14), restAlpha: r.slice(9).sort((a, b) => a.localeCompare(b)) };
+    return cc;
   }, [allProducts]);
+
+  // Produits du contexte courant = catalogue après filtre catégorie uniquement.
+  // Les séries (boutons + compteurs) sont recalculées depuis cette liste.
+  const catFiltered = useMemo(() =>
+    category ? allProducts.filter((p) => (p.category || "") === category) : allProducts,
+    [allProducts, category]);
+
+  // Compteurs séries calculés à la volée depuis le contexte courant (jamais stockés,
+  // évoluent automatiquement avec les imports et la catégorie active).
+  const { ranked, counts, noSeriesCount, top, restAlpha } = useMemo(() => {
+    const c = {};
+    let none = 0;
+    for (const p of catFiltered) {
+      const s = (p.series || "").trim();
+      if (s) c[s] = (c[s] || 0) + 1; else none += 1;
+    }
+    const r = Object.keys(c).sort((a, b) => c[b] - c[a] || a.localeCompare(b));
+    return { ranked: r, counts: c, noSeriesCount: none,
+             top: r.slice(0, 14), restAlpha: r.slice(9).sort((a, b) => a.localeCompare(b)) };
+  }, [catFiltered]);
+
+  // Si la série sélectionnée n'existe pas dans la nouvelle catégorie,
+  // retour automatique à « TOUTES SÉRIES » (le filtre catégorie est conservé).
+  useEffect(() => {
+    if (!serie) return;
+    const exists = serie === NO_SERIES ? noSeriesCount > 0 : (counts[serie] || 0) > 0;
+    if (!exists) setParam("series", "");
+  }, [category]);
 
   // Filtres catégories : liste administrable (Admin → Catégories), seules les
   // catégories contenant ≥1 produit sont affichées, compteur calculé automatiquement.
@@ -146,7 +167,7 @@ export default function Shop() {
           <div className="mb-10" ref={seriesZoneRef}>
             <div className="flex flex-wrap items-center gap-2" data-testid="series-filter-bar">
               <button data-testid="filter-series-all" onClick={() => setParam("series", "")}
-                className={`max-sm:order-1 shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${!serie ? "bg-comicyellow" : "hover:bg-papersoft"}`}>{t.shop.allSeries}</button>
+                className={`max-sm:order-1 shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${!serie ? "bg-comicyellow" : "hover:bg-papersoft"}`}>{t.shop.allSeries} ({catFiltered.length})</button>
               {top.map((s, i) => (
                 <button key={s} data-testid={`filter-series-${s}`} onClick={() => setParam("series", s)}
                   className={`max-sm:order-4 shrink-0 ${i >= 9 ? "hidden sm:inline-block " : ""}font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === s ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
