@@ -1469,6 +1469,145 @@ SHIPPING_POLICY_HTML = """<p>Cette page détaille les modalités de livraison de
 <h2>Responsabilité</h2>
 <p>Moulin Comics demeure responsable de la commande jusqu'à la remise effective du colis au client ou au point relais choisi.</p>"""
 
+# FAQ publique (/faq) — initialisation unique au démarrage si la section est absente
+# (seed_faq). Chaque entrée porte ses 3 langues ; l'admin les édite ensuite librement.
+FAQ_CATEGORIES = ["Les comics", "Commande & paiement", "Livraison", "Retours & remboursements", "Moulin Comics"]
+DEFAULT_FAQ_ITEMS = [
+    {"category": "Les comics", "order": 1, "active": True,
+     "question_fr": "Les comics vendus sur Moulin Comics sont-ils neufs ou d'occasion ?",
+     "answer_fr": "<p>Moulin Comics propose principalement des comics d'occasion et de collection. L'état de chaque exemplaire est indiqué sur sa fiche produit et les photographies permettent d'apprécier l'exemplaire proposé à la vente.</p>",
+     "question_en": "Are the comics sold on Moulin Comics new or second-hand?",
+     "answer_en": "<p>Moulin Comics mainly offers second-hand and collectible comics. The condition of each copy is stated on its product page and the photographs show the actual copy offered for sale.</p>",
+     "question_es": "¿Los cómics vendidos en Moulin Comics son nuevos o de segunda mano?",
+     "answer_es": "<p>Moulin Comics ofrece principalmente cómics de segunda mano y de colección. El estado de cada ejemplar se indica en su ficha de producto y las fotografías permiten apreciar el ejemplar ofrecido a la venta.</p>"},
+    {"category": "Les comics", "order": 2, "active": True,
+     "question_fr": "Les photos correspondent-elles au comic que je vais recevoir ?",
+     "answer_fr": "<p>Oui. Les photographies sont réalisées avec le plus grand soin et présentent l'exemplaire effectivement proposé à la vente. De légères différences de couleur ou d'aspect peuvent toutefois exister selon l'écran ou l'appareil utilisé.</p>",
+     "question_en": "Do the photos match the comic I will receive?",
+     "answer_en": "<p>Yes. Photographs are taken with the greatest care and show the actual copy offered for sale. Slight differences in colour or appearance may however occur depending on your screen or device.</p>",
+     "question_es": "¿Las fotos corresponden al cómic que voy a recibir?",
+     "answer_es": "<p>Sí. Las fotografías se realizan con el mayor cuidado y muestran el ejemplar efectivamente ofrecido a la venta. No obstante, pueden existir ligeras diferencias de color o aspecto según la pantalla o el dispositivo utilizado.</p>"},
+    {"category": "Les comics", "order": 3, "active": True,
+     "question_fr": "Comment est indiqué l'état d'un comic ?",
+     "answer_fr": "<p>L'état de chaque comic est indiqué sur sa fiche produit. Pour les comics d'occasion et de collection, les éventuels défauts sont signalés et les photographies permettent d'évaluer précisément l'exemplaire proposé.</p>",
+     "question_en": "How is the condition of a comic indicated?",
+     "answer_en": "<p>The condition of each comic is stated on its product page. For second-hand and collectible comics, any defects are pointed out and the photographs allow you to assess the exact copy offered.</p>",
+     "question_es": "¿Cómo se indica el estado de un cómic?",
+     "answer_es": "<p>El estado de cada cómic se indica en su ficha de producto. Para los cómics de segunda mano y de colección, los posibles defectos se señalan y las fotografías permiten evaluar con precisión el ejemplar ofrecido.</p>"},
+    {"category": "Les comics", "order": 4, "active": True,
+     "question_fr": "Pourquoi certains comics ne sont-ils disponibles qu'en un seul exemplaire ?",
+     "answer_fr": "<p>De nombreux comics proposés par Moulin Comics sont des pièces d'occasion ou de collection disponibles en un seul exemplaire. Une fois cet exemplaire vendu, il devient indisponible et ne peut pas nécessairement être remplacé par un exemplaire identique.</p>",
+     "question_en": "Why are some comics available as a single copy only?",
+     "answer_en": "<p>Many comics offered by Moulin Comics are second-hand or collectible items available as a single copy. Once that copy is sold, it becomes unavailable and cannot necessarily be replaced by an identical one.</p>",
+     "question_es": "¿Por qué algunos cómics solo están disponibles en un único ejemplar?",
+     "answer_es": "<p>Muchos de los cómics ofrecidos por Moulin Comics son piezas de segunda mano o de colección disponibles en un único ejemplar. Una vez vendido, deja de estar disponible y no siempre puede sustituirse por un ejemplar idéntico.</p>"},
+    {"category": "Les comics", "order": 5, "active": True,
+     "question_fr": "Un comic épuisé peut-il revenir en stock ?",
+     "answer_fr": "<p>Cela arrive : notre stock évolue au gré de nos trouvailles. N'hésitez pas à nous indiquer le comic recherché via la <a href=\"/contact\">page Contact</a> — nous gardons un œil sur nos arrivages.</p>",
+     "question_en": "Can a sold-out comic come back in stock?",
+     "answer_en": "<p>It happens: our stock evolves with our finds. Feel free to tell us which comic you are looking for via the <a href=\"/contact\">Contact page</a> — we keep an eye on our arrivals for you.</p>",
+     "question_es": "¿Un cómic agotado puede volver a estar disponible?",
+     "answer_es": "<p>Puede ocurrir: nuestro stock evoluciona con nuestros hallazgos. No dude en indicarnos el cómic que busca a través de la <a href=\"/contact\">página de Contacto</a>: estaremos atentos a nuestras novedades.</p>"},
+    {"category": "Les comics", "order": 6, "active": True,
+     "question_fr": "Comment trouver rapidement un comic ou une série ?",
+     "answer_fr": "<p>Utilisez la barre de recherche de la <a href=\"/shop\">boutique</a> ou les filtres par série en haut de la page. Vous pouvez aussi n'afficher que les comics en stock.</p>",
+     "question_en": "How can I quickly find a comic or a series?",
+     "answer_en": "<p>Use the search bar in the <a href=\"/shop\">shop</a> or the series filters at the top of the page. You can also display only in-stock comics.</p>",
+     "question_es": "¿Cómo encontrar rápidamente un cómic o una serie?",
+     "answer_es": "<p>Utilice la barra de búsqueda de la <a href=\"/shop\">tienda</a> o los filtros por serie en la parte superior de la página. También puede mostrar únicamente los cómics en stock.</p>"},
+    {"category": "Commande & paiement", "order": 7, "active": True,
+     "question_fr": "Comment passer une commande ?",
+     "answer_fr": "<p>Ajoutez vos comics au panier, cliquez sur « Commander », choisissez votre mode de livraison puis laissez-vous guider jusqu'au paiement sécurisé. Vous recevez ensuite une confirmation par e-mail.</p>",
+     "question_en": "How do I place an order?",
+     "answer_en": "<p>Add your comics to the cart, click \"Checkout\", choose your delivery method and follow the steps to the secure payment. You will then receive a confirmation e-mail.</p>",
+     "question_es": "¿Cómo realizar un pedido?",
+     "answer_es": "<p>Añada sus cómics al carrito, haga clic en «Tramitar pedido», elija su método de entrega y siga los pasos hasta el pago seguro. A continuación recibirá una confirmación por correo electrónico.</p>"},
+    {"category": "Commande & paiement", "order": 8, "active": True,
+     "question_fr": "Le paiement est-il sécurisé ?",
+     "answer_fr": "<p>Oui. Les paiements sont traités par Stripe, plateforme de paiement sécurisée. Vos données bancaires ne transitent jamais par nos serveurs.</p>",
+     "question_en": "Is payment secure?",
+     "answer_en": "<p>Yes. Payments are processed by Stripe, a secure payment platform. Your banking details never pass through our servers.</p>",
+     "question_es": "¿El pago es seguro?",
+     "answer_es": "<p>Sí. Los pagos son procesados por Stripe, una plataforma de pago segura. Sus datos bancarios nunca pasan por nuestros servidores.</p>"},
+    {"category": "Commande & paiement", "order": 9, "active": True,
+     "question_fr": "Puis-je modifier ou annuler ma commande après le paiement ?",
+     "answer_fr": "<p>Contactez-nous au plus vite via la <a href=\"/contact\">page Contact</a> en indiquant votre numéro de commande : tant que la commande n'est pas expédiée, nous faisons le nécessaire.</p>",
+     "question_en": "Can I change or cancel my order after payment?",
+     "answer_en": "<p>Contact us as soon as possible via the <a href=\"/contact\">Contact page</a>, quoting your order number: as long as the order has not been dispatched, we will take care of it.</p>",
+     "question_es": "¿Puedo modificar o cancelar mi pedido después del pago?",
+     "answer_es": "<p>Contáctenos lo antes posible a través de la <a href=\"/contact\">página de Contacto</a> indicando su número de pedido: mientras el pedido no haya sido enviado, nos ocuparemos de ello.</p>"},
+    {"category": "Livraison", "order": 10, "active": True,
+     "question_fr": "Quels modes de livraison proposez-vous ?",
+     "answer_fr": "<p>La livraison à domicile et la livraison en Point Relais ou Locker Mondial Relay. Toutes les modalités (tarifs, zones, délais) sont détaillées sur la page <a href=\"/politique-livraison\">Politique de livraison</a>.</p>",
+     "question_en": "What delivery methods do you offer?",
+     "answer_en": "<p>Home delivery and delivery to a Mondial Relay Point Relais or Locker. All details (rates, areas, times) are on the <a href=\"/politique-livraison\">Shipping Policy</a> page.</p>",
+     "question_es": "¿Qué métodos de entrega ofrecen?",
+     "answer_es": "<p>La entrega a domicilio y la entrega en Point Relais o Locker de Mondial Relay. Todas las condiciones (tarifas, zonas, plazos) se detallan en la página <a href=\"/politique-livraison\">Política de envío</a>.</p>"},
+    {"category": "Livraison", "order": 11, "active": True,
+     "question_fr": "Comment choisir mon Point Relais ou Locker Mondial Relay ?",
+     "answer_fr": "<p>Lors de la commande, choisissez « Point Relais / Locker Mondial Relay », recherchez par code postal ou ville, puis sélectionnez votre point dans la liste avant de valider. Vérifiez-le attentivement avant de confirmer.</p>",
+     "question_en": "How do I choose my Mondial Relay Point Relais or Locker?",
+     "answer_en": "<p>When ordering, choose \"Mondial Relay Point Relais / Locker\", search by postcode or city, then select your point from the list before confirming. Please check it carefully before validating.</p>",
+     "question_es": "¿Cómo elegir mi Point Relais o Locker de Mondial Relay?",
+     "answer_es": "<p>Al realizar el pedido, elija «Point Relais / Locker Mondial Relay», busque por código postal o ciudad y seleccione su punto en la lista antes de confirmar. Verifíquelo atentamente antes de validar.</p>"},
+    {"category": "Livraison", "order": 12, "active": True,
+     "question_fr": "Sous combien de temps ma commande est-elle expédiée ?",
+     "answer_fr": "<p>Nous préparons et expédions les commandes dans un délai maximal de 4 jours ouvrés après confirmation du paiement, sauf circonstances exceptionnelles ou information contraire clairement indiquée sur le site.</p>",
+     "question_en": "How quickly will my order be dispatched?",
+     "answer_en": "<p>We prepare and dispatch orders within a maximum of 4 working days after payment confirmation, except in exceptional circumstances or where otherwise clearly indicated on the site.</p>",
+     "question_es": "¿En cuánto tiempo se envía mi pedido?",
+     "answer_es": "<p>Preparamos y enviamos los pedidos en un plazo máximo de 4 días laborables tras la confirmación del pago, salvo circunstancias excepcionales o información contraria claramente indicada en el sitio.</p>"},
+    {"category": "Livraison", "order": 13, "active": True,
+     "question_fr": "Comment suivre mon colis ?",
+     "answer_fr": "<p>Lors de l'expédition, vous recevez un e-mail avec les informations de suivi dès qu'elles sont disponibles.</p>",
+     "question_en": "How can I track my parcel?",
+     "answer_en": "<p>When your order is dispatched, you receive an e-mail with the tracking information as soon as it is available.</p>",
+     "question_es": "¿Cómo puedo seguir mi paquete?",
+     "answer_es": "<p>Al expedir su pedido, recibirá un correo electrónico con la información de seguimiento en cuanto esté disponible.</p>"},
+    {"category": "Livraison", "order": 14, "active": True,
+     "question_fr": "Que faire si mon colis est endommagé ou n'arrive pas ?",
+     "answer_fr": "<p>Contactez-nous dans les meilleurs délais via la <a href=\"/contact\">page Contact</a> en indiquant votre numéro de commande et, si possible, des photos du colis. Les démarches à suivre sont détaillées dans la <a href=\"/politique-livraison\">Politique de livraison</a>.</p>",
+     "question_en": "What should I do if my parcel is damaged or does not arrive?",
+     "answer_en": "<p>Contact us as soon as possible via the <a href=\"/contact\">Contact page</a>, quoting your order number and, if possible, photos of the parcel. The steps to follow are detailed in the <a href=\"/politique-livraison\">Shipping Policy</a>.</p>",
+     "question_es": "¿Qué hago si mi paquete llega dañado o no llega?",
+     "answer_es": "<p>Contáctenos lo antes posible a través de la <a href=\"/contact\">página de Contacto</a>, indicando su número de pedido y, si es posible, fotos del paquete. Los pasos a seguir se detallan en la <a href=\"/politique-livraison\">Política de envío</a>.</p>"},
+    {"category": "Retours & remboursements", "order": 15, "active": True,
+     "question_fr": "Puis-je retourner un comic si je change d'avis ?",
+     "answer_fr": "<p>Oui, vous disposez d'un droit de rétractation de 14 jours à compter de la réception de votre commande. Les conditions et modalités de retour et de remboursement sont détaillées dans les <a href=\"/cgv\">Conditions Générales de Vente</a>.</p>",
+     "question_en": "Can I return a comic if I change my mind?",
+     "answer_en": "<p>Yes, you have a 14-day right of withdrawal from receipt of your order. The return and refund conditions are detailed in the <a href=\"/cgv\">Terms and Conditions of Sale</a>.</p>",
+     "question_es": "¿Puedo devolver un cómic si cambio de opinión?",
+     "answer_es": "<p>Sí, dispone de un derecho de desistimiento de 14 días a partir de la recepción de su pedido. Las condiciones de devolución y reembolso se detallan en las <a href=\"/cgv\">Condiciones Generales de Venta</a>.</p>"},
+    {"category": "Retours & remboursements", "order": 16, "active": True,
+     "question_fr": "Qui paie les frais de retour en cas de rétractation ?",
+     "answer_fr": "<p>En cas de rétractation, les frais de retour restent à la charge du client, conformément aux <a href=\"/cgv\">Conditions Générales de Vente</a>.</p>",
+     "question_en": "Who pays the return costs in case of withdrawal?",
+     "answer_en": "<p>In case of withdrawal, return costs are borne by the customer, in accordance with the <a href=\"/cgv\">Terms and Conditions of Sale</a>.</p>",
+     "question_es": "¿Quién paga los gastos de devolución en caso de desistimiento?",
+     "answer_es": "<p>En caso de desistimiento, los gastos de devolución corren a cargo del cliente, conforme a las <a href=\"/cgv\">Condiciones Generales de Venta</a>.</p>"},
+    {"category": "Moulin Comics", "order": 17, "active": True,
+     "question_fr": "Puis-je acheter vos comics directement lors d'un salon ou d'une convention ?",
+     "answer_fr": "<p>Oui ! Nous sillonnons les conventions d'Europe avec une sélection triée sur le volet. Consultez l'agenda sur la page <a href=\"/conventions\">Salons</a> et passez nous voir à notre stand.</p>",
+     "question_en": "Can I buy your comics directly at a convention or event?",
+     "answer_en": "<p>Yes! We travel to conventions across Europe with a hand-picked selection. Check the schedule on the <a href=\"/conventions\">Events</a> page and come dig through our booth.</p>",
+     "question_es": "¿Puedo comprar sus cómics directamente en un salón o convención?",
+     "answer_es": "<p>¡Sí! Recorremos las convenciones de Europa con una selección cuidada. Consulte la agenda en la página de <a href=\"/conventions\">Salones</a> y venga a vernos a nuestro stand.</p>"},
+    {"category": "Moulin Comics", "order": 18, "active": True,
+     "question_fr": "Je recherche un comic précis qui n'est pas sur le site. Puis-je vous contacter ?",
+     "answer_fr": "<p>Bien sûr. Écrivez-nous via la <a href=\"/contact\">page Contact</a> en indiquant le titre, la série ou le numéro recherché : nous gardons un œil sur nos arrivages pour vous.</p>",
+     "question_en": "I am looking for a specific comic that is not on the site. Can I contact you?",
+     "answer_en": "<p>Of course. Write to us via the <a href=\"/contact\">Contact page</a> with the title, series or issue number you are looking for: we keep an eye on our arrivals for you.</p>",
+     "question_es": "Busco un cómic concreto que no está en el sitio. ¿Puedo contactarles?",
+     "answer_es": "<p>Por supuesto. Escríbanos a través de la <a href=\"/contact\">página de Contacto</a> indicando el título, la serie o el número que busca: estaremos atentos a nuestras novedades por usted.</p>"},
+    {"category": "Moulin Comics", "order": 19, "active": True,
+     "question_fr": "Comment contacter Moulin Comics ?",
+     "answer_fr": "<p>Via la <a href=\"/contact\">page Contact</a> du site, par e-mail ou par téléphone — nos coordonnées complètes figurent sur la page <a href=\"/mentions-legales\">Mentions légales</a>.</p>",
+     "question_en": "How can I contact Moulin Comics?",
+     "answer_en": "<p>Via the <a href=\"/contact\">Contact page</a> of the site, by e-mail or by phone — our full details are on the <a href=\"/mentions-legales\">Legal Notice</a> page.</p>",
+     "question_es": "¿Cómo contactar con Moulin Comics?",
+     "answer_es": "<p>A través de la <a href=\"/contact\">página de Contacto</a> del sitio, por correo electrónico o por teléfono — nuestros datos completos figuran en la página de <a href=\"/mentions-legales\">Aviso legal</a>.</p>"},
+]
+
 DEFAULT_CONTENT = {
     "hero": {
         "eyebrow": "Comic Shop · VO & VF · Paris",
@@ -1511,6 +1650,9 @@ DEFAULT_CONTENT = {
     "legal": {
         "mentions": LEGAL_MENTIONS_HTML,
         "cgv": LEGAL_CGV_HTML,
+    },
+    "faq": {
+        "items": [],
     },
     "footer": {
         "description": "Comic shop spécialisé en VO. Large stock de mensuels VF — Strange, Nova, Titans. De la case à la caisse depuis toujours.",
@@ -1838,6 +1980,19 @@ async def seed_salons():
         await db.salons.insert_one(s)
     logger.info("Salons seeded")
 
+async def seed_faq():
+    """Initialisation UNIQUE de la FAQ : ne s'exécute que si la section « faq »
+    est absente du document site_content. Les modifications ultérieures faites
+    dans l'admin (y compris la suppression de toutes les questions) ne sont
+    jamais écrasées : la clé existe dès le premier seed."""
+    doc = await db.site_content.find_one({"key": "home"}, {"faq": 1})
+    if not doc or "faq" not in doc:
+        await db.site_content.update_one(
+            {"key": "home"},
+            {"$set": {"faq": {"items": DEFAULT_FAQ_ITEMS}}},
+            upsert=True)
+        logger.info("FAQ initialisée (19 questions FR/EN/ES)")
+
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
@@ -1850,6 +2005,7 @@ async def startup():
     await seed_products()
     await seed_series()
     await seed_salons()
+    await seed_faq()
     await _ensure_product_slugs()
     # Migration idempotente : ancien vocabulaire « Traitement » → nouvel état COMMANDE
     await db.payment_transactions.update_many(

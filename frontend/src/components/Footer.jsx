@@ -57,6 +57,8 @@ export const Footer = () => {
       <Link to="/cgv" data-testid="footer-cgv" className="underline hover:text-comicyellow">CGV</Link>
       {" · "}
       <Link to="/politique-livraison" data-testid="footer-shipping-policy" className="underline hover:text-comicyellow">Politique de livraison</Link>
+      {" · "}
+      <Link to="/faq" data-testid="footer-faq" className="underline hover:text-comicyellow">FAQ</Link>
     </div>
   </footer>
   );

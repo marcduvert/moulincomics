@@ -17,6 +17,7 @@ import AdminLogin from "./pages/AdminLogin";
 import Admin from "./pages/Admin";
 import ImportIA from "./pages/ImportIA";
 import { ContentPage } from "./pages/ContentPage";
+import Faq from "./pages/Faq";
 import SiteContent from "./pages/SiteContent";
 import Contact from "./pages/Contact";
 import { CookieConsent } from "./components/CookieConsent";
@@ -67,6 +68,7 @@ const Layout = () => {
         <Route path="/mentions-legales" element={<ContentPage pageKey="mentions-legales" />} />
         <Route path="/cgv" element={<ContentPage pageKey="cgv" />} />
         <Route path="/politique-livraison" element={<ContentPage pageKey="politique-livraison" />} />
+        <Route path="/faq" element={<Faq />} />
         <Route path="/payment/success" element={<PaymentSuccess />} />
         <Route path="/payment/cancel" element={<PaymentCancel />} />
       </Routes>

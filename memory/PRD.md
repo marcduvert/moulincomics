@@ -226,5 +226,12 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Tests preview : 3 pages publiques FR/EN/ES (H1 + contenu) PASS ; admin Livraison charge les 3 langues, tarifs 4.9/7.9 intacts. Déploiement production demandé par l'utilisateur (2026-07).
 - DÉPLOYÉ en production (2026-07) : les contenus légaux FR/EN/ES et la politique de livraison ont été copiés de la preview vers la base PRODUCTION via l'API admin (les bases preview/prod sont séparées ; tarifs prod 3.5/7.5 préservés, différents de la preview). Vérifié en ligne sur moulincomics.com : 3 pages × 3 langues PASS. Note : l'utilisateur a saisi ses propres formulations EN/ES de la politique de livraison dans l'admin production (« Política de envíos », « This page explains the shipping terms ») — elles priment et ne doivent pas être écrasées par celles de la preview.
 
+### FAQ administrable (/faq) — 2026-07 (micro-évolution)
+- Backend : `DEFAULT_FAQ_ITEMS` (19 questions FR/EN/ES, 5 catégories fixes) + `DEFAULT_CONTENT["faq"]={"items":[]}` + `seed_faq()` au startup — seed UNIQUEMENT si la clé `faq` est absente de site_content (idempotent, n'écrase jamais les edits admin, même suppression totale). Aucun nouvel endpoint : réutilise `GET /api/content` et `PUT /api/admin/content/faq`.
+- Admin : onglet « FAQ » dans Contenu du site (`SiteContent.jsx`) — par entrée : catégorie (select 5 valeurs), ordre, actif, question/réponse FR+EN+ES (RichEditor → liens internes). Ajout/suppression/monter-descendre (swap des `order`). Save dédié `saveFaq` (ignore le sélecteur de langue).
+- Public : `pages/Faq.jsx` (route `/faq`, Storefront → header/footer existants) — accordéon Radix (`ui/accordion`), groupé par catégorie, tri `order`, actifs seulement, champs `question_{lang}`/`answer_{lang}` avec repli FR, CTA → /contact. Clés i18n `pages.faq*` (titre, sous-titre, CTA, SEO, catégories) dans LanguageContext. Lien footer après Politique de livraison.
+- Réponses FR rédigées par l'agent (maquette FAQ antérieure absente du workspace fork) — cohérentes CGV/politique ; modifiables dans l'admin.
+- Tests ciblés (5/5 PASS preview) : /faq s'ouvre (5 catégories, 19 questions), accordéon ouvre/ferme, FR→EN→ES immédiat, édition admin visible publiquement (marqueur ajouté puis restauré), mobile 390px sans débordement. NON DÉPLOYÉ (demande explicite) — la prod n'aura /faq qu'au prochain déploiement (le seed tournera alors au démarrage).
+
 ## Credentials
 Voir /app/memory/test_credentials.md

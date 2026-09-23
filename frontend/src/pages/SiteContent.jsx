@@ -7,7 +7,8 @@ import { Seo } from "../components/Seo";
 import { RichEditor } from "../components/RichEditor";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
-const TABS = [["hero", "Accueil"], ["maison", "La Maison"], ["salons", "Salons"], ["footer", "Footer"], ["contact", "Contact"], ["legal", "Pages légales"], ["seo", "SEO"]];
+const TABS = [["hero", "Accueil"], ["maison", "La Maison"], ["salons", "Salons"], ["footer", "Footer"], ["contact", "Contact"], ["legal", "Pages légales"], ["faq", "FAQ"], ["seo", "SEO"]];
+const FAQ_CATEGORIES = ["Les comics", "Commande & paiement", "Livraison", "Retours & remboursements", "Moulin Comics"];
 const LANGS = [["fr", "Français"], ["en", "English"], ["es", "Español"]];
 
 const Field = ({ label, value, onChange, textarea, placeholder, count, testid }) => (
@@ -97,6 +98,31 @@ export default function SiteContent() {
   };
 
   if (!ready || !c) return <div className="min-h-screen bg-ink text-paper flex items-center justify-center font-mono text-sm">Chargement…</div>;
+
+  // FAQ : chaque entrée porte ses 3 langues (question_fr/en/es, answer_fr/en/es),
+  // l'onglet ignore donc le sélecteur de langue et enregistre toujours la section complète.
+  const faqItems = (c.faq?.items || []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const setFaqItems = (items) => setC((p) => ({ ...p, faq: { ...(p.faq || {}), items } }));
+  const updFaq = (i, k, v) => { const arr = faqItems.map((it) => ({ ...it })); arr[i][k] = v; setFaqItems(arr); };
+  const moveFaq = (i, d) => {
+    const arr = faqItems.map((it) => ({ ...it })); const j = i + d;
+    if (j < 0 || j >= arr.length) return;
+    const tmp = arr[i].order ?? i; arr[i].order = arr[j].order ?? j; arr[j].order = tmp;
+    setFaqItems(arr);
+  };
+  const addFaq = () => setFaqItems([...faqItems, {
+    category: FAQ_CATEGORIES[0], question_fr: "", answer_fr: "", question_en: "", answer_en: "",
+    question_es: "", answer_es: "", order: faqItems.reduce((m, it) => Math.max(m, it.order ?? 0), 0) + 1, active: true,
+  }]);
+  const saveFaq = async () => {
+    setSaving(true);
+    try {
+      const { data } = await api.put("/admin/content/faq", { items: c.faq?.items || [] });
+      setC(data);
+      toast.success("FAQ enregistrée");
+    } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
+    finally { setSaving(false); }
+  };
 
   const SaveBar = ({ sec }) => (
     <div className="flex gap-2 mt-2 flex-wrap">
@@ -264,6 +290,66 @@ export default function SiteContent() {
                 value={val("legal", "cgv")} onChange={(v) => setField("legal", "cgv", v)}
                 hint="Page publique : /cgv" />
               <SaveBar sec="legal" />
+            </>
+          )}
+
+          {tab === "faq" && (
+            <>
+              <h2 className="font-display font-black text-xl mb-2">FAQ — page publique /faq</h2>
+              <p className="font-mono text-xs text-inksoft mb-5 border-l-2 border-comicred pl-3">
+                Chaque question porte ses trois langues ci-dessous (le sélecteur de langue en haut ne s'applique pas à cet onglet).
+                Sur le site, seules les entrées « actives » sont affichées, par catégorie puis par ordre.
+              </p>
+              {faqItems.map((it, i) => (
+                <div key={i} className="border-2 border-ink rounded-md p-4 mb-4" data-testid={`faq-item-${i}`}>
+                  <div className="flex flex-wrap items-end gap-3 mb-3">
+                    <div>
+                      <label className="font-mono text-[10px] uppercase tracking-widest text-inksoft block mb-1">Catégorie</label>
+                      <select value={it.category} onChange={(e) => updFaq(i, "category", e.target.value)} data-testid={`faq-category-${i}`}
+                        className="border-2 border-ink rounded-md px-3 py-2 bg-papersoft font-mono text-sm outline-none">
+                        {FAQ_CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-mono text-[10px] uppercase tracking-widest text-inksoft block mb-1">Ordre</label>
+                      <input type="number" value={it.order ?? 0} onChange={(e) => updFaq(i, "order", parseInt(e.target.value) || 0)}
+                        data-testid={`faq-order-${i}`}
+                        className="w-20 border-2 border-ink rounded-md px-3 py-2 bg-papersoft font-mono text-sm outline-none" />
+                    </div>
+                    <label className="flex items-center gap-2 font-mono text-xs uppercase cursor-pointer pb-2">
+                      <input type="checkbox" checked={it.active !== false} onChange={(e) => updFaq(i, "active", e.target.checked)}
+                        data-testid={`faq-active-${i}`} className="w-4 h-4 accent-comicred" /> Actif
+                    </label>
+                    <div className="flex gap-1 ml-auto pb-1">
+                      <button onClick={() => moveFaq(i, -1)} data-testid={`faq-up-${i}`} className="border border-ink p-2 rounded hover:bg-papersoft"><ArrowUp size={12} /></button>
+                      <button onClick={() => moveFaq(i, 1)} data-testid={`faq-down-${i}`} className="border border-ink p-2 rounded hover:bg-papersoft"><ArrowDown size={12} /></button>
+                      <button onClick={() => setFaqItems(faqItems.filter((_, j) => j !== i))} data-testid={`faq-delete-${i}`} className="text-comicred p-2"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                  <div className="grid lg:grid-cols-3 gap-4">
+                    {["fr", "en", "es"].map((L) => (
+                      <div key={L} className="border border-ink/20 rounded-md p-3">
+                        <p className="font-mono text-[10px] uppercase tracking-widest text-comicred mb-2">{L === "fr" ? "Français" : L === "en" ? "English" : "Español"}</p>
+                        <Field label={`Question ${L.toUpperCase()}`} value={it[`question_${L}`]} onChange={(v) => updFaq(i, `question_${L}`, v)} testid={`faq-q${L}-${i}`} />
+                        <RichEditor label={`Réponse ${L.toUpperCase()}`} testid={`faq-a${L}-${i}`}
+                          value={it[`answer_${L}`]} onChange={(v) => updFaq(i, `answer_${L}`, v)}
+                          hint="Liens internes possibles : /contact, /cgv, /politique-livraison, /conventions" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <button onClick={addFaq} data-testid="faq-add"
+                className="flex items-center gap-2 font-mono text-xs uppercase border-2 border-ink px-4 py-2.5 rounded-md hover:bg-papersoft mb-4">
+                <Plus size={13} /> Ajouter une question
+              </button>
+              <div className="flex gap-2 mt-2 flex-wrap">
+                <button onClick={saveFaq} disabled={saving} data-testid="save-faq"
+                  className="flex items-center gap-2 bg-ink text-paper font-mono text-xs uppercase tracking-widest px-5 py-3 rounded-md border-2 border-ink hover:bg-comicred transition-colors disabled:opacity-40">
+                  {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Enregistrer la FAQ
+                </button>
+                <a href="/faq" target="_blank" rel="noreferrer" className="flex items-center font-mono text-xs uppercase px-4 py-3 border-2 border-ink rounded-md hover:bg-papersoft">Voir la page ↗</a>
+              </div>
             </>
           )}
 
