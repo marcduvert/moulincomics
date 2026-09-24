@@ -1,64 +1,113 @@
 import { Link } from "react-router-dom";
 import { useLang } from "../context/LanguageContext";
-import { useContent } from "../context/ContentContext";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./ui/accordion";
+
+// Footer — refonte ciblée : accroche contact, identité, menus EXPLORER / INFOS /
+// SUIVRE (colonnes desktop, accordéons mobile), barre légale discrète.
+// Les liens Nouveautés / Petits prix réutilisent le filtre catégorie existant de
+// la Boutique (query param ?category=, strictement identique à une sélection manuelle).
+const INSTAGRAM_URL = "https://www.instagram.com/moulin_comics/";
 
 export const Footer = () => {
-  const { t, lang } = useLang();
-  const { content } = useContent();
-  const base = content?.footer || {};
-  const clean = (o) => Object.fromEntries(Object.entries(o || {})
-    .filter(([k, v]) => v !== "" && v != null && k !== "en" && k !== "es"));
-  const defaults = { description: t.footer.desc, address: "", email: "", phone: "", social: "", links: [] };
-  const f = lang === "fr"
-    ? { ...defaults, ...clean(base) }
-    : { ...defaults, address: base.address || "", email: base.email || "", phone: base.phone || "",
-        links: base.links || [], ...clean(base[lang]) };
+  const { t } = useLang();
+  const f = t.footer;
+  const linkCls = "hover:text-comicyellow transition-colors";
+  const menus = [
+    {
+      title: f.explore, tid: "explore",
+      links: [
+        { to: "/shop", label: t.nav.shop, tid: "footer-explore-shop" },
+        { to: "/shop?category=Nouveauté", label: f.newArrivals, tid: "footer-explore-nouveautes" },
+        { to: "/shop?category=Petits prix", label: f.cheap, tid: "footer-explore-petits-prix" },
+        { to: "/conventions", label: f.agenda, tid: "footer-explore-salons" },
+      ],
+    },
+    {
+      title: f.infos, tid: "infos",
+      links: [
+        { to: "/politique-livraison", label: f.delivery, tid: "footer-info-livraison" },
+        { to: "/faq", label: "FAQ", tid: "footer-info-faq" },
+        { to: "/contact", label: t.nav.contact, tid: "footer-info-contact" },
+      ],
+    },
+    { title: f.follow, tid: "follow", instagram: true },
+  ];
+
+  const MenuLinks = ({ links }) => (
+    <ul className="space-y-2 font-mono text-sm">
+      {links.map((l) => <li key={l.tid}><Link to={l.to} data-testid={l.tid} className={linkCls}>{l.label}</Link></li>)}
+    </ul>
+  );
+  const InstagramLink = () => (
+    <ul className="space-y-2 font-mono text-sm">
+      <li><a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" data-testid="footer-instagram" className={linkCls}>Instagram ↗</a></li>
+    </ul>
+  );
+
   return (
   <footer className="bg-ink text-paper mt-24">
-    <div className="max-w-[1400px] mx-auto px-6 py-16 grid md:grid-cols-4 gap-10">
-      <div className="md:col-span-2">
-        <h3 className="font-anton text-4xl sm:text-5xl leading-none">MOULIN<br/>COMICS</h3>
-        <p className="font-mono text-sm text-paper/60 mt-4 max-w-sm">{f.description || t.footer.desc}</p>
-      </div>
-      <div className="font-mono text-sm">
-        <p className="uppercase tracking-[0.2em] text-paper/40 mb-4">{t.footer.explore}</p>
-        <ul className="space-y-2">
-          <li><Link to="/shop" className="hover:text-comicyellow">{t.nav.shop}</Link></li>
-          <li><Link to="/shop?category=VO" className="hover:text-comicyellow">{t.nav.vo}</Link></li>
-          <li><Link to="/shop?category=VF" className="hover:text-comicyellow">{t.nav.vf}</Link></li>
-          <li><Link to="/conventions" className="hover:text-comicyellow">{t.nav.salons}</Link></li>
-          {(f.links || []).map((l, i) => (
-            <li key={i}><a href={l.url} className="hover:text-comicyellow">{l.label}</a></li>
-          ))}
-        </ul>
-      </div>
-      <div className="font-mono text-sm">
-        <p className="uppercase tracking-[0.2em] text-paper/40 mb-4">{t.footer.contact}</p>
-        <ul className="space-y-2 text-paper/70">
-          {f.email && <li>{f.email}</li>}
-          {f.phone && <li>{f.phone}</li>}
-          {f.address && <li>{f.address}</li>}
-          {f.social && <li className="text-paper/50">{f.social}</li>}
-          <li><Link to="/contact" className="hover:text-comicyellow">{t.nav.contact}</Link></li>
-          <li><Link to="/admin/login" className="hover:text-comicyellow">{t.footer.manager}</Link></li>
-        </ul>
+    {/* Bloc d'accroche */}
+    <div className="border-b border-paper/15" data-testid="footer-cta">
+      <div className="max-w-[1400px] mx-auto px-6 py-10 flex flex-wrap items-center justify-between gap-6">
+        <div>
+          <p className="font-display font-black tracking-tight text-2xl sm:text-3xl">{f.ctaTitle}</p>
+          <p className="font-mono text-sm text-paper/60 mt-2">{f.ctaSub}</p>
+        </div>
+        <Link to="/contact" data-testid="footer-cta-contact"
+          className="shrink-0 font-mono text-xs uppercase tracking-widest border-2 border-paper px-5 py-3 hover:bg-comicyellow hover:text-ink hover:border-comicyellow transition-colors">
+          {f.ctaLink} →
+        </Link>
       </div>
     </div>
+
+    <div className="max-w-[1400px] mx-auto px-6 py-12">
+      <div className="mb-10">
+        <h3 className="font-anton text-4xl leading-none">MOULIN<br/>COMICS</h3>
+        <p className="font-mono text-sm text-paper/60 mt-3">{f.baseline}</p>
+      </div>
+
+      {/* Desktop : 3 colonnes */}
+      <div className="hidden sm:grid sm:grid-cols-3 gap-10" data-testid="footer-menus-desktop">
+        {menus.map((m) => (
+          <nav key={m.tid}>
+            <p className="font-mono uppercase tracking-[0.2em] text-paper/40 text-xs mb-4">{m.title}</p>
+            {m.instagram ? <InstagramLink /> : <MenuLinks links={m.links} />}
+          </nav>
+        ))}
+      </div>
+
+      {/* Mobile : accordéons (composant accordéon existant du projet) */}
+      <div className="sm:hidden" data-testid="footer-menus-mobile">
+        <Accordion type="multiple">
+          {menus.map((m) => (
+            <AccordionItem key={m.tid} value={m.tid} className="border-paper/15">
+              <AccordionTrigger data-testid={`footer-acc-${m.tid}`}
+                className="font-mono uppercase tracking-[0.2em] text-xs text-paper/70 hover:no-underline py-3">
+                {m.title}
+              </AccordionTrigger>
+              <AccordionContent className="pb-4">
+                {m.instagram ? <InstagramLink /> : <MenuLinks links={m.links} />}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </div>
+    </div>
+
+    {/* Barre légale */}
     <div className="border-t border-paper/15 py-4 text-center font-mono text-xs text-paper/40">
-      © {new Date().getFullYear()} MOULIN COMICS — {t.footer.rights}
+      © {new Date().getFullYear()} MOULIN COMICS
+      {" · "}
+      <Link to="/mentions-legales" data-testid="footer-legal" className="hover:text-comicyellow">{f.legalMentions}</Link>
+      {" · "}
+      <Link to="/cgv" data-testid="footer-cgv" className="hover:text-comicyellow">CGV</Link>
+      {" · "}
+      <Link to="/politique-livraison" data-testid="footer-shipping-policy" className="hover:text-comicyellow">{t.pages?.shippingTitle || "Politique de livraison"}</Link>
       {" · "}
       <button onClick={() => window.dispatchEvent(new Event("open-cookie-consent"))}
-        data-testid="cookie-reopen" className="underline hover:text-comicyellow">
+        data-testid="cookie-reopen" className="hover:text-comicyellow">
         {t.cookie.reopen}
       </button>
-      {" · "}
-      <Link to="/mentions-legales" data-testid="footer-legal" className="underline hover:text-comicyellow">Mentions légales &amp; Confidentialité</Link>
-      {" · "}
-      <Link to="/cgv" data-testid="footer-cgv" className="underline hover:text-comicyellow">CGV</Link>
-      {" · "}
-      <Link to="/politique-livraison" data-testid="footer-shipping-policy" className="underline hover:text-comicyellow">Politique de livraison</Link>
-      {" · "}
-      <Link to="/faq" data-testid="footer-faq" className="underline hover:text-comicyellow">FAQ</Link>
     </div>
   </footer>
   );

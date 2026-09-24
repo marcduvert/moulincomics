@@ -247,5 +247,11 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Correctif recalcul séries : les séries/compteurs sont désormais calculés depuis les produits filtrés par la catégorie active (`catFiltered`), compteurs catégories toujours globaux ; « TOUTES SÉRIES » affiche le total du contexte et une série incompatible avec la nouvelle catégorie est réinitialisée automatiquement (useEffect sur `category`). 6/6 vérifications PASS preview.
 - « × Réinitialiser les filtres » : bouton discret aligné à droite au-dessus de la recherche (`resetFilters` : vide recherche + URL params), visible seulement si catégorie/série/EN STOCK/recherche actif, disparaît après reset. Clé i18n `shop.resetFilters` FR/EN/ES. 3/3 vérifications PASS preview.
 
+### Refonte footer — 2026-07 (micro-modification)
+- `Footer.jsx` réécrit (composant ciblé) : bloc d'accroche « VOUS CHERCHEZ UN COMIC EN PARTICULIER ? » → /contact ; identité MOULIN COMICS + baseline ; menus EXPLORER (Boutique, Nouveautés → /shop?category=Nouveauté, Petits prix → /shop?category=Petits prix — réutilise le query param existant), INFOS (Livraison/FAQ/Contact), SUIVRE (Instagram ↗ https://www.instagram.com/moulin_comics/ — handle trouvé dans les textes footer prod, nouvel onglet) ; colonnes desktop / accordéons mobile (ui/accordion Radix existant) ; barre légale discrète (© + 3 pages légales + Préférences cookies conservé pour RGPD).
+- Clés i18n `footer.*` ajoutées FR/EN/ES (baseline, cta*, newArrivals, cheap, agenda, infos, delivery, follow, legalMentions).
+- Retirés de l'affichage footer (spéc) : ancienne description administrable (« 50 000 comics », Vinted, infos juridiques), liens custom admin, lien Espace gérant (route /admin/login inchangée). L'onglet admin Footer existe toujours mais ses champs ne s'affichent plus dans le footer.
+- 12/12 vérifications PASS preview (clics réels sur tous les liens, accordéons mobile, visuels desktop+mobile). Note : un déploiement déclenché par l'utilisateur tournait PENDANT ce chantier → il n'inclut PAS le footer ; redéploiement nécessaire pour l'avoir en ligne.
+
 ## Credentials
 Voir /app/memory/test_credentials.md
