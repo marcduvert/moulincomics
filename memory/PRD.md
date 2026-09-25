@@ -270,5 +270,10 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - `ProductDetail.jsx` : la section « Dans le même rayon » interroge désormais `/products?category=<p.category>` (au lieu de `series`) et affiche tous les produits de la même catégorie.
 - Pagination progressive : `visible` (state, init 8, reset à chaque changement d'`id`), affiche `related.slice(0, visible)`, bouton `data-testid="see-more-related"` (`t.product.seeMore` FR « Voir plus » / EN « See more » / ES « Ver más ») incrémente de 8. Vérifié preview : 8 → 16.
 
+## Navigation précédent/suivant même série (25/09/2026) — livré preview, NON DÉPLOYÉ
+- `ProductDetail.jsx` : bloc compact `data-testid="series-nav"` placé APRÈS le contenu principal/réassurance et AVANT « Dans le même rayon ». Liens `series-prev` / `series-next` (texte + flèche ArrowLeft/ArrowRight, font-mono uppercase, bordure fine, hover comicred).
+- Données : réutilise `related` (déjà chargé par catégorie), filtré par `x.series === p.series` — AUCUN nouvel appel API ni endpoint. Tri par `issue` numérique (parseFloat), tolérant aux trous (préc/suiv = produit réellement disponible). Rien si pas de série / série à un seul produit / pas de voisin. Aucun numéro/lien inventé.
+- « Dans le même rayon » inchangé. Vérifié preview : milieu (#42→préc #41/suiv #44), premier (#40→suiv seul), dernier (#44→préc #42), single-série (rien), clic → bonne fiche + scrollY 0.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

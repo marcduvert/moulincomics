@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ShoppingBag, Check } from "lucide-react";import { api, fmtPrice } from "../lib/api";
+import { ShoppingBag, Check, ArrowLeft, ArrowRight } from "lucide-react";import { api, fmtPrice } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
 import { useCart } from "../context/CartContext";
 import { ProductCard } from "../components/ProductCard";
@@ -41,6 +41,27 @@ export default function ProductDetail() {
   const localizedDesc = (lang === "en" && p.description_en) ? p.description_en
     : (lang === "es" && p.description_es) ? p.description_es
     : p.description;
+
+  // --- Navigation précédent / suivant dans la même série (réutilise `related` déjà chargé) ---
+  const seriesNav = (() => {
+    if (!p.series) return { prev: null, next: null };
+    const mates = related.filter((x) => x.series === p.series);
+    if (mates.length === 0) return { prev: null, next: null };
+    const num = (x) => {
+      const n = parseFloat(String(x.issue || "").replace(",", "."));
+      return isNaN(n) ? null : n;
+    };
+    const all = [...mates, p].sort((a, b) => {
+      const na = num(a), nb = num(b);
+      if (na != null && nb != null && na !== nb) return na - nb;
+      if (na != null && nb == null) return -1;
+      if (na == null && nb != null) return 1;
+      return String(a.title).localeCompare(String(b.title));
+    });
+    const idx = all.findIndex((x) => x.id === p.id);
+    return { prev: idx > 0 ? all[idx - 1] : null, next: idx < all.length - 1 ? all[idx + 1] : null };
+  })();
+  const navLabel = (x) => `${x.series}${x.issue ? ` #${x.issue}` : ""}`;
 
   // --- SEO dynamique (données réelles du produit uniquement) ---
   const titleParts = [p.title];
@@ -144,6 +165,27 @@ export default function ProductDetail() {
           </p>
         </div>
       </section>
+
+      {(seriesNav.prev || seriesNav.next) && (
+        <section data-testid="series-nav" className="max-w-[1400px] mx-auto px-4 sm:px-8">
+          <div className="border-t-2 border-ink grid grid-cols-1 sm:grid-cols-2 font-mono text-xs sm:text-sm uppercase tracking-[0.15em]">
+            {seriesNav.prev ? (
+              <Link to={`/product/${seriesNav.prev.slug || seriesNav.prev.id}`} data-testid="series-prev"
+                className="flex items-center gap-3 py-5 hover:text-comicred transition-colors">
+                <ArrowLeft size={16} className="shrink-0" />
+                <span className="line-clamp-1">{navLabel(seriesNav.prev)}</span>
+              </Link>
+            ) : <div className="hidden sm:block" />}
+            {seriesNav.next ? (
+              <Link to={`/product/${seriesNav.next.slug || seriesNav.next.id}`} data-testid="series-next"
+                className="flex items-center sm:justify-end gap-3 py-5 border-t-2 sm:border-t-0 border-ink/15 hover:text-comicred transition-colors">
+                <span className="line-clamp-1">{navLabel(seriesNav.next)}</span>
+                <ArrowRight size={16} className="shrink-0" />
+              </Link>
+            ) : <div />}
+          </div>
+        </section>
+      )}
 
       {related.length > 0 && (
         <section className="max-w-[1400px] mx-auto px-4 sm:px-8 py-16">
