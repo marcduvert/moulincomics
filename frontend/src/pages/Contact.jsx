@@ -45,12 +45,16 @@ export default function Contact() {
       <Seo title={`${t.contact.title} | Moulin Comics`}
         description="Contactez Moulin Comics — comics Marvel, DC et BD de collection." path="/contact" />
       <div className="border-b-2 border-ink">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-12 sm:py-16">
-          <p className="font-mono text-xs uppercase tracking-[0.3em] text-comicred mb-2">Moulin Comics</p>
-          <h1 className="font-display font-black tracking-tighter text-4xl sm:text-5xl lg:text-6xl">{t.contact.title}</h1>
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-10 sm:py-14">
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-comicred mb-3">Moulin Comics</p>
+          <h1 className="font-display font-black tracking-tighter text-4xl sm:text-5xl lg:text-6xl leading-[0.95]">
+            {t.contact.heroTitle.map((line, i) => (
+              <span key={i} className="block">{line}</span>
+            ))}
+          </h1>
         </div>
       </div>
-      <div className="max-w-[640px] mx-auto px-4 sm:px-8 py-12 sm:py-16">
+      <div className="max-w-[640px] mx-auto px-4 sm:px-8 pt-8 sm:pt-10 pb-12 sm:pb-16">
         <Reveal>
           {cc.photo && (
             <img src={cc.photo} alt="Moulin Comics — Contact" data-testid="contact-photo"

@@ -30,6 +30,7 @@ const T = {
       back: "Retour", condition: "État", stock: "Stock", publisher: "Éditeur", year: "Année",
       copies: "exemplaire(s)", soldOut: "Épuisé", by: "par", addToCart: "Ajouter au panier",
       sameShelf: "Dans le même rayon",
+      reassurance: "Expédition soignée · Paiement sécurisé · Domicile ou point relais",
     },
     cart: {
       title: "Panier", empty: "Votre panier est vide.", total: "TOTAL",
@@ -51,7 +52,7 @@ const T = {
     },
     card: { lastCopy: "Dernier ex.", inStock: "En stock", soldOut: "Épuisé" },
     contact: {
-      title: "Contact", intro: "Une question sur un comic, une commande ou un salon ? Écrivez-nous.",
+      title: "Contact", heroTitle: ["Une question ?", "Un comic introuvable ?", "Écrivez-nous."], intro: "Une question sur un comic, une commande ou un salon ? Écrivez-nous.",
       name: "Nom", email: "Email", subject: "Objet", message: "Message", send: "Envoyer",
       sending: "Envoi…", success: "Message envoyé — nous vous répondrons rapidement.",
       error: "L'envoi a échoué. Réessayez dans un instant.",
@@ -133,6 +134,7 @@ const T = {
       back: "Back", condition: "Condition", stock: "Stock", publisher: "Publisher", year: "Year",
       copies: "copy(ies)", soldOut: "Sold out", by: "by", addToCart: "Add to cart",
       sameShelf: "On the same shelf",
+      reassurance: "Careful shipping · Secure payment · Home or pickup point",
     },
     cart: {
       title: "Cart", empty: "Your cart is empty.", total: "TOTAL",
@@ -154,7 +156,7 @@ const T = {
     },
     card: { lastCopy: "Last one", inStock: "In stock", soldOut: "Sold out" },
     contact: {
-      title: "Contact", intro: "A question about a comic, an order or an event? Write to us.",
+      title: "Contact", heroTitle: ["A question?", "A comic you can't find?", "Write to us."], intro: "A question about a comic, an order or an event? Write to us.",
       name: "Name", email: "Email", subject: "Subject", message: "Message", send: "Send",
       sending: "Sending…", success: "Message sent — we will reply shortly.",
       error: "Sending failed. Please try again in a moment.",
@@ -236,6 +238,7 @@ const T = {
       back: "Volver", condition: "Estado", stock: "Stock", publisher: "Editorial", year: "Año",
       copies: "ejemplar(es)", soldOut: "Agotado", by: "por", addToCart: "Añadir al carrito",
       sameShelf: "En la misma estantería",
+      reassurance: "Envío cuidado · Pago seguro · Domicilio o punto de recogida",
     },
     cart: {
       title: "Carrito", empty: "Tu carrito está vacío.", total: "TOTAL",
@@ -257,7 +260,7 @@ const T = {
     },
     card: { lastCopy: "Último ej.", inStock: "En stock", soldOut: "Agotado" },
     contact: {
-      title: "Contacto", intro: "¿Una pregunta sobre un cómic, un pedido o un salón? Escríbenos.",
+      title: "Contacto", heroTitle: ["¿Una pregunta?", "¿Un cómic imposible de encontrar?", "Escríbenos."], intro: "¿Una pregunta sobre un cómic, un pedido o un salón? Escríbenos.",
       name: "Nombre", email: "Email", subject: "Asunto", message: "Mensaje", send: "Enviar",
       sending: "Enviando…", success: "Mensaje enviado — le responderemos pronto.",
       error: "El envío ha fallado. Inténtelo de nuevo en un instante.",

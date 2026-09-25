@@ -260,5 +260,11 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - `App.js` `Layout` : `useEffect` global — `navType === "PUSH" && !loc.hash` → `window.scrollTo(0,0)` (deps `loc.key`). Les filtres Boutique (`setParams … replace:true`) et les ancres (`/conventions#agenda`) conservent leur scroll.
 - Vérifié preview : baseline/CTA/Instagram admin → footer ; EN cta_title traduit + fallback EN/ES i18n ; Boutique/Nouveautés/Petits prix/fiche produit/Contact/FAQ/CGV/Livraison/Mentions/header → scrollY 0 ; `#agenda` → section visible ; ADMIN → /admin ; mobile OK. Données de test restaurées. NON DÉPLOYÉ.
 
+## Micro-améliorations UX (25/09/2026) — livré preview, NON DÉPLOYÉ
+- Fiche produit (`ProductDetail.jsx`) : ligne réassurance sous « Ajouter au panier » — `data-testid="product-reassurance"`, `t.product.reassurance` (i18n FR/EN/ES), font-mono uppercase text-inksoft centrée `mt-3`. Aucun encadré/picto. Panier/Stripe/Mondial Relay/« même rayon » intacts.
+- Header (`Header.jsx`) : suppression des entrées nav VO et VF (desktop + mobile, même array `links`). Menu = Bienvenue · Boutique · Salons · Contact. Catégories VO/VF de la Boutique NON touchées (badge VO visible sur fiche).
+- Contact (`Contact.jsx`) : hero titre éditorial 3 lignes via `t.contact.heroTitle` (array i18n FR/EN/ES, `<span className="block">`), surtitre MOULIN COMICS conservé. Espacement réduit (hero `py-10 sm:py-14`, contenu `pt-8 sm:pt-10 pb-12 sm:pb-16`). `top_text` CMS conservé (`cc.top_text || t.contact.intro`). Formulaire/photo/champs intacts.
+- i18n : ajout `product.reassurance` et `contact.heroTitle` dans FR/EN/ES de `LanguageContext.jsx`.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

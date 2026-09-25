@@ -13,8 +13,6 @@ export const Header = () => {
   const links = [
     { to: "/", label: t.nav.welcome },
     { to: "/shop", label: t.nav.shop },
-    { to: "/shop?category=VO", label: t.nav.vo },
-    { to: "/shop?category=VF", label: t.nav.vf },
     { to: "/conventions", label: t.nav.salons },
     { to: "/contact", label: t.nav.contact },
   ];

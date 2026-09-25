@@ -136,6 +136,10 @@ export default function ProductDetail() {
             className="w-full mt-8 bg-comicred text-paper font-mono uppercase tracking-[0.2em] text-sm py-5 border-2 border-ink flex items-center justify-center gap-3 hover:bg-ink transition-colors disabled:opacity-40">
             {p.stock > 0 ? <><ShoppingBag size={16} /> {t.product.addToCart}</> : <><Check size={16} /> {t.product.soldOut}</>}
           </button>
+          <p data-testid="product-reassurance"
+            className="font-mono text-[10px] sm:text-xs uppercase tracking-[0.15em] text-inksoft text-center mt-3">
+            {t.product.reassurance}
+          </p>
         </div>
       </section>
 
