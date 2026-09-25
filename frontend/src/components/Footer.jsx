@@ -1,16 +1,21 @@
 import { Link } from "react-router-dom";
 import { useLang } from "../context/LanguageContext";
+import { useContent } from "../context/ContentContext";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./ui/accordion";
 
 // Footer — refonte ciblée : accroche contact, identité, menus EXPLORER / INFOS /
 // SUIVRE (colonnes desktop, accordéons mobile), barre légale discrète.
 // Les liens Nouveautés / Petits prix réutilisent le filtre catégorie existant de
 // la Boutique (query param ?category=, strictement identique à une sélection manuelle).
-const INSTAGRAM_URL = "https://www.instagram.com/moulin_comics/";
+// Textes CTA / présentation / URL Instagram administrables (Contenu du site > Footer).
 
 export const Footer = () => {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const { content } = useContent();
   const f = t.footer;
+  const fb = content?.footer || {};
+  const cms = (k, fallback) => (lang === "fr" ? fb[k] : fb[lang]?.[k]) || fallback;
+  const INSTAGRAM_URL = fb.instagram_url || "https://www.instagram.com/moulin_comics/";
   const linkCls = "hover:text-comicyellow transition-colors";
   const menus = [
     {
@@ -50,12 +55,12 @@ export const Footer = () => {
     <div className="border-b border-paper/15" data-testid="footer-cta">
       <div className="max-w-[1400px] mx-auto px-6 py-10 flex flex-wrap items-center justify-between gap-6">
         <div>
-          <p className="font-display font-black tracking-tight text-2xl sm:text-3xl">{f.ctaTitle}</p>
-          <p className="font-mono text-sm text-paper/60 mt-2">{f.ctaSub}</p>
+          <p className="font-display font-black tracking-tight text-2xl sm:text-3xl" data-testid="footer-cta-title">{cms("cta_title", f.ctaTitle)}</p>
+          <p className="font-mono text-sm text-paper/60 mt-2" data-testid="footer-cta-text">{cms("cta_text", f.ctaSub)}</p>
         </div>
         <Link to="/contact" data-testid="footer-cta-contact"
           className="shrink-0 font-mono text-xs uppercase tracking-widest border-2 border-paper px-5 py-3 hover:bg-comicyellow hover:text-ink hover:border-comicyellow transition-colors">
-          {f.ctaLink} →
+          {cms("cta_button", f.ctaLink)} →
         </Link>
       </div>
     </div>
@@ -63,7 +68,7 @@ export const Footer = () => {
     <div className="max-w-[1400px] mx-auto px-6 py-12">
       <div className="mb-10">
         <h3 className="font-anton text-4xl leading-none">MOULIN<br/>COMICS</h3>
-        <p className="font-mono text-sm text-paper/60 mt-3">{f.baseline}</p>
+        <p className="font-mono text-sm text-paper/60 mt-3" data-testid="footer-baseline">{cms("baseline", f.baseline)}</p>
       </div>
 
       {/* Desktop : 3 colonnes */}
@@ -108,6 +113,8 @@ export const Footer = () => {
         data-testid="cookie-reopen" className="hover:text-comicyellow">
         {t.cookie.reopen}
       </button>
+      {" · "}
+      <Link to="/admin" data-testid="footer-admin" className="hover:text-comicyellow">ADMIN</Link>
     </div>
   </footer>
   );

@@ -372,12 +372,18 @@ export default function SiteContent() {
           {tab === "footer" && (
             <>
               <h2 className="font-display font-black text-xl mb-4">Footer</h2>
-              <Field label="Présentation courte" textarea value={val("footer", "description")} onChange={(v) => setField("footer", "description", v)} placeholder={ph("footer", "description")} />
+              <p className="font-mono text-[10px] uppercase tracking-widest text-comicred mb-2">Identité</p>
+              <Field label="Texte de présentation" textarea testid="footer-baseline-input" value={val("footer", "baseline")} onChange={(v) => setField("footer", "baseline", v)} placeholder={ph("footer", "baseline")} />
+              <p className="font-mono text-[10px] uppercase tracking-widest text-comicred mb-2 mt-6">Bloc contact / accroche</p>
+              <Field label="Titre" testid="footer-cta-title-input" value={val("footer", "cta_title")} onChange={(v) => setField("footer", "cta_title", v)} placeholder={ph("footer", "cta_title")} />
+              <Field label="Texte" testid="footer-cta-text-input" value={val("footer", "cta_text")} onChange={(v) => setField("footer", "cta_text", v)} placeholder={ph("footer", "cta_text")} />
+              <Field label="Texte du bouton (lien vers la page Contact)" testid="footer-cta-button-input" value={val("footer", "cta_button")} onChange={(v) => setField("footer", "cta_button", v)} placeholder={ph("footer", "cta_button")} />
+              <p className="font-mono text-[10px] uppercase tracking-widest text-comicred mb-2 mt-6">Coordonnées & Instagram</p>
               <div className="grid sm:grid-cols-2 gap-4">
                 <Field label="Adresse" value={val("footer", "address")} onChange={(v) => setField("footer", "address", v)} placeholder={ph("footer", "address")} />
                 <Field label="Email" value={val("footer", "email")} onChange={(v) => setField("footer", "email", v)} placeholder={ph("footer", "email")} />
                 <Field label="Téléphone" value={val("footer", "phone")} onChange={(v) => setField("footer", "phone", v)} placeholder={ph("footer", "phone")} />
-                <Field label="Réseaux sociaux (texte)" value={val("footer", "social")} onChange={(v) => setField("footer", "social", v)} placeholder={ph("footer", "social")} />
+                <Field label="Instagram — URL (s'ouvre dans un nouvel onglet)" testid="footer-instagram-input" value={val("footer", "instagram_url")} onChange={(v) => setField("footer", "instagram_url", v)} placeholder={ph("footer", "instagram_url") || "https://www.instagram.com/…"} />
               </div>
               <SaveBar sec="footer" />
             </>

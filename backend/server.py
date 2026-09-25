@@ -1695,6 +1695,11 @@ DEFAULT_CONTENT = {
         "description": "Comic shop spécialisé en VO. Large stock de mensuels VF — Strange, Nova, Titans. De la case à la caisse depuis toujours.",
         "address": "Paris · France", "email": "bonjour@moulincomics.fr", "phone": "",
         "social": "", "links": [],
+        "baseline": "Des comics à lire, à chercher, à collectionner.",
+        "cta_title": "VOUS CHERCHEZ UN COMIC EN PARTICULIER ?",
+        "cta_text": "Dites-nous ce qui manque à votre collection.",
+        "cta_button": "NOUS CONTACTER",
+        "instagram_url": "https://www.instagram.com/moulin_comics/",
     },
 }
 CONTENT_SECTIONS = set(DEFAULT_CONTENT.keys())

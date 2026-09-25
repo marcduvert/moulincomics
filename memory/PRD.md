@@ -253,5 +253,12 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Retirés de l'affichage footer (spéc) : ancienne description administrable (« 50 000 comics », Vinted, infos juridiques), liens custom admin, lien Espace gérant (route /admin/login inchangée). L'onglet admin Footer existe toujours mais ses champs ne s'affichent plus dans le footer.
 - 12/12 vérifications PASS preview (clics réels sur tous les liens, accordéons mobile, visuels desktop+mobile). Note : un déploiement déclenché par l'utilisateur tournait PENDANT ce chantier → il n'inclut PAS le footer ; redéploiement nécessaire pour l'avoir en ligne.
 
+### Admin Footer + lien ADMIN + scroll haut de page — 2026-07 (micro-modification)
+- Backend `DEFAULT_CONTENT.footer` : ajout `baseline`, `cta_title`, `cta_text`, `cta_button`, `instagram_url` (défauts FR fournis par l'utilisateur ; `description`/`social`/`links` conservés en base, non affichés).
+- `SiteContent.jsx` onglet Footer : Identité (Texte de présentation → `baseline`), Bloc contact (Titre/Texte/Texte du bouton), Coordonnées (Adresse/Email/Téléphone conservés) + « Instagram — URL ». Multilingue FR/EN/ES via `val/setField` existants.
+- `Footer.jsx` : lit `content.footer` (`cms(k, fallback)` : FR → champ FR ; EN/ES → champ traduit sinon i18n `t.footer.*`) ; Instagram = `footer.instagram_url` (nouvel onglet) ; lien discret `ADMIN` → `/admin` (redirige vers /admin/login si non connecté, auth inchangée) dans la barre légale, desktop + mobile.
+- `App.js` `Layout` : `useEffect` global — `navType === "PUSH" && !loc.hash` → `window.scrollTo(0,0)` (deps `loc.key`). Les filtres Boutique (`setParams … replace:true`) et les ancres (`/conventions#agenda`) conservent leur scroll.
+- Vérifié preview : baseline/CTA/Instagram admin → footer ; EN cta_title traduit + fallback EN/ES i18n ; Boutique/Nouveautés/Petits prix/fiche produit/Contact/FAQ/CGV/Livraison/Mentions/header → scrollY 0 ; `#agenda` → section visible ; ADMIN → /admin ; mobile OK. Données de test restaurées. NON DÉPLOYÉ.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

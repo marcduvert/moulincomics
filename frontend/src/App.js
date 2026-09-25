@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from "react-router-dom";
 import { Toaster } from "sonner";
 import { CartProvider } from "./context/CartContext";
 import { LanguageProvider } from "./context/LanguageContext";
@@ -46,6 +47,12 @@ const Storefront = ({ children }) => {
 
 const Layout = () => {
   const loc = useLocation();
+  const navType = useNavigationType();
+  // Nouvelle route interne (PUSH, sans ancre) → toujours afficher le haut de page.
+  // Les filtres Boutique (replace) et les ancres (#agenda) conservent leur scroll.
+  useEffect(() => {
+    if (navType === "PUSH" && !loc.hash) window.scrollTo(0, 0);
+  }, [loc.key, loc.hash, navType]);
   const isAdmin = loc.pathname.startsWith("/admin");
   if (isAdmin) {
     return (
