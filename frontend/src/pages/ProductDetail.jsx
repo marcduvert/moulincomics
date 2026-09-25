@@ -166,6 +166,17 @@ export default function ProductDetail() {
         </div>
       </section>
 
+      {p.moulin_eye_text && (
+        <section data-testid="moulin-eye" className="max-w-[1400px] mx-auto px-4 sm:px-8 pb-4">
+          <div className="border-2 border-ink bg-papersoft p-5 sm:p-6">
+            <p className="font-mono text-[10px] sm:text-xs uppercase tracking-[0.2em] text-comicred mb-3">
+              L'œil du Moulin{p.moulin_eye_type ? ` — ${p.moulin_eye_type}` : ""}
+            </p>
+            <p className="font-mono text-sm sm:text-base leading-relaxed text-ink">{p.moulin_eye_text}</p>
+          </div>
+        </section>
+      )}
+
       {(seriesNav.prev || seriesNav.next) && (
         <section data-testid="series-nav" className="max-w-[1400px] mx-auto px-4 sm:px-8">
           <div className="border-t-2 border-ink grid grid-cols-1 sm:grid-cols-2 font-mono text-xs sm:text-sm uppercase tracking-[0.15em]">

@@ -275,5 +275,11 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Données : réutilise `related` (déjà chargé par catégorie), filtré par `x.series === p.series` — AUCUN nouvel appel API ni endpoint. Tri par `issue` numérique (parseFloat), tolérant aux trous (préc/suiv = produit réellement disponible). Rien si pas de série / série à un seul produit / pas de voisin. Aucun numéro/lien inventé.
 - « Dans le même rayon » inchangé. Vérifié preview : milieu (#42→préc #41/suiv #44), premier (#40→suiv seul), dernier (#44→préc #42), single-série (rien), clic → bonne fiche + scrollY 0.
 
+## L'œil du Moulin — note éditoriale fiche produit (25/09/2026) — livré preview, NON inclus dans le déploiement en cours
+- Backend (`server.py`) : 2 champs optionnels ajoutés à `Product` ET `ProductCreate` — `moulin_eye_type` (label stable) + `moulin_eye_text`. Passent par les endpoints create/update existants (`Product(**body.model_dump())`). Aucune collection/migration ; produits existants → champs vides par défaut.
+- Admin (`Admin.jsx`) : dans le modal produit (après le bloc Série), select `field-moulin-eye-type` (Aucun / À LIRE / BELLE COUVERTURE / PETIT PRIX / À DÉNICHER / POUR COMMENCER / CONSEIL DU MOULIN) + textarea `field-moulin-eye-text`. `EMPTY` mis à jour ; l'édition utilise `{...EMPTY, ...data}` (GET /products/:id renvoie les champs). Table produits inchangée (pas d'indicateur).
+- Fiche publique (`ProductDetail.jsx`) : section `data-testid="moulin-eye"` affichée uniquement si `moulin_eye_text` non vide, placée APRÈS la réassurance et AVANT la nav préc/suiv. Surtitre « L'œil du Moulin — {type} » (comicred) + commentaire. Si type vide → « L'œil du Moulin » seul. Bordure ink + fond papersoft, full width mobile.
+- V1 : pas de traduction du commentaire (FR unique) ; pas d'affichage Home/catalogue/Pièces de choix. Vérifié preview via PUT/GET admin : sauvegarde OK, bloc affiché avec type+texte, absent sans texte. Données de test restaurées (aucun produit modifié).
+
 ## Credentials
 Voir /app/memory/test_credentials.md

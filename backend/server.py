@@ -414,6 +414,8 @@ class Product(BaseModel):
     description: Optional[str] = ""       # FR / défaut
     description_en: Optional[str] = ""
     description_es: Optional[str] = ""
+    moulin_eye_type: Optional[str] = ""   # L'œil du Moulin — type (label stable)
+    moulin_eye_text: Optional[str] = ""   # L'œil du Moulin — commentaire éditorial
     cover_image: str = ""
     featured: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -438,6 +440,8 @@ class ProductCreate(BaseModel):
     description: Optional[str] = ""
     description_en: Optional[str] = ""
     description_es: Optional[str] = ""
+    moulin_eye_type: Optional[str] = ""
+    moulin_eye_text: Optional[str] = ""
     cover_image: str = ""
     featured: bool = False
 

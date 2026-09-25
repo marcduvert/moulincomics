@@ -7,7 +7,8 @@ import { Seo } from "../components/Seo";
 import { RichEditor } from "../components/RichEditor";
 
 const EMPTY = { title: "", author: "", series: "", publisher: "", category: "", price: "", stock: 1,
-  condition: "Très bon état", year: "", issue: "", description: "", description_en: "", description_es: "", cover_image: "", featured: false };
+  condition: "Très bon état", year: "", issue: "", description: "", description_en: "", description_es: "",
+  moulin_eye_type: "", moulin_eye_text: "", cover_image: "", featured: false };
 
 const fmtAddr = (a) => a
   ? [a.line1, a.line2, [a.postal_code, a.city].filter(Boolean).join(" "), a.country].filter(Boolean)
@@ -1093,6 +1094,21 @@ export default function Admin() {
                   {seriesList.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
                 </select>
                 <p className="text-[10px] text-inksoft mt-1">Gérez la liste dans l'onglet « Séries ».</p>
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] uppercase tracking-widest text-inksoft">L'œil du Moulin — Type</label>
+                <select data-testid="field-moulin-eye-type" value={form.moulin_eye_type || ""} onChange={(e) => setForm({ ...form, moulin_eye_type: e.target.value })}
+                  className="w-full border-2 border-ink px-2 py-2 mt-1 bg-papersoft rounded-md">
+                  {["", "À LIRE", "BELLE COUVERTURE", "PETIT PRIX", "À DÉNICHER", "POUR COMMENCER", "CONSEIL DU MOULIN"].map((v) => (
+                    <option key={v || "none"} value={v}>{v || "Aucun"}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] uppercase tracking-widest text-inksoft">L'œil du Moulin — Commentaire</label>
+                <textarea data-testid="field-moulin-eye-text" value={form.moulin_eye_text || ""} onChange={(e) => setForm({ ...form, moulin_eye_text: e.target.value })} rows={3}
+                  placeholder="Note éditoriale du Moulin (facultatif) — laisser vide pour ne rien afficher"
+                  className="w-full border-2 border-ink px-2 py-2 mt-1 bg-papersoft outline-none rounded-md" />
               </div>
               <div className="col-span-2">
                 <label className="text-[10px] uppercase tracking-widest text-inksoft">Description (FR)</label>
