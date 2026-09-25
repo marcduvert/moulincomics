@@ -266,5 +266,9 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Contact (`Contact.jsx`) : hero titre éditorial 3 lignes via `t.contact.heroTitle` (array i18n FR/EN/ES, `<span className="block">`), surtitre MOULIN COMICS conservé. Espacement réduit (hero `py-10 sm:py-14`, contenu `pt-8 sm:pt-10 pb-12 sm:pb-16`). `top_text` CMS conservé (`cc.top_text || t.contact.intro`). Formulaire/photo/champs intacts.
 - i18n : ajout `product.reassurance` et `contact.heroTitle` dans FR/EN/ES de `LanguageContext.jsx`.
 
+## Section « Dans le même rayon » — catégorie + Voir plus (25/09/2026) — livré preview, NON DÉPLOYÉ
+- `ProductDetail.jsx` : la section « Dans le même rayon » interroge désormais `/products?category=<p.category>` (au lieu de `series`) et affiche tous les produits de la même catégorie.
+- Pagination progressive : `visible` (state, init 8, reset à chaque changement d'`id`), affiche `related.slice(0, visible)`, bouton `data-testid="see-more-related"` (`t.product.seeMore` FR « Voir plus » / EN « See more » / ES « Ver más ») incrémente de 8. Vérifié preview : 8 → 16.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

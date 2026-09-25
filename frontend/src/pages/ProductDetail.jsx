@@ -14,10 +14,12 @@ export default function ProductDetail() {
   const { t, lang } = useLang();
   const [p, setP] = useState(null);
   const [related, setRelated] = useState([]);
+  const [visible, setVisible] = useState(8);
   const { add } = useCart();
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    setVisible(8);
     api.get(`/products/${id}`).then((r) => {
       // Redirection 301 côté client : ancienne URL technique ou ancien slug → URL SEO canonique
       if (r.data.slug && r.data.slug !== id) {
@@ -25,9 +27,9 @@ export default function ProductDetail() {
         return;
       }
       setP(r.data);
-      if (r.data.series) {
-        api.get("/products", { params: { series: r.data.series } })
-          .then((rr) => setRelated(rr.data.filter((x) => x.id !== r.data.id).slice(0, 4)));
+      if (r.data.category) {
+        api.get("/products", { params: { category: r.data.category } })
+          .then((rr) => setRelated(rr.data.filter((x) => x.id !== r.data.id)));
       } else {
         setRelated([]);
       }
@@ -147,8 +149,16 @@ export default function ProductDetail() {
         <section className="max-w-[1400px] mx-auto px-4 sm:px-8 py-16">
           <h2 className="font-anton text-2xl sm:text-3xl uppercase mb-8">{t.product.sameShelf}</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {related.map((r, i) => <ProductCard key={r.id} product={r} index={i} />)}
+            {related.slice(0, visible).map((r, i) => <ProductCard key={r.id} product={r} index={i} />)}
           </div>
+          {related.length > visible && (
+            <div className="flex justify-center mt-10">
+              <button data-testid="see-more-related" onClick={() => setVisible((v) => v + 8)}
+                className="font-mono uppercase tracking-[0.2em] text-sm px-8 py-4 border-2 border-ink hover:bg-ink hover:text-paper transition-colors">
+                {t.product.seeMore}
+              </button>
+            </div>
+          )}
         </section>
       )}
     </div>

@@ -31,6 +31,7 @@ const T = {
       copies: "exemplaire(s)", soldOut: "Épuisé", by: "par", addToCart: "Ajouter au panier",
       sameShelf: "Dans le même rayon",
       reassurance: "Expédition soignée · Paiement sécurisé · Domicile ou point relais",
+      seeMore: "Voir plus",
     },
     cart: {
       title: "Panier", empty: "Votre panier est vide.", total: "TOTAL",
@@ -135,6 +136,7 @@ const T = {
       copies: "copy(ies)", soldOut: "Sold out", by: "by", addToCart: "Add to cart",
       sameShelf: "On the same shelf",
       reassurance: "Careful shipping · Secure payment · Home or pickup point",
+      seeMore: "See more",
     },
     cart: {
       title: "Cart", empty: "Your cart is empty.", total: "TOTAL",
@@ -239,6 +241,7 @@ const T = {
       copies: "ejemplar(es)", soldOut: "Agotado", by: "por", addToCart: "Añadir al carrito",
       sameShelf: "En la misma estantería",
       reassurance: "Envío cuidado · Pago seguro · Domicilio o punto de recogida",
+      seeMore: "Ver más",
     },
     cart: {
       title: "Carrito", empty: "Tu carrito está vacío.", total: "TOTAL",
