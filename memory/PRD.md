@@ -304,5 +304,8 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Portée : marqueur visible UNIQUEMENT dans Home > Pièces de choix (prop-gated) ; Boutique / Dans le même rayon / autres listes non impactés (vérifié : 0 marqueur en Boutique).
 - Vérifié preview (type « À LIRE » temporaire sur 1 featured, puis restauré) : sous-titre OK, 1 seul marqueur, texte complet non affiché, Boutique sans marqueur.
 
+## Taille logo header (28/09/2026) — livré preview, NON déployé
+- `Header.jsx` : classe du `<img>` logo passée de `h-11` à `h-[53px] sm:h-[57px]` (mobile +20 % ≈53px, desktop +30 % ≈57px). Proportions conservées (`w-auto object-contain`), fichier source inchangé. Header reste `h-16` (~66px avec bordure). Vérifié preview : aucun chevauchement, nav/langue/panier alignés.
+
 ## Credentials
 Voir /app/memory/test_credentials.md
