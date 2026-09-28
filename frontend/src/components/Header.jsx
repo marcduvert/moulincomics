@@ -19,9 +19,9 @@ export const Header = () => {
   return (
     <header className="sticky top-0 z-50 bg-paper border-b-2 border-ink">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        <Link to="/" data-testid="logo-link" className="flex items-center gap-2.5 shrink-0">
-          <img src="/logo.png" alt="Moulin Comics" className="h-[53px] sm:h-[57px] w-auto object-contain" />
-          <span className="font-display font-black tracking-tighter text-lg hidden sm:block">MOULIN COMICS</span>
+        <Link to="/" data-testid="logo-link" className="group flex items-center gap-2.5 shrink-0">
+          <img src="/logo.png" alt="Moulin Comics" className="h-[53px] sm:h-[57px] w-auto object-contain transition-transform duration-300 ease-out group-hover:scale-105 group-hover:-rotate-3" />
+          <span className="font-display font-black tracking-tighter text-lg hidden sm:block transition-colors duration-300 group-hover:text-comicred">MOULIN COMICS</span>
         </Link>
         <nav className="hidden md:flex items-center gap-8 font-mono text-xs uppercase tracking-[0.15em]">
           {links.map((l) => (
