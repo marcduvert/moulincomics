@@ -292,5 +292,10 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - CORRECTION : décorateur `@api.get("/files/{path:path}")` restauré au-dessus de `serve_file` (`server.py`). Aucun autre changement. Vidéo sert `200 video/mp4` (11 Mo, codec H.264/avc1), poster/images de nouveau servis.
 - Codec vidéo utilisateur = H.264 (avc1), compatible navigateurs — pas de transcodage nécessaire. `err:4` en test = Chromium headless sans H.264 (limite outil, pas le vrai Chrome).
 
+## « Dans le même rayon » — priorité série (28/09/2026) — livré preview, NON déployé
+- `ProductDetail.jsx` : nouvelle sélection `shelf` (max 8). Priorité forte à la série du produit consulté : mates ordonnés par proximité du numéro `issue` (|diff| croissant, tiebreak n° le plus bas), puis complétés par la catégorie jusqu'à 8. Dédoublonnage par id, produit consulté toujours exclu. Sans série → `related.slice(0,8)` (catégorie). Réutilise `related` (fetch catégorie existant) — aucun nouvel endpoint.
+- Bouton « Voir plus » + state `visible` retirés (section plafonnée à 8 par la nouvelle règle). Design/emplacement/cartes inchangés. `seriesNav` (préc/suiv) toujours basé sur `related` complet, non impacté.
+- Vérifié preview : Alpha Flight #35 → [34,36,37,32,38] + 3 catégorie = 8 ; Conan #49 → #48 puis 7 catégorie ; Kamandi (0 mate) → fallback catégorie ; jamais le produit consulté ; aucun doublon.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

@@ -14,12 +14,10 @@ export default function ProductDetail() {
   const { t, lang } = useLang();
   const [p, setP] = useState(null);
   const [related, setRelated] = useState([]);
-  const [visible, setVisible] = useState(8);
   const { add } = useCart();
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    setVisible(8);
     api.get(`/products/${id}`).then((r) => {
       // Redirection 301 côté client : ancienne URL technique ou ancien slug → URL SEO canonique
       if (r.data.slug && r.data.slug !== id) {
@@ -62,6 +60,38 @@ export default function ProductDetail() {
     return { prev: idx > 0 ? all[idx - 1] : null, next: idx < all.length - 1 ? all[idx + 1] : null };
   })();
   const navLabel = (x) => `${x.series}${x.issue ? ` #${x.issue}` : ""}`;
+
+  // --- « Dans le même rayon » : priorité forte à la série (numéros les plus proches),
+  // complété par la catégorie jusqu'à 8. Réutilise `related` déjà chargé. ---
+  const shelf = (() => {
+    if (related.length === 0) return [];
+    if (!p.series) return related.slice(0, 8);
+    const num = (x) => {
+      const n = parseFloat(String(x.issue || "").replace(",", "."));
+      return isNaN(n) ? null : n;
+    };
+    const cur = num(p);
+    const mates = related.filter((x) => x.series === p.series);
+    const withNum = mates.filter((x) => num(x) != null);
+    const noNum = mates.filter((x) => num(x) == null);
+    withNum.sort((a, b) => {
+      if (cur != null) {
+        const da = Math.abs(num(a) - cur), db = Math.abs(num(b) - cur);
+        if (da !== db) return da - db;
+      }
+      return num(a) - num(b);
+    });
+    const ordered = [...withNum, ...noNum, ...related.filter((x) => x.series !== p.series)];
+    const seen = new Set();
+    const out = [];
+    for (const x of ordered) {
+      if (seen.has(x.id)) continue;
+      seen.add(x.id);
+      out.push(x);
+      if (out.length >= 8) break;
+    }
+    return out;
+  })();
 
   // --- SEO dynamique (données réelles du produit uniquement) ---
   const titleParts = [p.title];
@@ -198,20 +228,12 @@ export default function ProductDetail() {
         </section>
       )}
 
-      {related.length > 0 && (
+      {shelf.length > 0 && (
         <section className="max-w-[1400px] mx-auto px-4 sm:px-8 py-16">
           <h2 className="font-anton text-2xl sm:text-3xl uppercase mb-8">{t.product.sameShelf}</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {related.slice(0, visible).map((r, i) => <ProductCard key={r.id} product={r} index={i} />)}
+            {shelf.map((r, i) => <ProductCard key={r.id} product={r} index={i} />)}
           </div>
-          {related.length > visible && (
-            <div className="flex justify-center mt-10">
-              <button data-testid="see-more-related" onClick={() => setVisible((v) => v + 8)}
-                className="font-mono uppercase tracking-[0.2em] text-sm px-8 py-4 border-2 border-ink hover:bg-ink hover:text-paper transition-colors">
-                {t.product.seeMore}
-              </button>
-            </div>
-          )}
         </section>
       )}
     </div>
