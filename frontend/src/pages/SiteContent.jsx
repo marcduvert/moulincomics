@@ -62,6 +62,40 @@ const ImageField = ({ label, value, onChange }) => {
   );
 };
 
+const VideoField = ({ label, value, onChange }) => {
+  const [busy, setBusy] = useState(false);
+  const upload = async (file) => {
+    if (!file) return;
+    setBusy(true);
+    try {
+      const fd = new FormData(); fd.append("file", file);
+      const { data } = await api.post("/admin/upload-video", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      onChange(`${BACKEND}${data.url}`);
+      toast.success("Vidéo chargée");
+    } catch (e) { toast.error(e.response?.data?.detail || "Échec de l'upload"); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="mb-4">
+      <label className="font-mono text-[10px] uppercase tracking-widest text-inksoft block mb-1">{label}</label>
+      <div className="flex items-center gap-3">
+        <div className="w-24 h-28 border-2 border-ink bg-ink overflow-hidden flex items-center justify-center shrink-0">
+          {value ? <video src={value} muted playsInline className="w-full h-full object-cover" /> : <span className="text-[9px] text-paper/70 text-center px-1">Aucune vidéo</span>}
+        </div>
+        <div>
+          <label className="cursor-pointer inline-flex items-center gap-2 border-2 border-ink rounded-md px-4 py-2 font-mono text-xs uppercase hover:bg-papersoft transition-colors">
+            {busy ? <><Loader2 size={14} className="animate-spin" /> …</> : <><Upload size={14} /> Charger une vidéo</>}
+            <input type="file" accept="video/mp4,video/webm,video/quicktime,video/x-m4v" className="hidden" disabled={busy}
+              data-testid="salons-video-upload" onChange={(e) => upload(e.target.files?.[0])} />
+          </label>
+          {value && <button onClick={() => onChange("")} className="block mt-2 font-mono text-[10px] uppercase underline text-comicred">Retirer la vidéo</button>}
+          <p className="text-[10px] text-inksoft mt-1">mp4, webm, mov · max 60 Mo</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function SiteContent() {
   const nav = useNavigate();
   const [ready, setReady] = useState(false);
@@ -259,6 +293,29 @@ export default function SiteContent() {
                     Le bandeau des villes est commun à toutes les langues. Passez en « Français » pour le modifier.
                   </p>
                 )}
+              </div>
+              <div className="border-t-2 border-ink mt-6 pt-6">
+                <h3 className="font-display font-black text-lg mb-1">Vidéo — L'œil du Moulin</h3>
+                <p className="font-mono text-[10px] text-inksoft mb-4">Section éditoriale affichée sous l'agenda de la page Salons.</p>
+                {lang === "fr" ? (
+                  <>
+                    <label className="flex items-center gap-2 cursor-pointer mb-4">
+                      <input type="checkbox" data-testid="salons-video-enabled" checked={!!c.salons?.video_enabled}
+                        onChange={(e) => patch("salons", "video_enabled", e.target.checked)} />
+                      <span className="font-mono text-xs uppercase tracking-widest">Afficher la vidéo</span>
+                    </label>
+                    <VideoField label="Vidéo (verticale recommandée)" value={c.salons?.video_url || ""} onChange={(v) => patch("salons", "video_url", v)} />
+                    <ImageField label="Image d'aperçu / poster (facultatif)" value={c.salons?.video_poster || ""} onChange={(v) => patch("salons", "video_poster", v)} />
+                    <Field label="Lien Instagram (facultatif — s'ouvre dans un nouvel onglet)" value={c.salons?.video_instagram || ""} onChange={(v) => patch("salons", "video_instagram", v)} placeholder="https://www.instagram.com/…" />
+                  </>
+                ) : (
+                  <p className="font-mono text-xs text-inksoft mb-4" data-testid="salons-video-shared-note">
+                    La vidéo, le poster, le réglage d'affichage et le lien Instagram sont communs à toutes les langues. Passez en « Français » pour les modifier.
+                  </p>
+                )}
+                <Field label="Surtitre" value={val("salons", "video_eyebrow")} onChange={(v) => setField("salons", "video_eyebrow", v)} placeholder={ph("salons", "video_eyebrow")} />
+                <Field label="Titre" value={val("salons", "video_title")} onChange={(v) => setField("salons", "video_title", v)} placeholder={ph("salons", "video_title")} />
+                <Field label="Texte" textarea value={val("salons", "video_text")} onChange={(v) => setField("salons", "video_text", v)} placeholder={ph("salons", "video_text")} />
               </div>
               <div className="mt-6"><SaveBar sec="salons" /></div>
             </>

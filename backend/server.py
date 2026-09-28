@@ -344,6 +344,7 @@ def get_object(path: str):
 
 MIME_TYPES = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
               "gif": "image/gif", "webp": "image/webp"}
+VIDEO_MIME_TYPES = {"mp4": "video/mp4", "webm": "video/webm", "mov": "video/quicktime", "m4v": "video/x-m4v"}
 
 # ---------- Stripe ----------
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY") or "sk_test_emergent"
@@ -784,7 +785,22 @@ async def upload_cover(file: UploadFile = File(...), admin: dict = Depends(get_c
     })
     return {"path": result["path"], "url": f"/api/files/{result['path']}"}
 
-@api.get("/files/{path:path}")
+@api.post("/admin/upload-video")
+async def upload_video(file: UploadFile = File(...), admin: dict = Depends(get_current_admin)):
+    ext = (file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "bin")
+    if ext not in VIDEO_MIME_TYPES:
+        raise HTTPException(400, "Format non supporté (mp4, webm, mov, m4v)")
+    data = await file.read()
+    if len(data) > 60 * 1024 * 1024:
+        raise HTTPException(400, "Vidéo trop lourde (max 60 Mo)")
+    path = f"{APP_NAME}/videos/{uuid.uuid4()}.{ext}"
+    content_type = file.content_type or VIDEO_MIME_TYPES[ext]
+    result = put_object(path, data, content_type)
+    await db.files.insert_one({
+        "storage_path": result["path"], "original_filename": file.filename,
+        "content_type": content_type, "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"path": result["path"], "url": f"/api/files/{result['path']}"}
 async def serve_file(path: str):
     record = await db.files.find_one({"storage_path": path})
     try:
@@ -1666,6 +1682,10 @@ DEFAULT_CONTENT = {
         "eyebrow": "Sur la route", "title": "RETROUVEZ-NOUS SUR LES SALONS D'EUROPE",
         "description": "De Paris à Bruxelles, d'Angoulême à Lucca — on déballe nos caisses partout en Europe. Une sélection différente à chaque étape.",
         "button_text": "Voir l'agenda", "button_url": "/conventions", "image": "",
+        "video_enabled": False,
+        "video_url": "", "video_poster": "", "video_instagram": "",
+        "video_eyebrow": "L'ŒIL DU MOULIN", "video_title": "SUR LE TERRAIN",
+        "video_text": "On fouille aussi les bacs ailleurs. Quelques trouvailles croisées sur la route des salons.",
     },
     "villes": ["Angoulême", "Comic Con Paris", "Lucca", "Bruxelles", "Lyon", "FIBD"],
     "seo": {

@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
+import { useContent } from "../context/ContentContext";
 import { Marquee } from "../components/Marquee";
 import { Reveal } from "../components/Reveal";
 import { MapPin, X } from "lucide-react";
@@ -10,10 +11,26 @@ const CONV = "https://images.pexels.com/photos/36398813/pexels-photo-36398813.jp
 const CROWD = "https://images.unsplash.com/photo-1578434972378-e3c393d983db?crop=entropy&cs=srgb&fm=jpg&q=85&w=1000";
 
 export default function Conventions() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const { content } = useContent();
+  const sBase = content?.salons || {};
+  const sc = lang === "fr" ? sBase : { ...sBase, ...(sBase[lang] || {}) };
+  const showVideo = !!sc.video_enabled && !!sc.video_url;
   const [events, setEvents] = useState([]);
   const [zoomImg, setZoomImg] = useState(null);
+  const [videoIn, setVideoIn] = useState(false);
+  const videoWrapRef = useRef(null);
   useEffect(() => { api.get("/salons").then((r) => setEvents(r.data)).catch(() => {}); }, []);
+  useEffect(() => {
+    if (!showVideo) return;
+    const el = videoWrapRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { setVideoIn(true); io.disconnect(); }
+    }, { rootMargin: "300px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [showVideo, sc.video_url]);
   useEffect(() => {
     if (window.location.hash === "#agenda") {
       const timer = setTimeout(() => {
@@ -93,6 +110,38 @@ export default function Conventions() {
           </Reveal>
         </div>
       </section>
+
+      {showVideo && (
+        <section data-testid="salons-video" className="border-t-2 border-ink bg-papersoft">
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-8 py-16 sm:py-24 grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+            <Reveal>
+              <div ref={videoWrapRef} className="w-full max-w-[340px] mx-auto lg:mx-0 aspect-[9/16] border-2 border-ink bg-ink overflow-hidden shadow-hardlg">
+                {videoIn ? (
+                  <video data-testid="salons-video-player" src={sc.video_url}
+                    poster={sc.video_poster || undefined}
+                    muted playsInline loop autoPlay preload="metadata"
+                    className="w-full h-full object-cover" />
+                ) : (
+                  sc.video_poster
+                    ? <img src={sc.video_poster} alt="" className="w-full h-full object-cover" />
+                    : <div className="w-full h-full" />
+                )}
+              </div>
+            </Reveal>
+            <Reveal delay={0.1}>
+              {sc.video_eyebrow && <p className="font-mono text-xs uppercase tracking-[0.3em] text-comicred mb-3">{sc.video_eyebrow}</p>}
+              {sc.video_title && <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl leading-[0.95]">{sc.video_title}</h2>}
+              {sc.video_text && <p className="font-mono text-sm text-inksoft mt-5 leading-relaxed max-w-md">{sc.video_text}</p>}
+              {sc.video_instagram && (
+                <a href={sc.video_instagram} target="_blank" rel="noreferrer" data-testid="salons-video-instagram"
+                  className="inline-block mt-6 font-mono text-xs uppercase tracking-[0.2em] border-2 border-ink px-6 py-3 hover:bg-ink hover:text-paper transition-colors">
+                  {t.conventions.seeInstagram || "Voir sur Instagram"} ↗
+                </a>
+              )}
+            </Reveal>
+          </div>
+        </section>
+      )}
 
       {zoomImg && (
         <div className="fixed inset-0 bg-ink/80 z-[90] flex items-center justify-center p-4" onClick={() => setZoomImg(null)}
