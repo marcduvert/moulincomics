@@ -140,13 +140,14 @@ export default function Home() {
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.3em] text-comicred mb-2">{t.featured.eyebrow}</p>
             <h2 className="font-display font-black tracking-tighter text-3xl sm:text-4xl lg:text-5xl">{t.featured.title}</h2>
+            <p className="font-mono text-sm text-inksoft mt-2">{t.featured.subtitle}</p>
           </div>
           <Link to="/shop" className="font-mono text-sm uppercase tracking-[0.15em] border-b-2 border-ink hover:text-comicred hover:border-comicred transition-colors">
             {t.featured.all}
           </Link>
         </Reveal>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {featured.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+          {featured.map((p, i) => <ProductCard key={p.id} product={p} index={i} showMoulinEye />)}
         </div>
       </section>
 

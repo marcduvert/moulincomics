@@ -10,7 +10,7 @@ const T = {
       cta1: "Explorer le stock", cta2: "Les Spider-Man",
       badgeL: "Est. Moulin Comics", badgeR: "Vol. 01",
     },
-    featured: { eyebrow: "La sélection", title: "PIÈCES DE CHOIX", all: "Tout voir →" },
+    featured: { eyebrow: "La sélection", title: "PIÈCES DE CHOIX", subtitle: "Quelques comics qu'on sortirait nous-mêmes du bac.", all: "Tout voir →" },
     manifesto: {
       title: "La maison",
       c1t: "La VO d'abord", c1d: "Comic shop spécialisé en version originale. Marvel, DC, indés — les titres qui définissent le médium, dans leur langue d'origine.",
@@ -116,7 +116,7 @@ const T = {
       cta1: "Browse the stock", cta2: "The Spider-Man",
       badgeL: "Est. Moulin Comics", badgeR: "Vol. 01",
     },
-    featured: { eyebrow: "The selection", title: "PRIME PICKS", all: "See all →" },
+    featured: { eyebrow: "The selection", title: "PRIME PICKS", subtitle: "A few comics we'd pull from the bin ourselves.", all: "See all →" },
     manifesto: {
       title: "The house",
       c1t: "Original version first", c1d: "A shop devoted to the original version. Marvel, DC, indies — the titles that define the medium, in their original language.",
@@ -222,7 +222,7 @@ const T = {
       cta1: "Explorar el stock", cta2: "Los Spider-Man",
       badgeL: "Est. Moulin Comics", badgeR: "Vol. 01",
     },
-    featured: { eyebrow: "La selección", title: "PIEZAS DESTACADAS", all: "Ver todo →" },
+    featured: { eyebrow: "La selección", title: "PIEZAS DESTACADAS", subtitle: "Algunos cómics que nosotros mismos sacaríamos de la caja.", all: "Ver todo →" },
     manifesto: {
       title: "La casa",
       c1t: "La VO primero", c1d: "Tienda especializada en versión original. Marvel, DC, indies — los títulos que definen el medio, en su idioma original.",

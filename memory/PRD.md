@@ -297,5 +297,12 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Bouton « Voir plus » + state `visible` retirés (section plafonnée à 8 par la nouvelle règle). Design/emplacement/cartes inchangés. `seriesNav` (préc/suiv) toujours basé sur `related` complet, non impacté.
 - Vérifié preview : Alpha Flight #35 → [34,36,37,32,38] + 3 catégorie = 8 ; Conan #49 → #48 puis 7 catégorie ; Kamandi (0 mate) → fallback catégorie ; jamais le produit consulté ; aucun doublon.
 
+## « Pièces de choix » + marqueur L'œil du Moulin (28/09/2026) — livré preview, NON déployé
+- Frontend uniquement (`moulin_eye_type` déjà présent dans `/products?featured=true`). Aucun backend/admin/modèle touché.
+- `Home.jsx` : sous-titre ajouté sous « PIÈCES DE CHOIX » (`t.featured.subtitle` FR/EN/ES) ; `ProductCard` appelé avec prop `showMoulinEye`. Bouton « Tout voir » et sélection featured inchangés.
+- `ProductCard.jsx` : prop `showMoulinEye` (défaut false). Si activée ET `moulin_eye_type` ≠ vide/« Aucun », affiche un marqueur discret sous les infos produit (sous prix/état, bordure fine) : « L'œil du Moulin — [TYPE] » (comicred + ink, font-mono). `moulin_eye_text` JAMAIS affiché sur la Home. Pas de superposition sur la couverture. Clic carte inchangé.
+- Portée : marqueur visible UNIQUEMENT dans Home > Pièces de choix (prop-gated) ; Boutique / Dans le même rayon / autres listes non impactés (vérifié : 0 marqueur en Boutique).
+- Vérifié preview (type « À LIRE » temporaire sur 1 featured, puis restauré) : sous-titre OK, 1 seul marqueur, texte complet non affiché, Boutique sans marqueur.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

@@ -3,8 +3,10 @@ import { motion } from "framer-motion";
 import { fmtPrice } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
 
-export const ProductCard = ({ product, index = 0 }) => {
+export const ProductCard = ({ product, index = 0, showMoulinEye = false }) => {
   const { t } = useLang();
+  const eye = showMoulinEye && product.moulin_eye_type && product.moulin_eye_type !== "Aucun"
+    ? product.moulin_eye_type : null;
   return (
   <motion.div
     initial={{ opacity: 0, y: 30 }}
@@ -42,6 +44,13 @@ export const ProductCard = ({ product, index = 0 }) => {
           <span className="font-anton text-xl">{fmtPrice(product.price)}</span>
           <span className="font-mono text-[10px] uppercase text-inksoft">{product.condition}</span>
         </div>
+        {eye && (
+          <p data-testid={`moulin-eye-marker-${product.id}`}
+            className="mt-3 pt-3 border-t border-ink/15 font-mono text-[10px] leading-snug uppercase tracking-[0.15em]">
+            <span className="text-comicred">L'œil du Moulin</span>
+            <span className="text-ink"> — {eye}</span>
+          </p>
+        )}
       </div>
     </Link>
   </motion.div>
