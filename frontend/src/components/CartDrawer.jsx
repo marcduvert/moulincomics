@@ -5,6 +5,7 @@ import { api, fmtPrice } from "../lib/api";
 import { useLang } from "../context/LanguageContext";
 import { useContent } from "../context/ContentContext";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 const RelayPicker = ({ onSelect, t }) => {
@@ -75,6 +76,7 @@ const RelayPicker = ({ onSelect, t }) => {
 export const CartDrawer = () => {
   const { items, open, setOpen, remove, setQty, total, count } = useCart();
   const { t } = useLang();
+  const navigate = useNavigate();
   const { content } = useContent();
   const vacation = content?.vacation;
   const shopClosed = !!vacation?.enabled;
@@ -203,6 +205,11 @@ export const CartDrawer = () => {
                   <button data-testid="checkout-button" disabled={!items.length || shopClosed} onClick={enterShipping}
                     className="w-full bg-comicred text-paper font-mono uppercase tracking-[0.2em] text-sm py-4 border-2 border-ink hover:bg-ink transition-colors disabled:opacity-40">
                     {t.cart.continueDelivery}
+                  </button>
+                  <button data-testid="continue-shopping-button"
+                    onClick={() => { setOpen(false); navigate("/shop"); window.scrollTo(0, 0); }}
+                    className="w-full mt-2 bg-paper text-ink font-mono uppercase tracking-[0.2em] text-sm py-3 border-2 border-ink hover:bg-papersoft transition-colors">
+                    {t.cart.continueShopping}
                   </button>
                   <p className="font-mono text-[10px] text-inksoft mt-3 text-center uppercase">{t.cart.note}</p>
                 </div>

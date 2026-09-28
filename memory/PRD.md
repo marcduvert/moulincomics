@@ -312,5 +312,11 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - `Header.jsx` : icône `h-11 sm:h-14`, wordmark `text-sm sm:text-xl` et suppression de `hidden sm:block` (wordmark visible en mobile). Effet de survol conservé.
 - Résultat vérifié preview : desktop/tablette lockup 193px (cible 190–210), mobile 146px (cible ~125–140, nettement plus grand), header inchangé (~66px), aucun chevauchement FR/panier/hamburger jusqu'à 360px.
 
+## Vérif bouton footer « Nous contacter » (28/09/2026)
+- Aucune modification nécessaire : le CTA footer (`Footer.jsx` `footer-cta-contact`) utilise déjà `<Link to="/contact">` + le scroll-to-top global (`App.js`, PUSH sans hash). Vérifié preview : depuis footer (scrollY 3301) → `/contact` scrollY 0, titre visible. L'ancien comportement éventuel = version déployée antérieure ; redéploiement requis pour publier.
+
+## Bouton « Continuer mes achats » panier (28/09/2026) — livré preview, NON déployé
+- `CartDrawer.jsx` : bouton secondaire `continue-shopping-button` (fond clair `bg-paper`, bordure noire) sous le bouton principal « Choisir la livraison ». Clic → `setOpen(false)` + `navigate("/shop")` + `window.scrollTo(0,0)`. Contenu panier conservé (contexte inchangé). Traductions `cart.continueShopping` FR/EN/ES. Vérifié : produit conservé dans le panier, retour en haut ; le readback d'URL en test était masqué par la bannière cookies (non-bug).
+
 ## Credentials
 Voir /app/memory/test_credentials.md
