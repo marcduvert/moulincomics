@@ -287,5 +287,10 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Public (`Conventions.jsx`) : section `data-testid="salons-video"` APRÈS l'agenda, affichée seulement si `video_enabled && video_url`. Vidéo verticale HTML5 `muted playsInline loop autoPlay preload="metadata"`, montée en lazy via IntersectionObserver (rootMargin 300px, poster/placeholder avant) — aucune librairie, aucun SDK Instagram. Lien « Voir sur Instagram ↗ » (`_blank`) seulement si URL renseignée. `t.conventions.seeInstagram` ajouté FR/EN/ES. Hero/marquee/agenda inchangés.
 - Vérifié preview via API+screenshot : upload OK, ON→section visible (props vidéo confirmées), OFF→section absente, URL vide→absente, IG `_blank`. Vidéo de test retirée (contenu propre).
 
+## FIX vidéo Salons — route de service fichiers cassée (28/09/2026)
+- CAUSE : lors de l'ajout de `POST /admin/upload-video`, un `search_replace` avait supprimé par erreur le décorateur `@api.get("/files/{path:path}")` juste au-dessus de `serve_file`. Résultat : `/api/files/*` non enregistré → 404 générique (`{"detail":"Not Found"}`) pour TOUS les médias uploadés (vidéos ET images produits/salons).
+- CORRECTION : décorateur `@api.get("/files/{path:path}")` restauré au-dessus de `serve_file` (`server.py`). Aucun autre changement. Vidéo sert `200 video/mp4` (11 Mo, codec H.264/avc1), poster/images de nouveau servis.
+- Codec vidéo utilisateur = H.264 (avc1), compatible navigateurs — pas de transcodage nécessaire. `err:4` en test = Chromium headless sans H.264 (limite outil, pas le vrai Chrome).
+
 ## Credentials
 Voir /app/memory/test_credentials.md

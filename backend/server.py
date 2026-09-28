@@ -801,6 +801,8 @@ async def upload_video(file: UploadFile = File(...), admin: dict = Depends(get_c
         "content_type": content_type, "created_at": datetime.now(timezone.utc).isoformat(),
     })
     return {"path": result["path"], "url": f"/api/files/{result['path']}"}
+
+@api.get("/files/{path:path}")
 async def serve_file(path: str):
     record = await db.files.find_one({"storage_path": path})
     try:
