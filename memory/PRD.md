@@ -307,5 +307,10 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 ## Taille logo header (28/09/2026) — livré preview, NON déployé
 - `Header.jsx` : classe du `<img>` logo passée de `h-11` à `h-[53px] sm:h-[57px]` (mobile +20 % ≈53px, desktop +30 % ≈57px). Proportions conservées (`w-auto object-contain`), fichier source inchangé. Header reste `h-16` (~66px avec bordure). Vérifié preview : aucun chevauchement, nav/langue/panier alignés.
 
+## Correctif taille logo header — largeur réelle (28/09/2026) — livré preview, NON déployé
+- Cause du "trop petit" : `logo.png` est portrait (371×539) donc bridé par la hauteur ; sur mobile le wordmark « MOULIN COMICS » était masqué (`hidden sm:block`). La taille se mesure sur le lockup (icône + wordmark).
+- `Header.jsx` : icône `h-11 sm:h-14`, wordmark `text-sm sm:text-xl` et suppression de `hidden sm:block` (wordmark visible en mobile). Effet de survol conservé.
+- Résultat vérifié preview : desktop/tablette lockup 193px (cible 190–210), mobile 146px (cible ~125–140, nettement plus grand), header inchangé (~66px), aucun chevauchement FR/panier/hamburger jusqu'à 360px.
+
 ## Credentials
 Voir /app/memory/test_credentials.md
