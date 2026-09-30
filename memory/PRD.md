@@ -318,5 +318,10 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 ## Bouton « Continuer mes achats » panier (28/09/2026) — livré preview, NON déployé
 - `CartDrawer.jsx` : bouton secondaire `continue-shopping-button` (fond clair `bg-paper`, bordure noire) sous le bouton principal « Choisir la livraison ». Clic → `setOpen(false)` + `navigate("/shop")` + `window.scrollTo(0,0)`. Contenu panier conservé (contexte inchangé). Traductions `cart.continueShopping` FR/EN/ES. Vérifié : produit conservé dans le panier, retour en haut ; le readback d'URL en test était masqué par la bannière cookies (non-bug).
 
+## Changement adresse e-mail pro (28/09/2026) — livré preview, NON déployé
+- `backend/.env` : `EMAIL_REPLY_TO` → `contact@moulincomics.com` ; ajout `CONTACT_EMAIL="contact@moulincomics.com"`. `ADMIN_EMAIL` inchangé (`marcduvert@gmail.com`) = identifiant de connexion admin, conservé volontairement.
+- `backend/server.py` : constante `CONTACT_EMAIL` ajoutée ; destinataire du formulaire Contact passé de `ADMIN_EMAIL` → `CONTACT_EMAIL`. Reply-To global = `EMAIL_REPLY_TO`.
+- L'adresse exacte `marcduvert@hotmail.com` n'existe que dans `backend/tests/test_orders_admin.py` (donnée de test/historique) → conservée. Aucune notification interne de nouvelle commande n'existe (emails client uniquement). FROM = géré par le service e-mail Emergent (non modifiable en `contact@moulincomics.com` sans config fournisseur/DNS).
+
 ## Credentials
 Voir /app/memory/test_credentials.md

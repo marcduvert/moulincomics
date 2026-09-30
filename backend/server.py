@@ -31,6 +31,7 @@ EMAIL_BASE_URL = "https://integrations.emergentagent.com"
 EMAIL_KEY = os.environ["EMERGENT_EMAIL_KEY"]
 EMAIL_FROM_NAME = os.environ["EMAIL_FROM_NAME"]
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
+CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL") or os.environ["ADMIN_EMAIL"]
 import asyncio
 import unicodedata
 import zeep
@@ -1806,7 +1807,7 @@ async def contact(body: ContactMessage):
         '</td></tr></table></td></tr></table>'
     )
     try:
-        await send_email(to=os.environ["ADMIN_EMAIL"].strip(),
+        await send_email(to=CONTACT_EMAIL.strip(),
                          subject=f"Contact site — {subj}"[:150],
                          html=html, reply_to=body.email)
     except ValueError as e:
