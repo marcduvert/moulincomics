@@ -299,6 +299,74 @@ async def _maybe_send_confirmation_email(session_id: str) -> bool:
             {"session_id": session_id}, {"$unset": {"confirmation_email_sent": ""}})
         raise
 
+def _admin_order_email_html(order: dict) -> str:
+    """Notification interne — récapitulatif simple d'une nouvelle commande payée."""
+    ref = escape(order.get("session_id", "")[-10:])
+    cust = order.get("customer") or {}
+    name = escape(cust.get("name") or "—")
+    email = escape(cust.get("email") or "—")
+    total = f"{float(order.get('amount', 0)):.2f} €"
+    rows = ""
+    for i in order.get("items", []):
+        rows += ('<tr><td style="padding:4px 0;font-size:14px;border-bottom:1px solid #eee">'
+                 + str(int(i.get("quantity", 1))) + " × " + escape(str(i.get("title", "")))
+                 + "</td></tr>")
+    method = order.get("shipping_method")
+    if method == "mondial_relay":
+        cp_city = " ".join(v for v in (order.get("relay_point_postal_code"), order.get("relay_point_city")) if v)
+        ship = ("<strong>Mondial Relay</strong><br>"
+                "Point Relais : " + escape(order.get("relay_point_name") or "—") + "<br>"
+                "Adresse : " + escape(order.get("relay_point_address") or "—") + "<br>"
+                "CP / Ville : " + escape(cp_city or "—"))
+    elif method == "home_delivery":
+        sh = order.get("shipping") or order.get("billing") or {}
+        a = sh.get("address") or {}
+        city_line = " ".join(v for v in (a.get("postal_code"), a.get("city")) if v)
+        addr_lines = [x for x in (sh.get("name"), a.get("line1"), a.get("line2"), city_line, a.get("country")) if x]
+        ship = "<strong>Livraison à domicile</strong><br>" + ("<br>".join(escape(str(x)) for x in addr_lines) or "—")
+    else:
+        ship = "—"
+    brand = escape(EMAIL_FROM_NAME)
+    return (
+        '<table role="presentation" width="100%" style="background:#f5f2ea;padding:24px 0">'
+        '<tr><td align="center"><table role="presentation" width="560" style="background:#ffffff;border:2px solid #141414;font-family:Arial,sans-serif;color:#141414">'
+        '<tr><td style="background:#141414;color:#f5f2ea;padding:16px 24px;font-size:18px;font-weight:bold;letter-spacing:2px">'
+        + brand + ' — Nouvelle commande</td></tr>'
+        '<tr><td style="padding:24px">'
+        '<p style="font-size:15px">Nouvelle commande reçue sur Moulin Comics.</p>'
+        '<p style="font-size:14px;margin:14px 0 2px"><strong>Commande :</strong> #' + ref + '</p>'
+        '<p style="font-size:14px;margin:2px 0"><strong>Client :</strong> ' + name + '</p>'
+        '<p style="font-size:14px;margin:2px 0"><strong>E-mail :</strong> ' + email + '</p>'
+        '<p style="font-size:14px;margin:2px 0"><strong>Montant :</strong> ' + total + '</p>'
+        '<p style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#c8102e;margin:20px 0 6px">Articles</p>'
+        '<table role="presentation" width="100%">' + (rows or '<tr><td style="font-size:14px">—</td></tr>') + '</table>'
+        '<p style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#c8102e;margin:20px 0 6px">Livraison</p>'
+        '<p style="font-size:14px;line-height:1.5">' + ship + '</p>'
+        '</td></tr></table></td></tr></table>'
+    )
+
+async def _maybe_send_admin_order_notification(session_id: str) -> bool:
+    """Notification interne à CONTACT_EMAIL à la confirmation du paiement (une seule fois)."""
+    order = await db.payment_transactions.find_one({"session_id": session_id})
+    if not order or order.get("payment_status") != "paid" or order.get("admin_notification_sent"):
+        return False
+    # Pose atomique du drapeau avant envoi : évite tout doublon (webhook + polling, webhook répété)
+    res = await db.payment_transactions.update_one(
+        {"session_id": session_id, "admin_notification_sent": {"$ne": True}},
+        {"$set": {"admin_notification_sent": True}})
+    if res.modified_count != 1:
+        return False
+    try:
+        await send_email(to=CONTACT_EMAIL.strip(),
+                         subject=f"Nouvelle commande Moulin Comics — #{order.get('session_id','')[-10:]}"[:150],
+                         html=_admin_order_email_html(order))
+        return True
+    except Exception:
+        await db.payment_transactions.update_one(
+            {"session_id": session_id}, {"$unset": {"admin_notification_sent": ""}})
+        raise
+
+
 
 # ---------- DB ----------
 mongo_url = os.environ['MONGO_URL']
@@ -1386,6 +1454,10 @@ async def payment_status(session_id: str):
                     await _maybe_send_confirmation_email(session_id)
                 except Exception as e:
                     logging.getLogger(__name__).error(f"confirmation email error: {e}")
+                try:
+                    await _maybe_send_admin_order_notification(session_id)
+                except Exception as e:
+                    logging.getLogger(__name__).error(f"admin order notif error: {e}")
                 record = await db.payment_transactions.find_one({"session_id": session_id})
         except stripe.error.StripeError:
             pass
@@ -1435,6 +1507,10 @@ async def stripe_webhook(request: Request):
             await _maybe_send_confirmation_email(obj["id"])
         except Exception as e:
             logging.getLogger(__name__).error(f"confirmation email error: {e}")
+        try:
+            await _maybe_send_admin_order_notification(obj["id"])
+        except Exception as e:
+            logging.getLogger(__name__).error(f"admin order notif error: {e}")
     return {"status": "ok"}
 
 # ===== CONTENU ÉDITORIAL (site_content) =====

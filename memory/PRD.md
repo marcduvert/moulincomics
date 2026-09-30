@@ -323,5 +323,10 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - `backend/server.py` : constante `CONTACT_EMAIL` ajoutée ; destinataire du formulaire Contact passé de `ADMIN_EMAIL` → `CONTACT_EMAIL`. Reply-To global = `EMAIL_REPLY_TO`.
 - L'adresse exacte `marcduvert@hotmail.com` n'existe que dans `backend/tests/test_orders_admin.py` (donnée de test/historique) → conservée. Aucune notification interne de nouvelle commande n'existe (emails client uniquement). FROM = géré par le service e-mail Emergent (non modifiable en `contact@moulincomics.com` sans config fournisseur/DNS).
 
+## Notification admin nouvelle commande (28/09/2026) — livré preview, NON déployé
+- `backend/server.py` : ajout `_admin_order_email_html(order)` + `_maybe_send_admin_order_notification(session_id)`. Envoi via `send_email` existant vers `CONTACT_EMAIL` (contact@moulincomics.com), déclenché au point de confirmation paiement (statut `paid`) — appelé depuis `/payments/status/{id}` (polling) ET `/stripe/webhook` (checkout.session.completed), juste après l'email client.
+- Idempotence : drapeau atomique `admin_notification_sent` (update filtré `$ne:True` + check `modified_count`), unset si l'envoi échoue → pas de doublon (webhook répété / webhook + polling).
+- Contenu : #réf (10 derniers car. session), nom client, email, montant, articles (qté × titre), livraison (Mondial Relay : point/adresse/CP+ville ; Domicile : adresse). Pas de lien commande (aucune URL admin individuelle n'existe). Emails client inchangés. Vérifié par mock : paid→1 envoi à CONTACT_EMAIL ; rappel→0 ; unpaid→0 ; domicile OK.
+
 ## Credentials
 Voir /app/memory/test_credentials.md
