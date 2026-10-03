@@ -328,5 +328,8 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - Idempotence : drapeau atomique `admin_notification_sent` (update filtré `$ne:True` + check `modified_count`), unset si l'envoi échoue → pas de doublon (webhook répété / webhook + polling).
 - Contenu : #réf (10 derniers car. session), nom client, email, montant, articles (qté × titre), livraison (Mondial Relay : point/adresse/CP+ville ; Domicile : adresse). Pas de lien commande (aucune URL admin individuelle n'existe). Emails client inchangés. Vérifié par mock : paid→1 envoi à CONTACT_EMAIL ; rappel→0 ; unpaid→0 ; domicile OK.
 
+## SEO <title> court pages produit (03/10/2026) — livré preview, NON déployé
+- `frontend/src/pages/ProductDetail.jsx` (seul fichier) : remplacement du calcul `seoTitle` (`title — série/éditeur — Moulin Comics`, trop long) par une génération dynamique plafonnée ~60 car. Format `[Nom] | Moulin Comics` ; si trop long → `[série #issue – éditeur] | Moulin Comics` ; sinon repli `[série #issue]` ; dernier recours = troncature au mot (pas de coupe en plein mot). Dynamique → existants, futurs, et imports IA. H1/slug/description/canonical/sitemap/JSON-LD inchangés. Vérifié live : court `JLA: World War III | Moulin Comics` (34) ; long `Black Panther #39 – Marvel | Moulin Comics` (42) ; exemple #79 → `Conan Saga #79 – Marvel Comics | Moulin Comics` (46).
+
 ## Credentials
 Voir /app/memory/test_credentials.md

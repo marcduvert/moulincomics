@@ -93,12 +93,28 @@ export default function ProductDetail() {
     return out;
   })();
 
-  // --- SEO dynamique (données réelles du produit uniquement) ---
-  const titleParts = [p.title];
-  if (p.series && !p.title.toLowerCase().includes(p.series.toLowerCase())) titleParts.push(p.series);
-  else if (p.publisher && !p.title.toLowerCase().includes(p.publisher.toLowerCase())) titleParts.push(`Comic ${p.publisher}`);
-  titleParts.push("Moulin Comics");
-  const seoTitle = titleParts.join(" — ");
+  // --- SEO dynamique : <title> court (~60 car. max) à partir des données produit ---
+  const SEO_SUFFIX = " | Moulin Comics";
+  const SEO_MAX = 60;
+  const seoTitle = (() => {
+    const full = p.title;
+    if ((full + SEO_SUFFIX).length <= SEO_MAX) return full + SEO_SUFFIX;
+    let name;
+    if (p.series) {
+      let base = p.series.includes("#") || !p.issue ? p.series : `${p.series} #${p.issue}`;
+      const withPub = p.publisher ? `${base} – ${p.publisher}` : base;
+      name = (withPub + SEO_SUFFIX).length <= SEO_MAX ? withPub : base;
+    } else {
+      name = p.publisher || full;
+    }
+    if ((name + SEO_SUFFIX).length > SEO_MAX) {
+      let cut = name.slice(0, SEO_MAX - SEO_SUFFIX.length);
+      const sp = cut.lastIndexOf(" ");
+      if (sp > 20) cut = cut.slice(0, sp);
+      name = cut.replace(/[\s–\-,|]+$/, "").trimEnd();
+    }
+    return name + SEO_SUFFIX;
+  })();
   const descBits = [p.title + (p.issue && !p.title.includes(`#${p.issue}`) ? ` #${p.issue}` : "")];
   if (p.series) descBits.push(`série ${p.series}`);
   if (p.publisher) descBits.push(`édité par ${p.publisher}`);
