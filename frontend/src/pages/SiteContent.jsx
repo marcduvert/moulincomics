@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Save, Upload, Loader2, Plus, Trash2, ArrowUp, ArrowDown, Languages } from "lucide-react";
 import { api } from "../lib/api";
 import { Seo } from "../components/Seo";
+import { AdminHelp } from "../components/AdminHelp";
 import { RichEditor } from "../components/RichEditor";
 
 const BACKEND = process.env.REACT_APP_BACKEND_URL;
@@ -184,7 +185,7 @@ export default function SiteContent() {
   const frImg = (sec) => c?.[sec]?.image || "";
 
   return (
-    <div className="min-h-screen bg-papersoft">
+    <div className="min-h-screen bg-gray-100">
       <Seo title="Contenu du site | Moulin Comics" noindex />
       <header className="bg-ink text-paper border-b-2 border-ink sticky top-0 z-40">
         <div className="max-w-[1100px] mx-auto px-5 h-16 flex items-center justify-between">
@@ -192,9 +193,12 @@ export default function SiteContent() {
             <span className="bg-comicred font-anton px-2 py-0.5">MC</span>
             <span className="font-mono text-sm uppercase tracking-widest">Contenu du site</span>
           </div>
-          <button onClick={() => nav("/admin")} data-testid="back-admin" className="flex items-center gap-2 border border-paper/40 px-3 py-1.5 font-mono text-xs uppercase hover:bg-comicred transition-colors">
-            <ArrowLeft size={14} /> Admin
-          </button>
+          <div className="flex items-center gap-2">
+            <AdminHelp />
+            <button onClick={() => nav("/admin")} data-testid="back-admin" className="flex items-center gap-2 border border-paper/40 px-3 py-1.5 font-mono text-xs uppercase hover:bg-comicred transition-colors">
+              <ArrowLeft size={14} /> Admin
+            </button>
+          </div>
         </div>
       </header>
 

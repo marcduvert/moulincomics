@@ -336,5 +336,11 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - `frontend/src/pages/Admin.jsx` : `ORDER_LABELS` relabel `a_traiter`→« À préparer », retrait `en_preparation`. `NEXT_ACTION` : À préparer→« Marquer comme prête »→Prête à expédier→« Marquer comme expédiée »→Expédiée→« Terminer la commande »→Terminée. Suppression du menu déroulant manuel « Statut de livraison » ; remplacé par affichage lecture seule « État transporteur » (via `CARRIER_STATUS_LABELS`, montré seulement si `shipping_status` ∈ {en_transit, disponible_relais, livree, incident}, sinon texte « Disponible automatiquement une fois le suivi Mondial Relay connecté »). Bloc Livraison (mode/relais/adresse/frais), suivi/tracking, paiement conservés.
 - Vérifié (mock backend) : a_traiter→prete_expedition→expediee→terminee OK ; en_preparation rejeté ; annulee OK ; relais/adresse/tracking/frais préservés ; payment_status reste `paid` ; 1 email expédition. Vérifié (UI admin) : select 5 états, action présente, dropdown livraison supprimé, état transporteur lecture seule.
 
+## Aide admin + distinction visuelle Contenu du site (03/10/2026) — livré preview, NON déployé
+- Ajout : `frontend/src/components/AdminHelp.jsx` (bouton « Aide » + popup 2 guides, liens `_blank`). PDF ajoutés dans `frontend/public/guides/` : `Guide_Administration_Moulin_Comics.pdf` + `Guide_Administration_contenu_Moulin_Comics.pdf` (servis en `/guides/...`, 200 application/pdf).
+- `Admin.jsx` : import + `<AdminHelp />` dans le bandeau noir (entre « Voir le site » et « Contenu du site »).
+- `SiteContent.jsx` : import + `<AdminHelp />` dans l'en-tête ; wrapper page `bg-papersoft` → `bg-gray-100` (zone principale gris clair, bandeau noir conservé). Carte d'édition interne inchangée.
+- Vérifié preview : popup OK, liens PDF `/guides/...` target=_blank, Aide visible dans Admin ET Contenu du site, fond Contenu = rgb(243,244,246). Aucune API/BD/fonction existante modifiée.
+
 ## Credentials
 Voir /app/memory/test_credentials.md
