@@ -1898,7 +1898,7 @@ SHIPPING_METHODS = ("mondial_relay", "home_delivery")
 SHIPPING_STATUSES = ("a_preparer", "preparee", "expediee", "en_transit",
                      "disponible_relais", "livree", "incident", "annulee")
 # État de la commande (ce que le gérant doit faire) — vocabulaire de fulfillment_status
-ORDER_STATES = ("a_traiter", "en_preparation", "prete_expedition", "expediee", "terminee", "annulee")
+ORDER_STATES = ("a_traiter", "prete_expedition", "expediee", "terminee", "annulee")
 ORDER_RANK = {s: i for i, s in enumerate(ORDER_STATES)}
 # Synchronisation STATUT DE LIVRAISON -> COMMANDE (jamais de retour arrière,
 # sauf incident/annulée qui sont des exceptions explicites)
@@ -2168,6 +2168,8 @@ async def startup():
     # Migration idempotente : ancien vocabulaire « Traitement » → nouvel état COMMANDE
     await db.payment_transactions.update_many(
         {"fulfillment_status": "en_attente"}, {"$set": {"fulfillment_status": "a_traiter"}})
+    await db.payment_transactions.update_many(
+        {"fulfillment_status": "en_preparation"}, {"$set": {"fulfillment_status": "a_traiter"}})
     await db.payment_transactions.update_many(
         {"fulfillment_status": "livree"}, {"$set": {"fulfillment_status": "terminee"}})
     await db.payment_transactions.update_many(

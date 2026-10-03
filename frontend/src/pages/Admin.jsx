@@ -149,28 +149,27 @@ export default function Admin() {
     } catch (e) { toast.error(e.response?.data?.detail || "Erreur"); }
   };
 
-  const SHIPPING_STATUS_LABELS = {
-    a_preparer: "À préparer", preparee: "Préparée", expediee: "Expédiée",
+  // États transporteur (informatifs, alimentés automatiquement par un futur suivi Mondial Relay)
+  const CARRIER_STATUS_LABELS = {
     en_transit: "En transit", disponible_relais: "Disponible au Point Relais",
-    livree: "Livrée", incident: "Incident", annulee: "Annulée",
+    livree: "Livrée", incident: "Incident",
   };
 
   const ORDER_LABELS = {
-    a_traiter: "À traiter", en_preparation: "En préparation", prete_expedition: "Prête à expédier",
+    a_traiter: "À préparer", prete_expedition: "Prête à expédier",
     expediee: "Expédiée", terminee: "Terminée", annulee: "Annulée / Remboursée",
   };
   const ORDER_BADGE = {
     a_traiter: "bg-comicred text-paper border-ink",
-    en_preparation: "bg-comicyellow border-ink",
     prete_expedition: "bg-comicblue text-paper border-ink",
     expediee: "bg-comicblue text-paper border-ink",
     terminee: "bg-green-600 text-paper border-ink",
     annulee: "border-ink/30 text-inksoft",
   };
   const NEXT_ACTION = {
-    a_traiter: { label: "Commencer la préparation", to: "en_preparation" },
-    en_preparation: { label: "Marquer comme prête", to: "prete_expedition" },
+    a_traiter: { label: "Marquer comme prête", to: "prete_expedition" },
     prete_expedition: { label: "Marquer comme expédiée", to: "expediee" },
+    expediee: { label: "Terminer la commande", to: "terminee" },
   };
 
   const updateStatus = async (sessionId, status) => {
@@ -868,16 +867,11 @@ export default function Admin() {
                               {o.shipping_price != null && <p className="mt-1 text-inksoft">Frais : {fmtPrice(o.shipping_price)}</p>}
                             </div>
                             <div>
-                              <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Statut de livraison</p>
-                              <select value={o.shipping_status || "a_preparer"}
-                                data-testid={`order-shipping-status-${o.session_id}`}
-                                onChange={(e) => updateShipping(o.session_id, { shipping_status: e.target.value })}
-                                className="border-2 border-ink rounded-md px-2 py-1 text-xs bg-papersoft">
-                                {Object.entries(SHIPPING_STATUS_LABELS).map(([k, l]) => (
-                                  <option key={k} value={k}>{l}</option>
-                                ))}
-                              </select>
-                              <p className="text-inksoft mt-2 text-[10px]">Met à jour « Commande » automatiquement si cohérent.</p>
+                              <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">État transporteur</p>
+                              {CARRIER_STATUS_LABELS[o.shipping_status]
+                                ? <span className="inline-block text-[10px] uppercase px-2 py-1 border border-ink bg-papersoft"
+                                    data-testid={`order-carrier-status-${o.session_id}`}>{CARRIER_STATUS_LABELS[o.shipping_status]}</span>
+                                : <p className="text-inksoft text-[10px]">Disponible automatiquement une fois le suivi Mondial Relay connecté.</p>}
                             </div>
                             <div>
                               <p className="uppercase tracking-widest text-[10px] text-comicred mb-2">Suivi</p>
