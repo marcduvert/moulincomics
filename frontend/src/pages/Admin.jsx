@@ -208,7 +208,8 @@ export default function Admin() {
 
   const filteredProducts = products.filter((p) => {
     if (fTitle && !p.title?.toLowerCase().includes(fTitle.toLowerCase())) return false;
-    if (fSeries && (p.series || "") !== fSeries) return false;
+    if (fSeries === "__none__") { if (p.series) return false; }
+    else if (fSeries && (p.series || "") !== fSeries) return false;
     if (fDate && (p.created_at || "").slice(0, 10) !== fDate) return false;
     return true;
   });
@@ -219,6 +220,7 @@ export default function Admin() {
     if (s) m[s] = (m[s] || 0) + 1;
     return m;
   }, {});
+  const noSeriesCount = products.filter((p) => !p.series).length;
 
   const [selectedIds, setSelectedIds] = useState([]);
   const toggleSelect = (id) => setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -606,6 +608,7 @@ export default function Admin() {
                 <select data-testid="admin-filter-series" value={fSeries} onChange={(e) => setFSeries(e.target.value)}
                   className="w-full border-2 border-ink rounded-md px-3 py-2 mt-1 bg-paper">
                   <option value="">Toutes les séries</option>
+                  <option value="__none__">Sans série ({noSeriesCount})</option>
                   {seriesList.map((s) => <option key={s.id} value={s.name}>{s.name} ({seriesCounts[s.name] || 0})</option>)}
                 </select>
               </div>
@@ -1057,11 +1060,20 @@ export default function Admin() {
                 ["condition", "État", "col-span-2"]].map(([k, l, cls]) => (
                 <div key={k} className={cls || ""}>
                   <label className="text-[10px] uppercase tracking-widest text-inksoft">{l}</label>
-                  <input data-testid={`field-${k}`} required={k === "title" || k === "price"} type={k === "price" || k === "stock" ? "number" : "text"} step="0.01"
+                  <input data-testid={`field-${k}`} required={k === "title" || k === "price"}
+                    type={k === "price" || k === "stock" ? "number" : "text"}
+                    step={k === "price" ? "any" : k === "stock" ? "1" : undefined}
+                    min={k === "price" || k === "stock" ? "0" : undefined}
+                    list={k === "condition" ? "condition-choices" : undefined}
                     value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })}
                     className="w-full border-2 border-ink px-2 py-2 mt-1 bg-papersoft outline-none rounded-md" />
                 </div>
               ))}
+              <datalist id="condition-choices">
+                <option value="Bon état" />
+                <option value="Très bon état" />
+                <option value="Neuf" />
+              </datalist>
               <div className="col-span-2">
                 <label className="text-[10px] uppercase tracking-widest text-inksoft">Image de couverture</label>
                 <div className="flex items-center gap-3 mt-1">

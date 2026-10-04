@@ -348,5 +348,10 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - `frontend/src/pages/Shop.jsx` : `ProductCard ... showMoulinEye` ajouté pour le catalogue. Fiches produit / admin / autres fonctions inchangées.
 - Vérifié preview : filtre affiche les compteurs (Alpha Flight (6), Conan Saga (2)…) ; vignette Shop affiche type rouge + commentaire tronqué 3 lignes, uniquement si œil renseigné. Donnée de test (Conan #49) restaurée ; 4 notes utilisateur existantes intactes.
 
+## Admin : combobox État + spinners Prix/Stock + filtre « Sans série » (04/10/2026) — livré preview, NON déployé
+- `frontend/src/pages/Admin.jsx` : champ `field-condition` → `<input list="condition-choices">` + `<datalist>` (Bon état / Très bon état / Neuf) = combobox éditable, saisie libre conservée, valeurs existantes intactes. `field-price` → `type=number step=any min=0` (+/- par 1 tout en gardant les centimes, 4,50 reste valide ; `step=1` aurait invalidé 4,50). `field-stock` → `type=number step=1 min=0`. Filtre série : option « Sans série (X) » (X=`noSeriesCount` depuis produits chargés) + logique `fSeries === "__none__"` → produits sans série.
+- `frontend/src/pages/ImportIA.jsx` : input condition → `list="ia-condition-choices"` + `<datalist>` (mêmes 3 choix, saisie libre). input prix → `step=any min=0` ; input stock → `step=1 min=0` ; default-price → `step=any`.
+- Aucun backend/BD/API modifié (champs `condition`/`price`/`stock` existants réutilisés). Vérifié preview : combobox + saisie libre OK, prix 4,50 valide, stock min 0, option « Sans série » présente.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

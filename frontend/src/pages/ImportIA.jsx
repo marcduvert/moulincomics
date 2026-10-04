@@ -249,10 +249,15 @@ export default function ImportIA() {
         )}
 
         {/* CONTROLS */}
+        <datalist id="ia-condition-choices">
+          <option value="Bon état" />
+          <option value="Très bon état" />
+          <option value="Neuf" />
+        </datalist>
         <div className="flex flex-wrap items-center gap-3 mb-6">
           <label className="flex items-center gap-2 font-mono text-xs uppercase" title="Prix appliqué par défaut à chaque BD analysée (modifiable ensuite ligne par ligne)">
             Prix par défaut €
-            <input data-testid="default-price-input" type="number" step="0.01" min="0" value={defaultPrice}
+            <input data-testid="default-price-input" type="number" step="any" min="0" value={defaultPrice}
               onChange={(e) => setDefaultPrice(e.target.value)} placeholder="0"
               className="w-24 border-2 border-ink rounded-md px-2 py-2 bg-paper outline-none" />
           </label>
@@ -369,9 +374,9 @@ export default function ImportIA() {
                             {catList.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
                           </select>
                         </td>
-                        <td className="p-2 w-16"><input type="number" step="0.01" className={inp} value={f.result.price} placeholder="0" onChange={(e) => patchResult(f.id, "price", e.target.value)} /></td>
-                        <td className="p-2 w-14"><input type="number" className={inp} value={f.result.stock} onChange={(e) => patchResult(f.id, "stock", e.target.value)} /></td>
-                        <td className="p-2 min-w-[90px]"><input className={inp} value={f.result.condition} onChange={(e) => patchResult(f.id, "condition", e.target.value)} /></td>
+                        <td className="p-2 w-16"><input type="number" step="any" min="0" className={inp} value={f.result.price} placeholder="0" onChange={(e) => patchResult(f.id, "price", e.target.value)} /></td>
+                        <td className="p-2 w-14"><input type="number" step="1" min="0" className={inp} value={f.result.stock} onChange={(e) => patchResult(f.id, "stock", e.target.value)} /></td>
+                        <td className="p-2 min-w-[90px]"><input list="ia-condition-choices" className={inp} value={f.result.condition} onChange={(e) => patchResult(f.id, "condition", e.target.value)} /></td>
                         <td className="p-2"><span className={`px-2 py-1 border rounded ${b.cls}`}>{b.label}</span></td>
                         <td className="p-2">
                           {f.duplicate
