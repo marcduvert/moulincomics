@@ -342,5 +342,11 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - `SiteContent.jsx` : import + `<AdminHelp />` dans l'en-tête ; wrapper page `bg-papersoft` → `bg-gray-100` (zone principale gris clair, bandeau noir conservé). Carte d'édition interne inchangée.
 - Vérifié preview : popup OK, liens PDF `/guides/...` target=_blank, Aide visible dans Admin ET Contenu du site, fond Contenu = rgb(243,244,246). Aucune API/BD/fonction existante modifiée.
 
+## Compteurs série (filtre Stock) + commentaire L'œil du Moulin sur vignettes (04/10/2026) — livré preview, NON déployé
+- `frontend/src/pages/Admin.jsx` : `seriesCounts` calculé depuis `products` déjà chargés (aucun appel API/champ BD ; stock 0 inclus). Option du filtre « Filtrer par série » → `Nom (n)`. Filtre fonctionne à l'identique (valeur = nom de série). Formulaire d'édition produit et gestion des séries non modifiés.
+- `frontend/src/components/ProductCard.jsx` : le bloc moulin-eye affiche désormais TYPE + commentaire (`moulin_eye_text`, champ existant) quand présent ; commentaire secondaire (text-[11px] inksoft, `line-clamp-3`). Rien si pas d'œil.
+- `frontend/src/pages/Shop.jsx` : `ProductCard ... showMoulinEye` ajouté pour le catalogue. Fiches produit / admin / autres fonctions inchangées.
+- Vérifié preview : filtre affiche les compteurs (Alpha Flight (6), Conan Saga (2)…) ; vignette Shop affiche type rouge + commentaire tronqué 3 lignes, uniquement si œil renseigné. Donnée de test (Conan #49) restaurée ; 4 notes utilisateur existantes intactes.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

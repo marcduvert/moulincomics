@@ -236,7 +236,7 @@ export default function Shop() {
           <p className="font-mono text-sm text-inksoft py-20 text-center">{t.shop.empty}</p>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {filtered.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+            {filtered.map((p, i) => <ProductCard key={p.id} product={p} index={i} showMoulinEye />)}
           </div>
         )}
       </div>

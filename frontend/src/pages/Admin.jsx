@@ -213,6 +213,13 @@ export default function Admin() {
     return true;
   });
 
+  // Compteur de produits par série (calculé depuis les produits déjà chargés, stock 0 inclus)
+  const seriesCounts = products.reduce((m, p) => {
+    const s = p.series || "";
+    if (s) m[s] = (m[s] || 0) + 1;
+    return m;
+  }, {});
+
   const [selectedIds, setSelectedIds] = useState([]);
   const toggleSelect = (id) => setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const allVisibleSelected = filteredProducts.length > 0 && filteredProducts.every((p) => selectedIds.includes(p.id));
@@ -599,7 +606,7 @@ export default function Admin() {
                 <select data-testid="admin-filter-series" value={fSeries} onChange={(e) => setFSeries(e.target.value)}
                   className="w-full border-2 border-ink rounded-md px-3 py-2 mt-1 bg-paper">
                   <option value="">Toutes les séries</option>
-                  {seriesList.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+                  {seriesList.map((s) => <option key={s.id} value={s.name}>{s.name} ({seriesCounts[s.name] || 0})</option>)}
                 </select>
               </div>
               <div>
