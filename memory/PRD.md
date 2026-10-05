@@ -353,5 +353,11 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - `frontend/src/pages/ImportIA.jsx` : input condition → `list="ia-condition-choices"` + `<datalist>` (mêmes 3 choix, saisie libre). input prix → `step=any min=0` ; input stock → `step=1 min=0` ; default-price → `step=any`.
 - Aucun backend/BD/API modifié (champs `condition`/`price`/`stock` existants réutilisés). Vérifié preview : combobox + saisie libre OK, prix 4,50 valide, stock min 0, option « Sans série » présente.
 
+## « Continuer mes achats » restaure le contexte catalogue (05/10/2026) — livré preview, NON déployé
+- Méthode : Priorité 1 (URL existante) — les filtres (category, series, q, stock) sont déjà dans la query string Shop. `sessionStorage` (`mc_shop_ctx`) ne sert qu'à mémoriser l'URL complète + la position de scroll.
+- `frontend/src/pages/Shop.jsx` : effet qui enregistre `{url: pathname+search, y: scrollY}` dans `mc_shop_ctx` à chaque changement de filtres/scroll (throttle rAF) ; effet de restauration du scroll au retour si l'URL correspond (après chargement, rAF pour passer après le scroll-to-top global).
+- `frontend/src/components/CartDrawer.jsx` : « Continuer mes achats » lit `mc_shop_ctx` et navigue vers l'URL mémorisée ; fallback `/shop` si absent. Panier/ajout/paiement inchangés.
+- Vérifié preview : retour sur `/shop?category=VO&stock=1`, scroll restauré à 450, filtre En stock actif. Aucun backend/Mongo/Stripe/Mondial Relay touché.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

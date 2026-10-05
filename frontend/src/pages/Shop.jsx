@@ -37,6 +37,35 @@ export default function Shop() {
     return () => document.removeEventListener("mousedown", close);
   }, [othersOpen]);
 
+  // Mémorise le contexte catalogue (URL de filtres + position de scroll) pour « Continuer mes achats ».
+  useEffect(() => {
+    let raf = 0;
+    const save = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        sessionStorage.setItem("mc_shop_ctx", JSON.stringify({
+          url: window.location.pathname + window.location.search, y: window.scrollY }));
+      });
+    };
+    save();
+    window.addEventListener("scroll", save, { passive: true });
+    return () => { window.removeEventListener("scroll", save); if (raf) cancelAnimationFrame(raf); };
+  }, [params]);
+
+  // Restaure la position de défilement au retour sur le même catalogue filtré.
+  const scrollRestored = useRef(false);
+  useEffect(() => {
+    if (scrollRestored.current || loading) return;
+    scrollRestored.current = true;
+    try {
+      const ctx = JSON.parse(sessionStorage.getItem("mc_shop_ctx") || "null");
+      if (ctx && ctx.url === window.location.pathname + window.location.search && ctx.y > 0) {
+        requestAnimationFrame(() => window.scrollTo(0, ctx.y));
+      }
+    } catch { /* ignore */ }
+  }, [loading]);
+
   // Compteurs catégories : toujours calculés sur le catalogue complet.
   const catCounts = useMemo(() => {
     const cc = {};

@@ -207,7 +207,12 @@ export const CartDrawer = () => {
                     {t.cart.continueDelivery}
                   </button>
                   <button data-testid="continue-shopping-button"
-                    onClick={() => { setOpen(false); navigate("/shop"); window.scrollTo(0, 0); }}
+                    onClick={() => {
+                      setOpen(false);
+                      let dest = "/shop";
+                      try { const c = JSON.parse(sessionStorage.getItem("mc_shop_ctx") || "null"); if (c && c.url) dest = c.url; } catch { /* ignore */ }
+                      navigate(dest);
+                    }}
                     className="w-full mt-2 bg-paper text-ink font-mono uppercase tracking-[0.2em] text-sm py-3 border-2 border-ink hover:bg-papersoft transition-colors">
                     {t.cart.continueShopping}
                   </button>
