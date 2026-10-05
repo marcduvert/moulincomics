@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { UploadCloud, X, Loader2, Check, AlertTriangle, Trash2, ArrowLeft, Sparkles, CheckCircle2, History, FileDown } from "lucide-react";
+import { UploadCloud, X, Loader2, Check, AlertTriangle, Trash2, ArrowLeft, Sparkles, CheckCircle2, History, FileDown, ChevronDown, ChevronRight, Eye } from "lucide-react";
 import { api } from "../lib/api";
 import { Seo } from "../components/Seo";
 
@@ -27,6 +27,7 @@ const emptyResult = (data) => ({
   category: data.category === "VF" ? "VF" : "VO",
   price: "", stock: 1, condition: "Bon état",
   description: data.description || "", description_en: data.description_en || "", description_es: data.description_es || "",
+  barcode: data.barcode || "", moulin_eye_type: data.moulin_eye_type || "", moulin_eye_text: data.moulin_eye_text || "",
   model_used: data.model_used || "", cropped: !!data.cropped,
   cover_image: data.cover_url ? `${BACKEND}${data.cover_url}` : "",
 });
@@ -50,6 +51,10 @@ export default function ImportIA() {
   const [zoomSrc, setZoomSrc] = useState(null);
   const [seriesList, setSeriesList] = useState([]);
   const [catList, setCatList] = useState([]);
+  const [expanded, setExpanded] = useState(() => new Set());
+  const toggleExpand = (id) => setExpanded((prev) => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
+  });
   const filesRef = useRef([]);
   const autoRef = useRef(false);
   const priceRef = useRef("");
@@ -167,6 +172,8 @@ export default function ImportIA() {
         condition: f.result.condition || "Bon état", year: f.result.year, issue: f.result.issue,
         description: f.result.description || "", description_en: f.result.description_en || "",
         description_es: f.result.description_es || "",
+        barcode: f.result.barcode || "", moulin_eye_type: f.result.moulin_eye_type || "",
+        moulin_eye_text: f.result.moulin_eye_text || "",
         cover_image: f.result.cover_image,
       }));
       const { data } = await api.post("/admin/import/bulk-create", { items });
@@ -345,8 +352,10 @@ export default function ImportIA() {
                   {doneFiles.map((f) => {
                     const b = confBadge(f.confidence);
                     const inp = "border border-ink rounded px-1 py-1 bg-papersoft w-full";
+                    const isOpen = expanded.has(f.id);
                     return (
-                      <tr key={f.id} className="border-b border-ink/15 align-top" data-testid={`result-row-${f.id}`}>
+                      <Fragment key={f.id}>
+                      <tr className="border-b border-ink/15 align-top" data-testid={`result-row-${f.id}`}>
                         <td className="p-2"><input type="checkbox" checked={f.selected} onChange={(e) => patch(f.id, { selected: e.target.checked })} data-testid={`row-check-${f.id}`} /></td>
                         <td className="p-2"><img src={f.url} alt="" onClick={() => setZoomSrc(f.url)} data-testid={`cover-thumb-${f.id}`} title="Agrandir"
                           className="w-10 h-14 object-cover border border-ink cursor-zoom-in hover:opacity-80 transition-opacity" /></td>
@@ -384,8 +393,47 @@ export default function ImportIA() {
                             : <span className="text-green-700 flex items-center gap-1"><Check size={12} /> Nouveau</span>}
                           {f.result.series === "" && <div className="text-comicred">Série à vérifier</div>}
                         </td>
-                        <td className="p-2"><button onClick={() => removeFile(f.id)} className="text-comicred"><Trash2 size={14} /></button></td>
+                        <td className="p-2 whitespace-nowrap">
+                          <button onClick={() => toggleExpand(f.id)} data-testid={`toggle-details-${f.id}`} title="Détails IA : description, code-barres, L'Œil du Moulin" className="text-ink hover:text-comicblue align-middle">
+                            {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          </button>
+                          <button onClick={() => removeFile(f.id)} className="text-comicred align-middle ml-1"><Trash2 size={14} /></button>
+                        </td>
                       </tr>
+                      {isOpen && (
+                        <tr className="border-b-2 border-ink/30 bg-papersoft" data-testid={`details-row-${f.id}`}>
+                          <td></td>
+                          <td colSpan={14} className="p-3">
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="md:col-span-2">
+                                <label className="text-[10px] uppercase tracking-widest text-inksoft flex items-center gap-1"><Eye size={11} /> Description éditoriale (FR)</label>
+                                <textarea data-testid={`details-description-${f.id}`} rows={3} className="w-full border border-ink rounded px-2 py-1 bg-paper mt-1"
+                                  value={f.result.description} onChange={(e) => patchResult(f.id, "description", e.target.value)} />
+                              </div>
+                              <div>
+                                <label className="text-[10px] uppercase tracking-widest text-inksoft">ISBN / UPC / EAN</label>
+                                <input data-testid={`details-barcode-${f.id}`} className="w-full border border-ink rounded px-2 py-1 bg-paper mt-1"
+                                  placeholder="Vide si non lisible" value={f.result.barcode || ""} onChange={(e) => patchResult(f.id, "barcode", e.target.value)} />
+                              </div>
+                              <div>
+                                <label className="text-[10px] uppercase tracking-widest text-inksoft">L'Œil du Moulin — Type</label>
+                                <select data-testid={`details-eye-type-${f.id}`} className="w-full border border-ink rounded px-2 py-1 bg-paper mt-1"
+                                  value={f.result.moulin_eye_type || ""} onChange={(e) => patchResult(f.id, "moulin_eye_type", e.target.value)}>
+                                  {["", "À LIRE", "BELLE COUVERTURE", "PETIT PRIX", "À DÉNICHER", "POUR COMMENCER", "CONSEIL DU MOULIN"].map((v) => (
+                                    <option key={v || "none"} value={v}>{v || "Aucun"}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="md:col-span-2">
+                                <label className="text-[10px] uppercase tracking-widest text-inksoft">L'Œil du Moulin — Commentaire</label>
+                                <textarea data-testid={`details-eye-text-${f.id}`} rows={2} className="w-full border border-ink rounded px-2 py-1 bg-paper mt-1"
+                                  placeholder="Laisser vide sauf exception réellement remarquable" value={f.result.moulin_eye_text || ""} onChange={(e) => patchResult(f.id, "moulin_eye_text", e.target.value)} />
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     );
                   })}
                 </tbody>

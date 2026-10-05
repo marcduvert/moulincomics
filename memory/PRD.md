@@ -359,5 +359,15 @@ Site de vente en ligne du stock de BD/comics de la société Moulin Comics — c
 - `frontend/src/components/CartDrawer.jsx` : « Continuer mes achats » lit `mc_shop_ctx` et navigue vers l'URL mémorisée ; fallback `/shop` si absent. Panier/ajout/paiement inchangés.
 - Vérifié preview : retour sur `/shop?category=VO&stock=1`, scroll restauré à 450, filtre En stock actif. Aucun backend/Mongo/Stripe/Mondial Relay touché.
 
+## [2026-06] Analyse IA enrichie (Ajout intelligent + Import intelligent)
+Objectif : meilleures descriptions ÉDITORIALES, lecture éventuelle ISBN/UPC/EAN, L'Œil du Moulin rare, sans hausse du coût IA.
+- Fonction/prompt commun : `_analysis_prompt(with_desc)` + `_analyze_with_model()` dans `backend/server.py`. Les DEUX workflows l'utilisent désormais (avant, `analyze-cover` avait son propre prompt inline).
+- `analyze-cover` (Ajout 1 photo) migré sur la fonction commune : downscale `downscale_for_llm` (≤1200 px) + escalade économique `CHEAP_MODEL`→`STRONG_MODEL` si confidence < 80 (identique à l'import). Original conservé comme couverture.
+- Nouveau format retourné (commun) : description éditoriale 2-4 phrases + `description_en`/`description_es`, `barcode` (ISBN/UPC/EAN, vide si non lisible), `moulin_eye_type` + `moulin_eye_text` (vides sauf exception). Helpers : `_clean_barcode` (8-18 chiffres, pas de reconstitution), `_clean_eye` (label dans la liste + commentaire non vide), `_clean_placeholder` (INCONNU→"").
+- Modèle données : ajout champ `barcode` sur `Product`/`ProductCreate`/`ImportItem` (aucun champ équivalent n'existait). `description`, `moulin_eye_type`, `moulin_eye_text` réutilisés tels quels.
+- Frontend : `Admin.jsx` (smartAdd mappe barcode+œil ; champ ISBN/UPC/EAN dans le formulaire) ; `ImportIA.jsx` (sous-ligne « détails » dépliable par produit : description FR, ISBN/UPC/EAN, Œil type+commentaire, éditables ; champs transmis au bulk-create).
+- Coût : 1 seul appel IA par photo (identique) ; aucun appel séparé code-barres/description/œil ; escalade inchangée.
+- Tests réels (curl) : Ajout (Wolverine #26) + Import (Kamandi #57) → descriptions éditoriales, année/auteur omis si non lisibles, barcode="", œil="". Cover synthétique à code-barres → barcode="9780785134657", confidence non réduite. Persistance create_product + GET OK. Formulaire admin affiche le champ ISBN.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

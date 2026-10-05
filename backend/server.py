@@ -486,6 +486,7 @@ class Product(BaseModel):
     description_es: Optional[str] = ""
     moulin_eye_type: Optional[str] = ""   # L'œil du Moulin — type (label stable)
     moulin_eye_text: Optional[str] = ""   # L'œil du Moulin — commentaire éditorial
+    barcode: Optional[str] = ""           # ISBN / UPC / EAN lu sur la couverture (si lisible)
     cover_image: str = ""
     featured: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -512,6 +513,7 @@ class ProductCreate(BaseModel):
     description_es: Optional[str] = ""
     moulin_eye_type: Optional[str] = ""
     moulin_eye_text: Optional[str] = ""
+    barcode: Optional[str] = ""
     cover_image: str = ""
     featured: bool = False
 
@@ -884,8 +886,7 @@ async def serve_file(path: str):
 
 @api.post("/admin/analyze-cover")
 async def analyze_cover(file: UploadFile = File(...), admin: dict = Depends(get_current_admin)):
-    import base64, json as _json
-    from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+    import base64
     ext = (file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "bin")
     if ext not in MIME_TYPES:
         raise HTTPException(400, "Format non supporté (jpg, png, gif, webp)")
@@ -893,46 +894,39 @@ async def analyze_cover(file: UploadFile = File(...), admin: dict = Depends(get_
     if len(data) > 8 * 1024 * 1024:
         raise HTTPException(400, "Image trop lourde (max 8 Mo)")
     content_type = file.content_type or MIME_TYPES[ext]
-    # store cover
+    # store cover (original conservé pour le produit)
     path = f"{APP_NAME}/covers/{uuid.uuid4()}.{ext}"
     result = put_object(path, data, content_type)
     await db.files.insert_one({"storage_path": result["path"], "original_filename": file.filename,
                                "content_type": content_type, "created_at": datetime.now(timezone.utc).isoformat()})
-    # analyze with vision LLM
-    b64 = base64.b64encode(data).decode()
-    system = ("Tu es un expert en bandes dessinées et comics pour le comic shop Moulin Comics "
-              "(spécialiste VO US et mensuels VF Lug/Semic : Strange, Nova, Titans). "
-              "À partir de la couverture fournie, identifie le comic et réponds STRICTEMENT en JSON valide, sans texte autour.")
-    instructions = (
-        "Analyse cette couverture de comic/BD et renvoie un objet JSON avec EXACTEMENT ces clés :\n"
-        '{"title": str, "series": str, "author": str, "publisher": str, "issue": str, "year": str, '
-        '"category": "VO" ou "VF", "condition": "", '
-        '"description": str (français, 2 phrases, ton passionné de comic shop), '
-        '"description_en": str (traduction anglaise), '
-        '"description_es": str (traduction espagnole)}\n'
-        "Règles: category = 'VO' si édition en version originale (anglais/US, ex. prix en cents/$), "
-        "'VF' si édition française (Lug, Semic, prix en francs/euros, texte français). "
-        "author = scénariste/dessinateur si visible sinon l'éditeur. "
-        "Laisse une chaîne vide si une info est inconnue. Ne mets RIEN d'autre que le JSON."
-    )
+    # Analyse IA — MÊME fonction/prompt que l'Import intelligent. Copie réduite (<=1200 px)
+    # envoyée au modèle ; économique d'abord puis escalade si la confiance est faible.
+    b64 = base64.b64encode(downscale_for_llm(data)).decode()
     try:
-        chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=str(uuid.uuid4()),
-                       system_message=system).with_model("openai", "gpt-5.4")
-        raw = await chat.send_message(UserMessage(text=instructions, file_contents=[ImageContent(image_base64=b64)]))
+        fields = await _analyze_with_model(b64, CHEAP_MODEL, True)
+        conf = int(fields.get("confidence", 0)) if str(fields.get("confidence", "")).isdigit() else 0
+        if conf < ESCALATE_BELOW:
+            fields = await _analyze_with_model(b64, STRONG_MODEL, True)
     except Exception as e:
         logger.error(f"analyze-cover LLM error: {e}")
         raise HTTPException(502, "L'analyse IA a échoué. Réessayez ou remplissez manuellement.")
-    text = raw if isinstance(raw, str) else str(raw)
-    s, e = text.find("{"), text.rfind("}")
-    fields = {}
-    if s != -1 and e != -1:
-        try:
-            fields = _json.loads(text[s:e + 1])
-        except Exception:
-            fields = {}
-    fields["cover_path"] = result["path"]
-    fields["cover_url"] = f"/api/files/{result['path']}"
-    return fields
+    eye_type, eye_text = _clean_eye(fields)
+    return {
+        "title": _clean_placeholder(fields.get("title")),
+        "author": _clean_placeholder(fields.get("author")),
+        "series": _clean_placeholder(fields.get("series")),
+        "publisher": _clean_placeholder(fields.get("publisher")),
+        "issue": _clean_placeholder(fields.get("issue")),
+        "year": _clean_placeholder(fields.get("year")),
+        "category": "VF" if fields.get("category") == "VF" else "VO",
+        "condition": "",
+        "description": fields.get("description", ""),
+        "description_en": fields.get("description_en", ""),
+        "description_es": fields.get("description_es", ""),
+        "barcode": _clean_barcode(fields.get("barcode")),
+        "moulin_eye_type": eye_type, "moulin_eye_text": eye_text,
+        "cover_path": result["path"], "cover_url": f"/api/files/{result['path']}",
+    }
 
 # ===== IMPORT INTELLIGENT (batch) =====
 def downscale_for_llm(data: bytes) -> bytes:
@@ -1012,15 +1006,18 @@ def auto_crop_cover(data: bytes):
 def _analysis_prompt(with_desc: bool):
     system = ("Tu es un expert en comics et bandes dessinées pour le comic shop Moulin Comics "
               "(VO US et VF Lug/Semic : Strange, Nova, Titans, Batman, Spider-Man, X-Men, Superman, Hulk...). "
-              "Tu analyses des couvertures. Tu n'inventes JAMAIS une information non lisible : "
-              "dans ce cas tu renvoies la chaîne 'INCONNU' (ou 'À VÉRIFIER' pour la langue). "
+              "Tu analyses la couverture d'un ouvrage pour l'identifier et aider un acheteur. "
+              "Tu n'inventes JAMAIS une information non lisible ou incertaine : dans ce cas tu renvoies "
+              "la chaîne 'INCONNU' (ou 'À VÉRIFIER' pour la langue), ou une chaîne vide pour la description, "
+              "le code-barres et L'Œil du Moulin. "
               "Réponds STRICTEMENT en JSON valide sans texte autour.")
     keys = ('{"title": str, "series": str, "issue": str, "publisher": str, "author": str, '
             '"year": str, "language": "Français"|"Anglais"|"À vérifier", "country": str, '
-            '"category": "VF"|"VO", "confidence": int, "series_uncertain": bool')
+            '"category": "VF"|"VO", "confidence": int, "series_uncertain": bool, '
+            '"barcode": str, "moulin_eye_type": str, "moulin_eye_text": str')
     if with_desc:
-        keys += (', "description": str (français, 2 phrases, ton passionné de comic shop), '
-                 '"description_en": str (anglais), "description_es": str (espagnol)')
+        keys += (', "description": str (français), "description_en": str (anglais), '
+                 '"description_es": str (espagnol)')
     keys += "}"
     rules = (
         "Règles STRICTES:\n"
@@ -1030,12 +1027,61 @@ def _analysis_prompt(with_desc: bool):
         "- category = 'VO' si édition version originale anglaise/US, 'VF' si édition française.\n"
         "- language: 'The Incredible Hulk' -> Anglais/VO ; 'Les aventures de' -> Français/VF. Si incertain -> 'À vérifier'.\n"
         "- N'invente NI l'année, NI le numéro, NI l'auteur, NI l'éditeur. Mets 'INCONNU' si non lisible.\n"
-        "- confidence = certitude sur l'IDENTIFICATION (pas le prix), entier 0-100.\n"
-        "- series_uncertain = true si le nom de série est incertain.\n")
+        "- confidence = certitude sur l'IDENTIFICATION de l'ouvrage (pas le prix), entier 0-100.\n"
+        "- series_uncertain = true si le nom de série est incertain.\n"
+        "CODE-BARRES (barcode = ISBN / UPC / EAN):\n"
+        "- Renseigne barcode UNIQUEMENT si les chiffres sont clairement lisibles sur la photo avec une TRÈS forte certitude.\n"
+        "- Si le code est absent, trop petit, partiellement masqué, flou ou ambigu -> barcode = '' (chaîne vide).\n"
+        "- Ne reconstitue JAMAIS des chiffres manquants, ne devine pas, ne cherche pas dans tes connaissances un code non lisible.\n"
+        "- L'absence de code-barres NE DOIT PAS réduire la confidence : ce n'est qu'un indice supplémentaire.\n"
+        "L'ŒIL DU MOULIN (moulin_eye_type + moulin_eye_text) — marqueur éditorial RARE:\n"
+        "- Laisse moulin_eye_type = '' et moulin_eye_text = '' dans la GRANDE MAJORITÉ des cas.\n"
+        "- Ne le renseigne que s'il existe une raison réellement remarquable, identifiable et suffisamment certaine "
+        "(couverture notable d'un artiste identifiable, ouvrage atypique, élément éditorial particulièrement intéressant, "
+        "moment important d'une série clairement établi, curiosité comics réellement justifiable).\n"
+        "- NE déclenche PAS simplement parce que la couverture est jolie, le personnage connu, le comic semble ancien, "
+        "les couleurs spectaculaires, ou que tu trouves quelque chose à dire. EN CAS DE DOUTE : laisse vide.\n"
+        "- Si justifié : moulin_eye_type parmi ['À LIRE','BELLE COUVERTURE','À DÉNICHER','PETIT PRIX','POUR COMMENCER'] "
+        "et moulin_eye_text = 1 à 2 phrases expliquant concrètement pourquoi. "
+        "N'utilise JAMAIS 'PETIT PRIX' uniquement à partir d'un prix US imprimé sur une ancienne couverture.\n"
+        "ANTI-HALLUCINATION: n'invente jamais date, numéro, auteurs, contenu exact d'un recueil, première édition/impression, "
+        "ISBN, UPC/EAN, rareté, cote, valeur de collection, première apparition d'un personnage. "
+        "Si une info n'est pas suffisamment certaine, OMETS-LA.\n")
     if with_desc:
-        rules += "- description/description_en/description_es basées uniquement sur ce qui est identifiable.\n"
+        rules += (
+            "DESCRIPTION — courte notice ÉDITORIALE de l'ouvrage, PAS une description visuelle de la couverture:\n"
+            "- Quand l'ouvrage est identifié avec assez de certitude : description FR en 2 à 4 phrases maximum, "
+            "pouvant mentionner la nature de l'ouvrage (single issue, album, TPB, graphic novel, recueil, guide...), "
+            "le personnage/la série, un contexte narratif ou éditorial utile, les auteurs/artistes si suffisamment certains, "
+            "une particularité intéressante, et éventuellement un élément visuel notable de la couverture SEULEMENT s'il apporte quelque chose.\n"
+            "- La description doit être utile à quelqu'un qui envisage d'ACHETER le comic. "
+            "Évite 'La couverture représente X devant Y'. Préfère une notice sur l'ouvrage lui-même.\n"
+            "- Si l'identification est trop incertaine, préfère une description plus courte mais fiable, ou une chaîne vide.\n"
+            "- description_en / description_es = traductions fidèles de la description FR (vide si description vide).\n")
     rules += "Ne renvoie RIEN d'autre que le JSON."
     return system, ("Analyse cette couverture et renvoie un objet JSON avec EXACTEMENT ces clés :\n" + keys + "\n" + rules)
+
+MOULIN_EYE_TYPES = {"À LIRE", "BELLE COUVERTURE", "À DÉNICHER", "PETIT PRIX", "POUR COMMENCER", "CONSEIL DU MOULIN"}
+
+def _clean_placeholder(v) -> str:
+    return "" if str(v or "").strip().upper() in ("INCONNU", "À VÉRIFIER", "A VERIFIER") else str(v or "")
+
+def _clean_barcode(v) -> str:
+    """ISBN/UPC/EAN : conserve uniquement un code plausible (8-18 chiffres, X final ISBN toléré).
+    Toute valeur non numérique, placeholder ou longueur improbable -> chaîne vide. Jamais de reconstitution."""
+    raw = str(v or "").strip()
+    if raw.upper() in ("INCONNU", "À VÉRIFIER", "A VERIFIER"):
+        return ""
+    s = re.sub(r"[^0-9Xx]", "", raw)
+    return s.upper() if 8 <= len(s) <= 18 else ""
+
+def _clean_eye(fields: dict):
+    """Renvoie (type, texte) de L'Œil du Moulin, vides si non justifié ou label non reconnu."""
+    eye_type = str(fields.get("moulin_eye_type", "") or "").strip().upper()
+    if eye_type not in MOULIN_EYE_TYPES:
+        return "", ""
+    eye_text = str(fields.get("moulin_eye_text", "") or "").strip()
+    return (eye_type, eye_text) if eye_text else ("", "")
 
 async def _analyze_with_model(b64: str, model: str, with_desc: bool) -> dict:
     from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
@@ -1123,6 +1169,7 @@ async def import_analyze(file: UploadFile = File(...),
         logger.error(f"import analyze LLM error: {ex}")
         raise HTTPException(502, "Analyse IA échouée")
 
+    eye_type, eye_text = _clean_eye(fields)
     result = {
         "title": fields.get("title", ""), "series": fields.get("series", ""),
         "issue": fields.get("issue", ""), "publisher": fields.get("publisher", ""),
@@ -1135,6 +1182,8 @@ async def import_analyze(file: UploadFile = File(...),
         "description": fields.get("description", ""),
         "description_en": fields.get("description_en", ""),
         "description_es": fields.get("description_es", ""),
+        "barcode": _clean_barcode(fields.get("barcode")),
+        "moulin_eye_type": eye_type, "moulin_eye_text": eye_text,
         "cropped": bool(store_ext != ext or autocrop and store_bytes is not data),
         "model_used": model_used,
         "cover_path": stored["path"], "cover_url": f"/api/files/{stored['path']}",
@@ -1162,6 +1211,9 @@ class ImportItem(BaseModel):
     description: str = ""
     description_en: str = ""
     description_es: str = ""
+    moulin_eye_type: str = ""
+    moulin_eye_text: str = ""
+    barcode: str = ""
     cover_image: str = ""
 
 class BulkCreateBody(BaseModel):

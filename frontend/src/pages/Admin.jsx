@@ -9,7 +9,7 @@ import { RichEditor } from "../components/RichEditor";
 
 const EMPTY = { title: "", author: "", series: "", publisher: "", category: "", price: "", stock: 1,
   condition: "Très bon état", year: "", issue: "", description: "", description_en: "", description_es: "",
-  moulin_eye_type: "", moulin_eye_text: "", cover_image: "", featured: false };
+  moulin_eye_type: "", moulin_eye_text: "", barcode: "", cover_image: "", featured: false };
 
 const fmtAddr = (a) => a
   ? [a.line1, a.line2, [a.postal_code, a.city].filter(Boolean).join(" "), a.country].filter(Boolean)
@@ -275,6 +275,8 @@ export default function Admin() {
         publisher: data.publisher || "", category: data.category === "VF" ? "VF" : "VO",
         issue: data.issue || "", year: data.year || "", condition: data.condition || "Bon état",
         description: data.description || "", description_en: data.description_en || "", description_es: data.description_es || "",
+        moulin_eye_type: data.moulin_eye_type || "", moulin_eye_text: data.moulin_eye_text || "",
+        barcode: data.barcode || "",
         cover_image: data.cover_url ? `${API.replace(/\/api$/, "")}${data.cover_url}` : "",
         price: "", stock: 1, featured: false,
       });
@@ -1057,6 +1059,7 @@ export default function Admin() {
             <div className="grid grid-cols-2 gap-3 font-mono text-sm">
               {[["title", "Titre", "col-span-2"], ["author", "Auteur", "col-span-2"], ["publisher", "Éditeur"],
                 ["issue", "N°"], ["year", "Année"], ["price", "Prix €"], ["stock", "Stock"],
+                ["barcode", "ISBN / UPC / EAN", "col-span-2"],
                 ["condition", "État", "col-span-2"]].map(([k, l, cls]) => (
                 <div key={k} className={cls || ""}>
                   <label className="text-[10px] uppercase tracking-widest text-inksoft">{l}</label>
