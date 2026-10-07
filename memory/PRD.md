@@ -377,5 +377,10 @@ Objectif : réduire la hauteur des filtres Séries sur smartphone pour afficher 
 - Desktop : identique (TOUTES SÉRIES + jusqu'à 14 séries + AUTRES SÉRIES + puce Sans série). Vérifié : 16 boutons visibles, inchangé.
 - Dynamique vérifiée : sélection VO recalcule le top 6 et les compteurs. Reset filters OK. Aucun backend/API/dépendance modifié.
 
+### [2026-06] Affinage mobile filtres séries (2 micro-corrections)
+- « TOUTES SÉRIES » désormais **toujours masqué sur mobile** (`max-sm:hidden`), visible uniquement en desktop.
+- Toggle désélection : un 2e clic sur la série active la retire (série uniquement, autres filtres conservés). Helper `isMobile()` (`matchMedia("(max-width:639px)")`) applique ce toggle **sur mobile uniquement** → desktop strictement inchangé (`isMobile()` false ⇒ onClick identique à l'origine). Appliqué aux puces top, aux séries du panneau « Autres séries » et à « Sans série ». « Réinitialiser les filtres » inchangé.
+- Vérifié preview mobile : TOUTES SÉRIES absent ; clic Supergirl → `series=Supergirl` ; 2e clic → série retirée, `category=VO` conservé ; même toggle depuis le panneau. Desktop inchangé.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

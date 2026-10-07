@@ -29,6 +29,7 @@ export default function Shop() {
   const [othersOpen, setOthersOpen] = useState(false);
   const [othersSearch, setOthersSearch] = useState("");
   const seriesZoneRef = useRef(null);
+  const isMobile = () => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
 
   useEffect(() => {
     if (!othersOpen) return;
@@ -212,9 +213,9 @@ export default function Shop() {
           <div className="mb-10" ref={seriesZoneRef}>
             <div className="flex flex-wrap items-center gap-2" data-testid="series-filter-bar">
               <button data-testid="filter-series-all" onClick={() => setParam("series", "")}
-                className={`${!serie ? "max-sm:hidden " : ""}max-sm:order-3 shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${!serie ? "bg-comicyellow" : "hover:bg-papersoft"}`}>{t.shop.allSeries} ({catFiltered.length})</button>
+                className={`max-sm:hidden max-sm:order-3 shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${!serie ? "bg-comicyellow" : "hover:bg-papersoft"}`}>{t.shop.allSeries} ({catFiltered.length})</button>
               {top.map((s, i) => (
-                <button key={s} data-testid={`filter-series-${s}`} onClick={() => setParam("series", s)}
+                <button key={s} data-testid={`filter-series-${s}`} onClick={() => setParam("series", isMobile() && serie === s ? "" : s)}
                   className={`max-sm:order-1 shrink-0 ${i >= 6 ? "hidden sm:inline-block " : ""}font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === s ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
                   {s} ({counts[s]})
                 </button>
@@ -245,14 +246,14 @@ export default function Shop() {
                 <div className="max-h-72 overflow-y-auto">
                   {noSeriesCount > 0 && t.shop.noSeries.toLowerCase().includes(othersSearch.trim().toLowerCase()) && (
                     <button data-testid="filter-series-none-mobile"
-                      onClick={() => { setParam("series", NO_SERIES); setOthersOpen(false); }}
+                      onClick={() => { setParam("series", serie === NO_SERIES ? "" : NO_SERIES); setOthersOpen(false); }}
                       className={`sm:hidden block w-full text-left font-mono text-[11px] uppercase px-3 py-2 transition-colors hover:bg-papersoft ${serie === NO_SERIES ? "bg-comicyellow" : ""}`}>
                       {t.shop.noSeries} ({noSeriesCount})
                     </button>
                   )}
                   {restAlpha.filter((s) => s.toLowerCase().includes(othersSearch.trim().toLowerCase())).map((s) => (
                     <button key={s} data-testid={`filter-series-${s}`}
-                      onClick={() => { setParam("series", s); setOthersOpen(false); }}
+                      onClick={() => { setParam("series", isMobile() && serie === s ? "" : s); setOthersOpen(false); }}
                       className={`${ranked.indexOf(s) < 14 ? "sm:hidden " : ""}block w-full text-left font-mono text-[11px] uppercase px-3 py-2 transition-colors hover:bg-papersoft ${serie === s ? "bg-comicyellow" : ""}`}>
                       {s} ({counts[s]})
                     </button>
