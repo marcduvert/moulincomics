@@ -93,7 +93,7 @@ export default function Shop() {
     }
     const r = Object.keys(c).sort((a, b) => c[b] - c[a] || a.localeCompare(b));
     return { ranked: r, counts: c, noSeriesCount: none,
-             top: r.slice(0, 14), restAlpha: r.slice(9).sort((a, b) => a.localeCompare(b)) };
+             top: r.slice(0, 14), restAlpha: r.slice(6).sort((a, b) => a.localeCompare(b)) };
   }, [catFiltered]);
 
   // Si la série sélectionnée n'existe pas dans la nouvelle catégorie,
@@ -212,14 +212,14 @@ export default function Shop() {
           <div className="mb-10" ref={seriesZoneRef}>
             <div className="flex flex-wrap items-center gap-2" data-testid="series-filter-bar">
               <button data-testid="filter-series-all" onClick={() => setParam("series", "")}
-                className={`max-sm:order-1 shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${!serie ? "bg-comicyellow" : "hover:bg-papersoft"}`}>{t.shop.allSeries} ({catFiltered.length})</button>
+                className={`${!serie ? "max-sm:hidden " : ""}max-sm:order-3 shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${!serie ? "bg-comicyellow" : "hover:bg-papersoft"}`}>{t.shop.allSeries} ({catFiltered.length})</button>
               {top.map((s, i) => (
                 <button key={s} data-testid={`filter-series-${s}`} onClick={() => setParam("series", s)}
-                  className={`max-sm:order-4 shrink-0 ${i >= 9 ? "hidden sm:inline-block " : ""}font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === s ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
+                  className={`max-sm:order-1 shrink-0 ${i >= 6 ? "hidden sm:inline-block " : ""}font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === s ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
                   {s} ({counts[s]})
                 </button>
               ))}
-              {ranked.length > 9 && (
+              {(ranked.length > 6 || noSeriesCount > 0) && (
                 <span className={`max-sm:order-2 shrink-0 ${ranked.length <= 14 ? "sm:hidden" : ""}`}>
                   <button data-testid="filter-series-others" onClick={() => { setOthersOpen((o) => !o); setOthersSearch(""); }}
                     aria-expanded={othersOpen}
@@ -230,7 +230,7 @@ export default function Shop() {
               )}
               {noSeriesCount > 0 && (
                 <button data-testid="filter-series-none" onClick={() => setParam("series", NO_SERIES)}
-                  className={`max-sm:order-3 shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === NO_SERIES ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
+                  className={`max-sm:hidden shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${serie === NO_SERIES ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
                   {t.shop.noSeries} ({noSeriesCount})
                 </button>
               )}
@@ -243,6 +243,13 @@ export default function Shop() {
                     className="w-full border border-ink px-2 py-1.5 font-mono text-xs outline-none bg-papersoft" />
                 </div>
                 <div className="max-h-72 overflow-y-auto">
+                  {noSeriesCount > 0 && t.shop.noSeries.toLowerCase().includes(othersSearch.trim().toLowerCase()) && (
+                    <button data-testid="filter-series-none-mobile"
+                      onClick={() => { setParam("series", NO_SERIES); setOthersOpen(false); }}
+                      className={`sm:hidden block w-full text-left font-mono text-[11px] uppercase px-3 py-2 transition-colors hover:bg-papersoft ${serie === NO_SERIES ? "bg-comicyellow" : ""}`}>
+                      {t.shop.noSeries} ({noSeriesCount})
+                    </button>
+                  )}
                   {restAlpha.filter((s) => s.toLowerCase().includes(othersSearch.trim().toLowerCase())).map((s) => (
                     <button key={s} data-testid={`filter-series-${s}`}
                       onClick={() => { setParam("series", s); setOthersOpen(false); }}
@@ -251,7 +258,7 @@ export default function Shop() {
                     </button>
                   ))}
                   {restAlpha.filter((s) => s.toLowerCase().includes(othersSearch.trim().toLowerCase())).length === 0 && (
-                    <p className="font-mono text-xs text-inksoft px-3 py-3">Aucune série</p>
+                    <p className={`${noSeriesCount > 0 ? "max-sm:hidden " : ""}font-mono text-xs text-inksoft px-3 py-3`}>Aucune série</p>
                   )}
                 </div>
               </div>

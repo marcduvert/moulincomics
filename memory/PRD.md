@@ -369,5 +369,13 @@ Objectif : meilleures descriptions ÉDITORIALES, lecture éventuelle ISBN/UPC/EA
 - Coût : 1 seul appel IA par photo (identique) ; aucun appel séparé code-barres/description/œil ; escalade inchangée.
 - Tests réels (curl) : Ajout (Wolverine #26) + Import (Kamandi #57) → descriptions éditoriales, année/auteur omis si non lisibles, barcode="", œil="". Cover synthétique à code-barres → barcode="9780785134657", confidence non réduite. Persistance create_product + GET OK. Formulaire admin affiche le champ ISBN.
 
+## [2026-06] Filtres Boutique — compactage MOBILE uniquement
+Objectif : réduire la hauteur des filtres Séries sur smartphone pour afficher les produits plus vite. Desktop inchangé.
+- Fichier unique : `frontend/src/pages/Shop.jsx` (classes `max-sm:`/`sm:` + 1 entrée panneau). Aucune logique de filtrage/comptage recréée — réutilise `ranked`/`counts`/`noSeriesCount`/`top`/`restAlpha` existants.
+- Mobile : affiche les 6 séries les plus fournies (`i >= 6` masqué), bouton « AUTRES SÉRIES ▾ » (gate `ranked>6 || noSeriesCount>0`), panneau contenant « Sans série » (nouvelle entrée `filter-series-none-mobile`, `sm:hidden`) + le reste alphabétique (`restAlpha = r.slice(6)`).
+- Mobile : « TOUTES SÉRIES » masqué quand aucune série sélectionnée (`!serie → max-sm:hidden`), réapparaît quand une série est active (sert de désélection). Puce « Sans série » masquée sur mobile (`max-sm:hidden`), reste visible en desktop.
+- Desktop : identique (TOUTES SÉRIES + jusqu'à 14 séries + AUTRES SÉRIES + puce Sans série). Vérifié : 16 boutons visibles, inchangé.
+- Dynamique vérifiée : sélection VO recalcule le top 6 et les compteurs. Reset filters OK. Aucun backend/API/dépendance modifié.
+
 ## Credentials
 Voir /app/memory/test_credentials.md
