@@ -224,11 +224,11 @@ export const CartDrawer = () => {
             {step === "shipping" && (
               <>
                 <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                  {homeMethod && <MethodCard m={homeMethod} />}
                   {mrMethod && <MethodCard m={mrMethod} disabled={!mrMethod.available} />}
                   {mrMethod && !mrMethod.available && (
                     <p className="font-mono text-xs text-inksoft -mt-1" data-testid="relay-not-configured">{t.cart.relayNotConfigured}</p>
                   )}
-                  {homeMethod && <MethodCard m={homeMethod} />}
 
                   {shippingMethod === "mondial_relay" && mrMethod?.available && (
                     <div className="border-2 border-ink rounded-md p-3 bg-paper" data-testid="relay-zone">

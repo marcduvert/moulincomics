@@ -648,9 +648,13 @@ async def rename_category(body: dict = Body(...), admin: dict = Depends(get_curr
     if old not in cats:
         raise HTTPException(404, "Catégorie introuvable")
     cats = list(dict.fromkeys(new if c == old else c for c in cats))
-    await db.site_content.update_one({"key": "home"}, {"$set": {"categories": cats}}, upsert=True)
+    orders = dict(doc.get("category_orders") or {})
+    if old in orders:
+        orders[new] = orders.pop(old)
+    await db.site_content.update_one({"key": "home"},
+        {"$set": {"categories": cats, "category_orders": orders}}, upsert=True)
     await db.products.update_many({"category": old}, {"$set": {"category": new}})
-    return {"categories": cats}
+    return {"categories": cats, "category_orders": orders}
 
 @api.post("/admin/categories/delete")
 async def delete_category(body: dict = Body(...), admin: dict = Depends(get_current_admin)):
@@ -659,10 +663,28 @@ async def delete_category(body: dict = Body(...), admin: dict = Depends(get_curr
         raise HTTPException(400, "Nom invalide")
     doc = await db.site_content.find_one({"key": "home"}) or {}
     cats = [c for c in (doc.get("categories") or []) if c != name]
-    await db.site_content.update_one({"key": "home"}, {"$set": {"categories": cats}}, upsert=True)
+    orders = {k: v for k, v in (doc.get("category_orders") or {}).items() if k != name}
+    await db.site_content.update_one({"key": "home"},
+        {"$set": {"categories": cats, "category_orders": orders}}, upsert=True)
     # Jamais de suppression de produits : ils passent simplement à « Sans catégorie ».
     await db.products.update_many({"category": name}, {"$set": {"category": ""}})
-    return {"categories": cats}
+    return {"categories": cats, "category_orders": orders}
+
+@api.post("/admin/categories/order")
+async def set_category_order(body: dict = Body(...), admin: dict = Depends(get_current_admin)):
+    name = (body.get("name") or "").strip()
+    try:
+        order = int(body.get("order"))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Ordre invalide")
+    if not name:
+        raise HTTPException(400, "Nom invalide")
+    doc = await db.site_content.find_one({"key": "home"}) or {}
+    orders = dict(doc.get("category_orders") or {})
+    orders[name] = order
+    await db.site_content.update_one({"key": "home"},
+        {"$set": {"category_orders": orders}}, upsert=True)
+    return {"category_orders": orders}
 
 # ----- Salons (conventions) -----
 class SalonBody(BaseModel):
@@ -1846,6 +1868,7 @@ DEFAULT_CONTENT = {
         "items": [],
     },
     "categories": [],
+    "category_orders": {},
     "footer": {
         "description": "Comic shop spécialisé en VO. Large stock de mensuels VF — Strange, Nova, Titans. De la case à la caisse depuis toujours.",
         "address": "Paris · France", "email": "bonjour@moulincomics.fr", "phone": "",
@@ -2180,14 +2203,24 @@ async def seed_salons():
 async def seed_categories():
     """Initialisation UNIQUE de la liste des catégories produits : ne s'exécute
     que si la clé « categories » est absente de site_content. Les modifications
-    admin ultérieures (ajouts, renommages, suppressions) ne sont jamais écrasées."""
-    doc = await db.site_content.find_one({"key": "home"}, {"categories": 1})
-    if not doc or "categories" not in doc:
+    admin ultérieures (ajouts, renommages, suppressions) ne sont jamais écrasées.
+    Initialise également category_orders (ordre par pas de 10) une seule fois,
+    en préservant l'ordre d'affichage actuel des catégories existantes."""
+    doc = await db.site_content.find_one({"key": "home"}, {"categories": 1, "category_orders": 1}) or {}
+    if "categories" not in doc:
         await db.site_content.update_one(
             {"key": "home"},
             {"$set": {"categories": PRODUCT_CATEGORIES_DEFAULT}},
             upsert=True)
         logger.info("Catégories produits initialisées (8 valeurs)")
+    if "category_orders" not in doc:
+        cats = doc.get("categories") or PRODUCT_CATEGORIES_DEFAULT
+        orders = {name: (i + 1) * 10 for i, name in enumerate(cats)}
+        await db.site_content.update_one(
+            {"key": "home"},
+            {"$set": {"category_orders": orders}},
+            upsert=True)
+        logger.info("Ordre des catégories produits initialisé")
 
 async def seed_faq():
     """Initialisation UNIQUE de la FAQ : ne s'exécute que si la section « faq »

@@ -388,5 +388,10 @@ Objectif : réduire la hauteur des filtres Séries sur smartphone pour afficher 
 - Désélection : clic sur « × » (`clear-other-series`) OU 2e clic sur la série dans la liste → retire uniquement le filtre série, conserve les autres filtres, retire le jaune et le libellé, recalcule les 6 séries. Réouverture du panneau conserve et surligne la sélection.
 - Vérifié preview mobile (Iron Man, Venom) : jaune OK, libellé OK, réouverture conserve/surligne, × et toggle-liste désélectionnent en gardant `category=VO`. Desktop : TOUTES SÉRIES visible, aucun libellé, inchangé.
 
+### [2026-10] 3 micro-corrections (panier, boutique, admin catégories)
+- **Panier — ordre des modes de livraison inversé** (`CartDrawer.jsx`) : Livraison à domicile désormais affichée **avant** Point Relais ; le sélecteur « Choisir mon Point Relais » reste directement sous le bloc Point Relais quand il est sélectionné. Aucune modification des tarifs, de la logique Mondial Relay, du payload Stripe ni du backend.
+- **Boutique — titre « SÉRIES »** (`Shop.jsx`, `LanguageContext.jsx`) : petit titre `font-mono text-[11px] uppercase tracking-[0.3em] text-comicred` ajouté au-dessus de la zone des filtres séries (FR : SÉRIES, EN : SERIES, ES : SERIES). Clé `t.shop.seriesTitle`. Logique filtres/compteurs/désélection inchangée.
+- **Admin Catégories — champ Ordre** (`server.py`, `Admin.jsx`, `Shop.jsx`) : ajout de `site_content.category_orders` (dict `name → int`, seed idempotent pas de 10 préservant l'ordre d'affichage actuel). Nouvel endpoint `POST /api/admin/categories/order` ; `rename` et `delete` migrent la clé. Table Catégories ajoute une colonne « Ordre » (InlineField ré-utilisé). Boutique trie les filtres par ordre croissant (fallback 9999 → fin). « TOUT » reste premier ; « EN STOCK » reste indépendant. Les produits ne sont jamais touchés.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

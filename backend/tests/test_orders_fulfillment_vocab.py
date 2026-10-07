@@ -13,7 +13,7 @@ import pytest
 import requests
 from typing import Any
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://moulin-bd-comics.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://moulin-catalog.preview.emergentagent.com").rstrip("/")
 ADMIN_EMAIL = "marcduvert@gmail.com"
 ADMIN_PASSWORD = "11Joinville-"
 EMAIL_ORDER_SID = "cs_test_a1Y3s33juteMNFWAtJJUlyO5rb4LKNpUJxpjSnmzzz7PX5YhgtMjXfIcOU"

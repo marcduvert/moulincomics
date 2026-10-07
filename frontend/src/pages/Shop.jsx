@@ -115,9 +115,13 @@ export default function Shop() {
 
   // Filtres catégories : liste administrable (Admin → Catégories), seules les
   // catégories contenant ≥1 produit sont affichées, compteur calculé automatiquement.
+  // L'ordre d'affichage suit le champ « Ordre » (Admin → Catégories) ; « TOUT »
+  // reste toujours en première position et « EN STOCK » reste indépendant.
+  const catOrders = content?.category_orders || {};
   const CATS = [{ v: "", l: t.shop.all, tid: "all" },
     ...(content?.categories || [])
       .filter((cat) => catCounts[cat] > 0)
+      .sort((a, b) => (catOrders[a] ?? 9999) - (catOrders[b] ?? 9999) || a.localeCompare(b))
       .map((cat) => ({ v: cat, l: `${cat} (${catCounts[cat]})`, tid: cat }))];
 
   // Fetch the full catalogue once (or when cache is stale), then filter client-side.
@@ -226,6 +230,10 @@ export default function Shop() {
 
         {(ranked.length > 0 || noSeriesCount > 0) && (
           <div className="mb-10" ref={seriesZoneRef}>
+            <p data-testid="series-filter-title"
+              className="font-mono text-[11px] uppercase tracking-[0.3em] text-comicred mb-2">
+              {t.shop.seriesTitle || "SÉRIES"}
+            </p>
             <div className="flex flex-wrap items-center gap-2" data-testid="series-filter-bar">
               <button data-testid="filter-series-all" onClick={() => setParam("series", "")}
                 className={`max-sm:hidden max-sm:order-3 shrink-0 font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${!serie ? "bg-comicyellow" : "hover:bg-papersoft"}`}>{t.shop.allSeries} ({catFiltered.length})</button>

@@ -24,7 +24,7 @@ const T = {
     },
     shop: {
       eyebrow: "Le stock", title: "BOUTIQUE", searchPh: "Rechercher un titre, une série…",
-      all: "Tout", loading: "Chargement…", empty: "Aucun résultat.", allSeries: "Toutes séries", otherSeries: "Autres séries", noSeries: "Sans série", inStockOnly: "En stock", resetFilters: "Réinitialiser les filtres",
+      all: "Tout", loading: "Chargement…", empty: "Aucun résultat.", allSeries: "Toutes séries", otherSeries: "Autres séries", noSeries: "Sans série", seriesTitle: "SÉRIES", inStockOnly: "En stock", resetFilters: "Réinitialiser les filtres",
     },
     product: {
       back: "Retour", condition: "État", stock: "Stock", publisher: "Éditeur", year: "Année",
@@ -130,7 +130,7 @@ const T = {
     },
     shop: {
       eyebrow: "The stock", title: "SHOP", searchPh: "Search a title, a series…",
-      all: "All", loading: "Loading…", empty: "No results.", allSeries: "All series", otherSeries: "Other series", noSeries: "No series", inStockOnly: "In stock", resetFilters: "Reset filters",
+      all: "All", loading: "Loading…", empty: "No results.", allSeries: "All series", otherSeries: "Other series", noSeries: "No series", seriesTitle: "SERIES", inStockOnly: "In stock", resetFilters: "Reset filters",
     },
     product: {
       back: "Back", condition: "Condition", stock: "Stock", publisher: "Publisher", year: "Year",
@@ -236,7 +236,7 @@ const T = {
     },
     shop: {
       eyebrow: "El stock", title: "TIENDA", searchPh: "Buscar un título, una serie…",
-      all: "Todo", loading: "Cargando…", empty: "Sin resultados.", allSeries: "Todas las series", otherSeries: "Otras series", noSeries: "Sin serie", inStockOnly: "En stock", resetFilters: "Restablecer filtros",
+      all: "Todo", loading: "Cargando…", empty: "Sin resultados.", allSeries: "Todas las series", otherSeries: "Otras series", noSeries: "Sin serie", seriesTitle: "SERIES", inStockOnly: "En stock", resetFilters: "Restablecer filtros",
     },
     product: {
       back: "Volver", condition: "Estado", stock: "Stock", publisher: "Editorial", year: "Año",

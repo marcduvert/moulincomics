@@ -195,6 +195,7 @@ export default function Admin() {
   };
   const [seriesList, setSeriesList] = useState([]);
   const [catList, setCatList] = useState([]);
+  const [catOrders, setCatOrders] = useState({});
   const [newCat, setNewCat] = useState("");
   const [newSeries, setNewSeries] = useState("");
   const [salons, setSalons] = useState([]);
@@ -292,6 +293,7 @@ export default function Admin() {
     api.get("/salons").then((r) => setSalons(r.data)).catch(() => {});
     api.get("/content").then((r) => {
       setCatList(r.data?.categories || []);
+      setCatOrders(r.data?.category_orders || {});
       const s = r.data?.shipping || {};
       setShipCfg({
         mondial_relay_price: s.mondial_relay_price ?? "",
@@ -350,15 +352,23 @@ export default function Admin() {
     if (!nn || nn.trim() === name) return;
     try {
       const { data } = await api.post("/admin/categories/rename", { old: name, new: nn.trim() });
-      setCatList(data.categories || []); toast.success("Catégorie renommée — produits mis à jour"); refreshProducts();
+      setCatList(data.categories || []);
+      setCatOrders(data.category_orders || {});
+      toast.success("Catégorie renommée — produits mis à jour"); refreshProducts();
     } catch (err) { toast.error(err.response?.data?.detail || "Erreur"); }
   };
   const delCat = async (name) => {
     if (!window.confirm(`Supprimer la catégorie "${name}" ? Les produits associés passeront en « Sans catégorie » (ils ne seront pas supprimés).`)) return;
     try {
       const { data } = await api.post("/admin/categories/delete", { name });
-      setCatList(data.categories || []); toast.success("Catégorie supprimée — produits passés en Sans catégorie"); refreshProducts();
+      setCatList(data.categories || []);
+      setCatOrders(data.category_orders || {});
+      toast.success("Catégorie supprimée — produits passés en Sans catégorie"); refreshProducts();
     } catch (err) { toast.error(err.response?.data?.detail || "Erreur"); }
+  };
+  const saveCatOrder = async (name, order) => {
+    const { data } = await api.post("/admin/categories/order", { name, order });
+    setCatOrders(data.category_orders || {});
   };
 
   const SALON_EMPTY = { date_label: "", city: "", country: "", name: "", note: "", description: "", website: "", photo: "", ordre: null };
@@ -980,6 +990,7 @@ export default function Admin() {
             <p className="font-mono text-xs text-inksoft mb-5 border-l-2 border-comicred pl-3 max-w-2xl">
               Liste utilisée dans la table Stock, le formulaire produit et l'import IA.
               Renommer met à jour les produits associés ; supprimer les passe en « Sans catégorie » (jamais supprimés).
+              Le champ <strong>Ordre</strong> définit la position dans les filtres de la Boutique (valeurs croissantes affichées en premier) ; « TOUT » et « EN STOCK » conservent leur position.
             </p>
             <form onSubmit={addCat} className="flex gap-2 mb-6 max-w-md">
               <input data-testid="new-category-input" value={newCat} onChange={(e) => setNewCat(e.target.value)}
@@ -993,13 +1004,20 @@ export default function Admin() {
             <div className="bg-paper border-2 border-ink rounded-md overflow-x-auto">
               <table className="w-full font-mono text-sm min-w-[480px]">
                 <thead className="bg-ink text-paper text-[11px] uppercase tracking-widest">
-                  <tr><th className="text-left p-3">Catégorie</th><th className="text-right p-3">Actions</th></tr>
+                  <tr><th className="text-left p-3">Catégorie</th><th className="text-left p-3 w-28">Ordre</th><th className="text-right p-3">Actions</th></tr>
                 </thead>
                 <tbody>
-                  {catList.length === 0 && <tr><td colSpan={2} className="p-8 text-center text-inksoft">Aucune catégorie. Ajoutez-en une ci-dessus.</td></tr>}
+                  {catList.length === 0 && <tr><td colSpan={3} className="p-8 text-center text-inksoft">Aucune catégorie. Ajoutez-en une ci-dessus.</td></tr>}
                   {catList.map((cat) => (
                     <tr key={cat} className="border-b border-ink/15" data-testid={`category-row-${cat}`}>
                       <td className="p-3 font-display font-bold">{cat}</td>
+                      <td className="p-3">
+                        <InlineField value={catOrders[cat] ?? 0}
+                          parse={parseStockField}
+                          format={(n) => String(n ?? 0)}
+                          onSave={(v) => saveCatOrder(cat, v)}
+                          testid={`category-order-${cat}`} />
+                      </td>
                       <td className="p-3 text-right whitespace-nowrap">
                         <button onClick={() => renameCat(cat)} data-testid={`category-edit-${cat}`} className="p-1.5 hover:text-comicblue"><Pencil size={15} /></button>
                         <button onClick={() => delCat(cat)} data-testid={`category-delete-${cat}`} className="p-1.5 hover:text-comicred"><Trash2 size={15} /></button>
