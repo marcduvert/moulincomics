@@ -382,5 +382,11 @@ Objectif : réduire la hauteur des filtres Séries sur smartphone pour afficher 
 - Toggle désélection : un 2e clic sur la série active la retire (série uniquement, autres filtres conservés). Helper `isMobile()` (`matchMedia("(max-width:639px)")`) applique ce toggle **sur mobile uniquement** → desktop strictement inchangé (`isMobile()` false ⇒ onClick identique à l'origine). Appliqué aux puces top, aux séries du panneau « Autres séries » et à « Sans série ». « Réinitialiser les filtres » inchangé.
 - Vérifié preview mobile : TOUTES SÉRIES absent ; clic Supergirl → `series=Supergirl` ; 2e clic → série retirée, `category=VO` conservé ; même toggle depuis le panneau. Desktop inchangé.
 
+### [2026-06] Indicateur série active « AUTRES SÉRIES » (mobile)
+- État réactif `mobile` (matchMedia 639px) pour n'agir que sur mobile → desktop strictement inchangé (branche `mobile ? … : <expr d'origine>`).
+- Quand la série active n'est pas dans les 6 séries mobiles (`serieFromOthers`, inclut Sans série) : bouton « AUTRES SÉRIES ▾ » en jaune actif + libellé discret « Série sélectionnée : X × » (`sm:hidden`) sous la barre.
+- Désélection : clic sur « × » (`clear-other-series`) OU 2e clic sur la série dans la liste → retire uniquement le filtre série, conserve les autres filtres, retire le jaune et le libellé, recalcule les 6 séries. Réouverture du panneau conserve et surligne la sélection.
+- Vérifié preview mobile (Iron Man, Venom) : jaune OK, libellé OK, réouverture conserve/surligne, × et toggle-liste désélectionnent en gardant `category=VO`. Desktop : TOUTES SÉRIES visible, aucun libellé, inchangé.
+
 ## Credentials
 Voir /app/memory/test_credentials.md

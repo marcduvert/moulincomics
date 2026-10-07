@@ -30,6 +30,14 @@ export default function Shop() {
   const [othersSearch, setOthersSearch] = useState("");
   const seriesZoneRef = useRef(null);
   const isMobile = () => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
+  const [mobile, setMobile] = useState(isMobile);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const on = () => setMobile(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
 
   useEffect(() => {
     if (!othersOpen) return;
@@ -157,6 +165,13 @@ export default function Shop() {
     });
   }, [allProducts, category, serie, search, q, params]);
 
+  // Série « provenant d'AUTRES SÉRIES » = série active absente des 6 séries affichées sur mobile
+  // (inclut « Sans série », uniquement accessible via le panneau sur mobile).
+  const serieFromOthers = mobile && !!serie && !top.slice(0, 6).includes(serie);
+  const othersActive = othersOpen || (mobile
+    ? (!!serie && !top.slice(0, 6).includes(serie))
+    : (serie && serie !== NO_SERIES && !top.includes(serie)));
+
   const shopLd = {
     "@context": "https://schema.org", "@type": "BreadcrumbList",
     itemListElement: [
@@ -224,7 +239,7 @@ export default function Shop() {
                 <span className={`max-sm:order-2 shrink-0 ${ranked.length <= 14 ? "sm:hidden" : ""}`}>
                   <button data-testid="filter-series-others" onClick={() => { setOthersOpen((o) => !o); setOthersSearch(""); }}
                     aria-expanded={othersOpen}
-                    className={`font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${othersOpen || (serie && serie !== NO_SERIES && !top.includes(serie)) ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
+                    className={`font-mono text-[11px] uppercase px-3 py-1.5 border border-ink transition-colors ${othersActive ? "bg-comicyellow" : "hover:bg-papersoft"}`}>
                     {t.shop.otherSeries} ▾
                   </button>
                 </span>
@@ -236,6 +251,15 @@ export default function Shop() {
                 </button>
               )}
             </div>
+            {serieFromOthers && (
+              <div data-testid="active-other-series"
+                className="sm:hidden mt-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-inksoft">
+                <span>Série sélectionnée : {serie === NO_SERIES ? t.shop.noSeries : serie}</span>
+                <button data-testid="clear-other-series" aria-label="Retirer la série"
+                  onClick={() => setParam("series", "")}
+                  className="w-5 h-5 inline-flex items-center justify-center border border-ink text-comicred hover:bg-comicred hover:text-paper transition-colors">×</button>
+              </div>
+            )}
             {othersOpen && (
               <div data-testid="others-panel" className="mt-2 w-full sm:w-80 border-2 border-ink bg-paper">
                 <div className="p-2 border-b border-ink/15">
